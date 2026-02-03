@@ -55,3 +55,4 @@ plugins/marketplaces/
 
 # Old/archived configs
 old_claude_md/
+settings.json-*
