@@ -103,6 +103,109 @@ TaskOutput(task_id=result.task_id, block=False)
 
 **Why:** Nested agents accumulate context unbounded. Background isolation runs in separate process.
 
+## Research Agent KB Recording (MANDATORY)
+
+**All research/investigation agents MUST record their findings in the KB before returning.**
+
+When spawning agents to investigate questions, answer research queries, or explore topics:
+
+1. **Include KB instruction in prompt**:
+```
+After completing your investigation, use kb_add to record your findings:
+- finding_type: "discovery" for new insights, "success" for verified results, "failure" for dead ends
+- project: "{current_project}"
+- Include open_questions if any remain
+```
+
+2. **Standard prompt suffix for research agents**:
+```
+BEFORE RETURNING: Use kb_add(content=<your_findings>, finding_type="discovery",
+project="{project}", tags="<relevant,tags>", verified=<bool>,
+open_questions=[<any_remaining_questions>])
+```
+
+3. **Parent verification**: After agent completes, check if KB entry was created. If not, add one summarizing the agent's findings.
+
+**Why:** Research findings are valuable even if the investigation reaches a dead end. Recording prevents re-investigation and preserves institutional knowledge.
+
+## Research Agent Context Injection (MANDATORY)
+
+**Before launching a research agent, the PARENT must:**
+
+1. **Pre-search KB** for relevant findings (saves agent tokens, ensures context)
+2. **Include findings in prompt** as structured context
+3. **Require expert panel selection** for domain-specific questions
+
+### Standard Research Agent Prompt Template
+
+```
+TASK: {task_description}
+
+## PRIOR KNOWLEDGE (from KB)
+{kb_findings_summary}
+- kb-XXXXX: {one-line summary}
+- kb-YYYYY: {one-line summary}
+If these answer the question, STOP and report "Already resolved: kb-XXXXX"
+
+## EXPERT PANEL REQUIREMENT
+Before deep investigation, select 2-3 domain experts from:
+- {domain1}: (e.g., {expert_names})
+- {domain2}: (e.g., {expert_names})
+State your panel and their relevance to this specific question.
+
+## TECHNICAL QUESTIONS
+1. {specific_question_1}
+2. {specific_question_2}
+
+## DELIVERABLE
+{expected_output_format}
+
+BEFORE RETURNING: kb_add(content=<findings>, finding_type="discovery",
+project="{project}", tags="{tags}", verified=<bool>)
+```
+
+### Parent Pre-Search Pattern
+
+Before calling Task for research:
+```python
+# 1. Search KB for relevant findings
+findings = kb_search("relevant terms", project="claude", limit=5)
+
+# 2. Format as context block (token-efficient)
+kb_context = "\n".join([
+    f"- {f.id}: {f.summary[:80]}" for f in findings
+])
+
+# 3. Include in agent prompt
+prompt = f"""
+TASK: {task}
+
+## PRIOR KNOWLEDGE (from KB)
+{kb_context}
+If these answer the question, STOP and report the finding ID.
+
+## EXPERT PANEL REQUIREMENT
+...
+"""
+```
+
+### Expert Panel Domains Reference
+
+| Topic | Suggested Experts |
+|-------|-------------------|
+| Categories/Functors | Baez, Mac Lane, Lurie |
+| Polylogarithms/K-theory | Zagier, Goncharov, Brown |
+| Clifford algebras | Lounesto, Porteous, Atiyah |
+| Hodge theory | Deligne, Schmid, Saito |
+| Representation theory | Vogan, Kazhdan, Lusztig |
+| Physics/QFT | Peskin, Weinberg, Coleman |
+| Anti-patterns | Claude (always include) |
+
+**Why this matters:**
+- Agents often re-discover what KB already knows (wasted tokens)
+- Without expert panel, agents give shallow answers
+- Pre-injected context is 10x more token-efficient than agent searching
+
 ## Plan Session Isolation
 
 Your current plan file path is stored in `~/.claude/sessions/<session-id>/current_plan`.
@@ -110,6 +213,16 @@ Your current plan file path is stored in `~/.claude/sessions/<session-id>/curren
 - Session ID comes from `/tmp/claude-kb-state/session-<PPID>`
 - Read this file to know YOUR plan (don't use `find | head -1`)
 - After implementation-review APPROVED: plan is automatically archived by the agent
+
+### implementation-review Prompt Formats
+
+Supported invocation formats (ARCHIVE state handles all):
+1. `Review: session://{id}` — Caller creates session dir with context.yaml and current_plan
+2. `Review: ~/.claude/plans/name.md` — Direct path, no session setup needed
+3. `Review: /absolute/path/to/plan.md` — Absolute path
+4. `Review: name.md` — Relative, expands to `~/.claude/plans/`
+
+Hook `plan-write-review.sh` writes `current_plan` when a plan file is edited.
 
 ## Plan Modification Rule
 
@@ -197,16 +310,33 @@ The new session MUST check the plan's `## Approval Status` section:
 
 At checkpoint: save state to KB, output summary, STOP until user responds.
 
+## Session Checkpoints
+
+When completing significant work or before context might be lost, create a KB checkpoint:
+
+```python
+kb_add(
+    content="SESSION CHECKPOINT: {1-2 sentence summary}\n\nCOMPLETED:\n- {items}\n\nIN PROGRESS:\n- {current work}\n\nRESUME FROM: {next action}",
+    finding_type="discovery",
+    project=PROJECT,
+    tags="session-checkpoint"
+)
+```
+
+The precompact hook automatically captures KB IDs in handoff.md when /compact or /clear runs.
+
 ## Session Resume
 
 Hook `session-start-resume.sh` outputs `RESUME:` if previous state exists.
+
+**TTY-aware**: Resume files are per-terminal (`resume-{project}-{tty}.txt`), so concurrent sessions in same project don't conflict.
 
 On seeing `RESUME:` in hook output:
 1. Read the handoff.md file shown
 2. `kb_list(project)` for recent findings - THIS is the source of truth
 3. Review tasks.json for CONTEXT only - DO NOT auto-create tasks (they're often stale)
 4. Summarize what was actually done based on KB findings
-5. `rm ~/.claude/sessions/resume-{PROJECT}.txt` to clear pointer
+5. `rm ~/.claude/sessions/resume-{PROJECT}-{TTY}.txt` to clear pointer (or project-wide if no TTY)
 6. Continue from where handoff indicates
 
 **Why no auto-TaskCreate**: Agents don't reliably call TaskUpdate when completing work.
@@ -270,6 +400,10 @@ NEVER: "What would you like...", "Would you like me to...", numbered options, op
 | "Extracted 50,000" when expecting ~10 | Sanity check results. If output seems wrong, it is. |
 | `Should I use X or Y?` / `What is the correct approach?` | You're the expert. Figure it out yourself. |
 | Discovery without `kb_add` | kb_add immediately after any finding. |
+| Research agent returns without KB entry | Agent prompts MUST include KB recording instruction. Parent verifies. |
+| Launching research agent without pre-searching KB | **PARENT must search KB first**, include findings in prompt. Agents re-discovering known facts = wasted tokens. |
+| Research agent prompt without expert panel requirement | Domain questions need expert panel. Include "Select 2-3 experts from: [domains]" in prompt. |
+| Agent finding duplicates KB entry | Parent didn't pre-search. If agent finds what KB has, parent failed. |
 | Mixing conventions (bit-pattern vs gamma, two definitions of same thing) | One codebase = one convention. Check existing code first. |
 | Creating duplicate section/KB entry | Search before writing. Consolidate, don't duplicate. |
 | "Let me fix this" without identifying root cause | State the bug first. "The bug is X because Y. Fixing by Z." |
@@ -502,63 +636,6 @@ Ready-to-use terse prompts for common Haiku agent tasks:
 ```
 
 **Usage**: Copy template, fill placeholders, wrap in Task call with `model="haiku"`.
-
-# Physics/claude Prompt Templates
-
-Domain-specific templates for ~/Physics/claude codebase:
-
-**Plan execution agents** (for lean plan format):
-
-```python
-# File audit (find violations)
-'Find files in lib/ with pattern `for b in range.*b_max`. JSON: {files:[{path,line,snippet}], count:int}'
-
-# Batch modification
-'In files {file_list}, replace `truncated_sum(b_max)` with `zeta_regularized_sum()`. JSON: {modified:[], failed:[], count:int}'
-
-# Verification
-'Run pytest lib/tests/test_{module}.py. JSON: {passed:bool, failures:[], duration_s:float}'
-
-# KB population
-'Search KB for {topic}, if not found add: {content}. JSON: {action:"found"|"added", id:str}'
-
-# Pattern extraction
-'Extract before/after pattern from {file}:{lines} to docs/patterns/{name}.md. JSON: {written:bool, path:str}'
-```
-
-**Discovery agents**:
-
-```python
-# Module lookup (which file computes X?)
-'Which lib/ module computes {observable}? JSON: {file:str, function:str, returns:str}'
-
-# Deprecation check
-'Is {function} deprecated? Check lib/ for replacement. JSON: {deprecated:bool, replacement:str|null, reason:str}'
-
-# Fock state query
-'What are occupation numbers for state {state_int}? JSON: {bits:[int], N_L:int, N_R:int, pairing_eigenvalues:{A:int,B:int,C:int}}'
-
-# Clifford algebra property
-'Does Cl({p},{q}) have property {prop}? Verify in lib/core/clifford.py. JSON: {has_property:bool, method:str, evidence:str}'
-
-# Observable at dilaton
-'What modules compute {observable} at dilaton φ? JSON: {modules:[], primary:str, dataclass_returned:str}'
-
-# Zeta regularization check
-'Does {file} use zeta regularization for mode sums? JSON: {uses_zeta:bool, regularization_function:str|null, line:int}'
-
-# Condensate type usage
-'Which CondensateType does {file} use? JSON: {type:str, is_tau2_m:bool, line:int}'
-
-# Test coverage
-'What tests cover {module}? JSON: {test_files:[], test_count:int, covers_main_functions:bool}'
-
-# Dataclass structure
-'What fields does {DataclassName} have? JSON: {fields:[{name,type}], is_frozen:bool, file:str}'
-
-# Physical constant location
-'Where is {constant} defined? JSON: {file:str, line:int, value:str, units:str}'
-```
 
 # "Not Found" Is Not "Open"
 
