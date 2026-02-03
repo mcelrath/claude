@@ -1,6 +1,7 @@
 #!/bin/bash
 # KB Context Injection Hook
 # Shows last work context and recent findings for current project
+# TTY-aware: prefers TTY-specific handoff over project-wide KB dump
 
 KB_SCRIPT="$HOME/Projects/ai/kb/kb.py"
 KB_VENV="$HOME/Projects/ai/kb/.venv/bin/python"
@@ -20,6 +21,31 @@ fi
 
 export KB_EMBEDDING_URL="http://ash:8080/embedding"
 export KB_EMBEDDING_DIM=4096
+
+# Check for TTY-specific handoff first (avoids showing wrong session's KB findings)
+TTY_ID=$(tty 2>/dev/null | tr '/' '-' | sed 's/^-//')
+TTY_RESUME_FILE=""
+if [[ -n "$TTY_ID" && "$TTY_ID" != "not a tty" ]]; then
+    TTY_RESUME_FILE="$HOME/.claude/sessions/resume-${PROJECT}-${TTY_ID}.txt"
+fi
+
+if [[ -f "$TTY_RESUME_FILE" ]]; then
+    SESSION_ID=$(cat "$TTY_RESUME_FILE")
+    HANDOFF="$HOME/.claude/sessions/${SESSION_ID}/handoff.md"
+    if [[ -f "$HANDOFF" ]]; then
+        # Extract KB IDs from THIS session's handoff (scoped to TTY's work)
+        KB_IDS=$(grep -oE 'kb-[0-9]{8}-[0-9]{6}-[a-f0-9]{6}' "$HANDOFF" 2>/dev/null | sort -u | head -5)
+        if [[ -n "$KB_IDS" ]]; then
+            echo "=== KB Findings (this TTY's session) ==="
+            for KB_ID in $KB_IDS; do
+                "$KB_VENV" "$KB_SCRIPT" get "$KB_ID" 2>/dev/null | head -3
+            done
+            exit 0  # Skip project-wide dump - TTY-specific context is sufficient
+        fi
+    fi
+fi
+
+# No TTY-specific handoff - fall back to project-wide context
 
 # Show last work context if available and recent (within last hour)
 if [[ -f "$CONTEXT_FILE" ]]; then
