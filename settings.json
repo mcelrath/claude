@@ -330,6 +330,15 @@
     ],
     "PreToolUse": [
       {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/mcelrath/.claude/hooks/context-monitor.sh",
+            "timeout": 5000
+          }
+        ]
+      },
+      {
         "matcher": "ExitPlanMode",
         "hooks": [
           {
