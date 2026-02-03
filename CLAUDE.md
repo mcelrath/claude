@@ -126,6 +126,32 @@ When presenting a plan for approval, include:
 2. **Revision summary**: If modifications were required, summarize key changes made
 3. **Experts consulted**: List which domain experts reviewed the plan (e.g., physics, architecture, security)
 
+## ExitPlanMode Workflow
+
+**Before calling ExitPlanMode**, append to the plan file:
+
+```markdown
+---
+## Approval Status
+- expert-review: APPROVED
+- User: PENDING
+- Mode: PLANNING
+```
+
+**After user approves** (context clears, plan injected into new session):
+
+The new session MUST check the plan's `## Approval Status` section:
+- If `Mode: PLANNING` or no status section → normal planning flow
+- If `Mode: IMPLEMENTATION` → **do NOT call ExitPlanMode**, begin executing the plan
+
+**Hook responsibility**: When user approves via ExitPlanMode, update the plan file:
+```markdown
+## Approval Status
+- expert-review: APPROVED
+- User: APPROVED
+- Mode: IMPLEMENTATION — Execute plan, do not call ExitPlanMode
+```
+
 ## Lean Plan Format (Context-Efficient)
 
 **Max 50 lines**. Plans describe WHAT, agents do HOW.
@@ -260,6 +286,7 @@ NEVER: "What would you like...", "Would you like me to...", numbered options, op
 | Notebook cell with >3 print() but <3 computations | Hook blocks cells >70% presentation. Compute values, return tuple/dict, narrate in response. |
 | "Let me take a simpler approach" / "Given the complexity" | Problem has grown beyond initial plan. STOP. Enter plan mode with EnterPlanMode, reassess the problem, create new plan. |
 | Adding notebook cell to fix syntax error in previous cell | Use `modify_notebook_cells` with `operation="edit_code"` and `position_index=N` to fix the broken cell in place. |
+| Plan has `Mode: IMPLEMENTATION`, calling ExitPlanMode | Plan already approved in previous session. Execute it, don't re-ask. |
 
 # System
 

@@ -1,4 +1,7 @@
 {
+  "env": {
+    "DISABLE_AUTOUPDATER": "1"
+  },
   "permissions": {
     "allow": [
       "Skill",
@@ -501,8 +504,5 @@
     "/home/mcelrath/Physics/",
     "/home/mcelrath/Projects/",
     ".claude/plans"
-  ],
-  "env": {
-    "DISABLE_AUTOUPDATER": "1"
-  }
+  ]
 }
