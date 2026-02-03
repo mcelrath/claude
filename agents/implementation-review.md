@@ -33,11 +33,12 @@ SETUP → ERROR (if context.yaml or persona missing)
 GATHER → ERROR (if git status shows uncommitted AND no staged changes)
        → VERIFY
 
-VERIFY → ARCHIVE (all checks pass)
+VERIFY → ARCHIVE (all checks pass) [MANDATORY next step]
        → FIXING (check fails, fix possible)
        → ASKING (check fails, needs human judgment)
 
 ARCHIVE → APPROVED (plan archived, path reported)
+        → INCOMPLETE (archive failed)
 
 FIXING → VERIFY (after fix applied)
        → INCOMPLETE (fixes >= 5)
@@ -193,23 +194,60 @@ Apply checks to gathered artifacts:
 
 ## ARCHIVE State (on success)
 
-Archive the completed plan to preserve history and clear for next plan:
+**MANDATORY**: Archive the completed plan before returning APPROVED.
 
-1. Find plan path (in order of preference):
-   a. `{session_dir}/plan.md` (if session-based prompt)
-   b. `context.yaml` field `plan_path`
-   c. Session's `current_plan` file: read `~/.claude/sessions/{session_id}/current_plan`
-   d. Direct path from prompt (e.g., `Review: ~/.claude/plans/{slug}.md`)
-2. If plan file exists:
-   ```bash
-   PLAN_NAME=$(basename "$PLAN_PATH" .md)
-   ARCHIVE_PATH=~/.claude/plans/archive/${PLAN_NAME}-$(date +%Y%m%d-%H%M%S).md
-   mkdir -p ~/.claude/plans/archive
-   mv "$PLAN_PATH" "$ARCHIVE_PATH"
-   ```
-3. Clean up session directory (remove current_plan link since plan is archived)
-4. Record archive path in output
-5. → APPROVED
+**YOU MUST execute these bash commands** (not just describe them):
+
+```bash
+# Extract plan path from prompt - handles multiple formats
+# PROMPT is the full Task prompt text (e.g., "Review: session://abc123" or "Review: ~/.claude/plans/foo.md")
+
+SESSION_ID=""
+PLAN_PATH=""
+
+if [[ "$PROMPT" =~ session://([^[:space:]]+) ]]; then
+    # Format: Review: session://{id}
+    SESSION_ID="${BASH_REMATCH[1]}"
+    PLAN_PATH=$(cat ~/.claude/sessions/${SESSION_ID}/current_plan 2>/dev/null)
+elif [[ "$PROMPT" =~ Review:[[:space:]]+(/[^[:space:]]+\.md) ]]; then
+    # Format: Review: /absolute/path/to/plan.md
+    PLAN_PATH="${BASH_REMATCH[1]}"
+elif [[ "$PROMPT" =~ Review:[[:space:]]+(~[^[:space:]]+\.md) ]]; then
+    # Format: Review: ~/path/to/plan.md (expand tilde)
+    PLAN_PATH="${BASH_REMATCH[1]/#\~/$HOME}"
+elif [[ "$PROMPT" =~ Review:[[:space:]]+([^[:space:]]+\.md) ]]; then
+    # Format: Review: relative.md (expand to ~/.claude/plans/)
+    PLAN_PATH="$HOME/.claude/plans/${BASH_REMATCH[1]}"
+fi
+
+if [[ -n "$PLAN_PATH" && -f "$PLAN_PATH" ]]; then
+    PLAN_NAME=$(basename "$PLAN_PATH" .md)
+    ARCHIVE_PATH="$HOME/.claude/plans/archive/${PLAN_NAME}-$(date +%Y%m%d-%H%M%S).md"
+    mkdir -p "$HOME/.claude/plans/archive"
+    mv "$PLAN_PATH" "$ARCHIVE_PATH"
+
+    # Also move marker files
+    mv "${PLAN_PATH%.md}.approved" "$HOME/.claude/plans/archive/" 2>/dev/null
+    mv "${PLAN_PATH%.md}.pending" "$HOME/.claude/plans/archive/" 2>/dev/null
+
+    # Clean up session's current_plan pointer if it existed
+    [[ -n "$SESSION_ID" ]] && rm -f "$HOME/.claude/sessions/${SESSION_ID}/current_plan"
+
+    echo "Plan archived to: $ARCHIVE_PATH"
+else
+    echo "WARNING: Could not find plan to archive (path: ${PLAN_PATH:-none})"
+fi
+```
+
+**FAILURE TO ARCHIVE = INCOMPLETE**, not APPROVED. If archiving fails, report:
+```
+INCOMPLETE
+Reason: Plan archiving failed
+Plan path: {attempted path}
+Error: {error message}
+```
+
+Only after successful archive → APPROVED
 
 ### Check Types
 
