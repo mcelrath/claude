@@ -1,0 +1,57 @@
+# Session and cache data (private, transient)
+sessions/
+cache/
+chrome/
+debug/
+file-history/
+history/
+paste-cache/
+plans/
+session-env/
+shell-snapshots/
+statsig/
+tasks/
+telemetry/
+todos/
+
+# Credentials and secrets (NEVER commit)
+.credentials.json
+.credentials.json.old
+*.credentials
+*secret*
+*token*
+
+# History and databases (large, private)
+history.jsonl
+*.jsonl
+kb.db
+*.db
+
+# Backups
+*.backup
+*.bak
+*.old
+
+# Local overrides and caches
+settings.local.json
+stats-cache.json
+*.cache.json
+
+# Python bytecode
+__pycache__/
+*.pyc
+*.pyo
+
+# Project-specific data (may contain paths/private info)
+projects/
+
+# Plugin marketplace data (auto-generated)
+plugins/marketplaces/
+
+# OS and editor files
+.DS_Store
+*.swp
+*~
+
+# Old/archived configs
+old_claude_md/

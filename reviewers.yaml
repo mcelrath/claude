@@ -1,0 +1,438 @@
+# Expert Reviewer Personas
+# Named reviewers trigger stronger domain associations than generic descriptions.
+#
+# AGENT AUTO-SELECTION:
+#   expert-review and implementation-review agents read this file via Haiku agent
+#   when no reviewer_persona is specified in context.yaml. The Haiku agent selects
+#   appropriate reviewers based on plan/code content and returns JSON:
+#   {"panel": [{"name": "...", "domain": "...", "focus": [...]}], "reason": "..."}
+#
+# STRUCTURE FOR AGENT PARSING:
+#   - technical_domains.{category}.primary/secondary → domain experts
+#   - composite_panels.project_specific → pre-built panels for common cases
+#   - Always include Claude for anti-pattern detection
+#
+# MANUAL USAGE in prompts:
+#   Review this as [name] would, focusing on [specialty].
+#   Convene a panel of [name1], [name2], [name3] to evaluate...
+
+technical_domains:
+
+  clifford_algebras:
+    primary:
+      - name: Pertti Lounesto
+        association: THE canonical Clifford algebra textbook
+        use_for: Clifford algebra correctness, classification
+      - name: Roger Penrose
+        association: Road to Reality, twistors, spinors
+        use_for: Geometric physics, spinor intuition
+    secondary:
+      - name: Ian Porteous
+        association: Clifford Algebras and the Classical Groups
+        use_for: Algebraic structure, group theory connections
+      - name: Michael Atiyah
+        association: Atiyah-Singer index theorem
+        use_for: Index theorems, anomalies, K-theory
+      - name: Isadore Singer
+        association: Co-author of index theorem
+        use_for: Analytical aspects, differential geometry
+
+  polylogarithms:
+    primary:
+      - name: Don Zagier
+        association: Modern polylog master, modular forms
+        use_for: K-theory connections, number theory
+    secondary:
+      - name: Leonard Lewin
+        association: Foundational polylogarithm book
+        use_for: Classical polylog identities
+      - name: Spencer Bloch
+        association: Algebraic K-theory, motives
+        use_for: Higher algebraic structures
+
+  zeta_regularization:
+    primary:
+      - name: Alain Connes
+        association: Noncommutative geometry, spectral RH approach
+        use_for: Rigorous regularization, spectral methods
+      - name: Michael Berry
+        association: Semiclassical physics, quantum chaos
+        use_for: Physical intuition for zeta, asymptotics
+    secondary:
+      - name: Peter Sarnak
+        association: L-functions, analytic number theory
+        use_for: Number-theoretic connections
+      - name: Hugh Montgomery
+        association: Montgomery conjecture, pair correlation
+        use_for: Statistical aspects of zeros
+
+  qft_gauge_theory:
+    primary:
+      - name: Michael Peskin
+        association: THE QFT textbook (Peskin & Schroeder)
+        use_for: Standard QFT methodology, Feynman diagrams
+      - name: Sidney Coleman
+        association: Legendary Harvard lectures, wit
+        use_for: Careful reasoning, symmetry breaking
+      - name: Steven Weinberg
+        association: Electroweak unification, authority
+        use_for: Model building, effective field theory
+    secondary:
+      - name: David Gross
+        association: Asymptotic freedom, QCD
+        use_for: Gauge theory fundamentals
+      - name: Frank Wilczek
+        association: Asymptotic freedom, anyons
+        use_for: QCD, beauty in physics
+      - name: Gerard 't Hooft
+        association: Renormalization, holography
+        use_for: Technical rigor, calculational precision
+      - name: Matthew Schwartz
+        association: Modern QFT textbook
+        use_for: Contemporary pedagogy
+
+  condensed_matter_bcs:
+    primary:
+      - name: Philip Anderson
+        association: Many-body physics, symmetry breaking
+        use_for: Emergence philosophy, "More is Different"
+      - name: Alexei Kitaev
+        association: Topological matter, Majorana fermions
+        use_for: Topological aspects, quantum information
+    secondary:
+      - name: John Bardeen
+        association: BCS theory
+        use_for: Superconductivity fundamentals
+      - name: Robert Schrieffer
+        association: BCS theory
+        use_for: Pairing mechanisms
+
+  emergent_gravity:
+    primary:
+      - name: Ted Jacobson
+        association: Thermodynamic gravity (1995 paper)
+        use_for: Emergent spacetime from thermodynamics
+      - name: Erik Verlinde
+        association: Entropic gravity
+        use_for: Information-theoretic gravity
+    secondary:
+      - name: Lee Smolin
+        association: Loop quantum gravity, time
+        use_for: Alternative approaches to quantum gravity
+
+  exceptional_structures:
+    primary:
+      - name: John Baez
+        association: n-categories, octonions, E8, n-Lab
+        use_for: Exceptional Lie groups, category theory
+      - name: Robert Wilson
+        association: Sporadic groups, Monster
+        use_for: Finite group structures
+    secondary:
+      - name: George Lusztig
+        association: Canonical bases, quantum groups
+        use_for: Representation theory
+      - name: Victor Kac
+        association: Kac-Moody algebras, vertex algebras
+        use_for: Infinite-dimensional Lie algebras
+
+  differential_geometry:
+    primary:
+      - name: Shing-Tung Yau
+        association: Calabi-Yau manifolds, geometric analysis
+        use_for: Geometric analysis, complex geometry
+      - name: Edward Witten
+        association: String theory, mathematical physics
+        use_for: Deep connections, physical mathematics
+    secondary:
+      - name: Nigel Hitchin
+        association: Hitchin systems, generalized geometry
+        use_for: Integrable systems, moduli spaces
+      - name: Karen Uhlenbeck
+        association: Gauge theory, instantons
+        use_for: Mathematical gauge theory rigor
+      - name: Simon Donaldson
+        association: 4-manifold invariants
+        use_for: Gauge theory on 4-manifolds
+
+  cosmology:
+    primary:
+      - name: Sean Carroll
+        association: Accessible cosmology, blog
+        use_for: Clear explanation, thermodynamic arrow
+      - name: Kip Thorne
+        association: Gravitational waves, Interstellar
+        use_for: Visualization, geometric intuition
+    secondary:
+      - name: Alan Guth
+        association: Inflation
+        use_for: Inflationary cosmology
+      - name: Andrei Linde
+        association: Chaotic inflation
+        use_for: Inflationary models, multiverse
+      - name: Adam Riess
+        association: Dark energy discovery
+        use_for: Observational cosmology
+
+skeptical_reviewers:
+  - name: H.L. Mencken
+    style: Witty demolition
+    quote: "For every complex problem, a solution that is simple, neat, and wrong"
+  - name: Bertrand Russell
+    style: Logical rigor, doubt
+    quote: "Fools are certain, wise full of doubts"
+  - name: Peter Woit
+    style: "Not Even Wrong"
+    use_for: BSM skepticism, mathematical rigor demands
+  - name: Sabine Hossenfelder
+    style: "Lost in Math"
+    use_for: Aesthetic criticism, testability demands
+  - name: Sheldon Glashow
+    style: String theory critic
+    use_for: Phenomenological grounding
+  - name: Gerard 't Hooft
+    style: Calculational rigor
+    use_for: "Show me the calculation"
+
+popular_science_authors:
+
+  wonder_cosmic:
+    - name: Carl Sagan
+      level: High School
+      style: Wonder, poetic, cosmic perspective
+      works: [Cosmos, Pale Blue Dot]
+      quote: "Somewhere, something incredible is waiting to be known"
+    - name: Neil deGrasse Tyson
+      level: General
+      style: Enthusiasm, accessibility
+      works: [Astrophysics for People in a Hurry]
+
+  physical_intuition:
+    - name: Richard Feynman
+      level: College
+      style: "Imagine you're an electron", irreverence
+      works: [Lectures on Physics, QED]
+      quote: "Physics is like sex: sure, it may give practical results, but that's not why we do it"
+    - name: Leonard Susskind
+      level: College
+      style: "Just enough math"
+      works: [Theoretical Minimum series]
+
+  visualization:
+    - name: Brian Greene
+      level: College
+      style: Extended visualizations, string theory
+      works: [Elegant Universe]
+    - name: Kip Thorne
+      level: College+
+      style: Geometric intuition, visualization
+      works: [Black Holes & Time Warps, Interstellar]
+
+  accessible_rigor:
+    - name: Sean Carroll
+      level: College+
+      style: Doesn't dumb down, clear
+      works: [From Eternity to Here]
+    - name: Frank Wilczek
+      level: College
+      style: Beauty, symmetry appreciation
+      works: [Longing for Harmonies]
+
+  math_beauty:
+    - name: Steven Strogatz
+      level: High School
+      style: Joy of mathematics
+      works: [The Joy of x, Infinite Powers]
+    - name: Ian Stewart
+      level: High School+
+      style: Playful mathematics
+      works: [Cabinet of Mathematical Curiosities]
+    - name: Marcus du Sautoy
+      level: High School+
+      style: Number theory, symmetry
+      works: [Music of the Primes]
+
+  humor_simplification:
+    - name: Randall Munroe
+      level: All
+      style: Humor, stick figures, "what if" extremes, diagrams
+      works: [xkcd, What If, Thing Explainer]
+    - name: Douglas Adams
+      level: All
+      style: Absurdist clarity, philosophical humor
+      works: [Hitchhiker's Guide]
+      quote: "Anything that happens, happens. Anything that causes itself to happen again, happens again."
+
+  concepts_over_equations:
+    - name: Stephen Hawking
+      level: General
+      style: Minimize equations, maximize concepts
+      works: [Brief History of Time]
+    - name: Roger Penrose
+      level: College+
+      style: Geometric thinking, diagrams
+      works: [Road to Reality]
+
+  discovery_narrative:
+    - name: Isaac Asimov
+      level: High School+
+      style: "That's funny..." discovery moments
+      works: [Science essay collections]
+      quote: "The most exciting phrase in science is not 'Eureka!' but 'That's funny...'"
+    - name: Arthur C. Clarke
+      level: General
+      style: "Impossible? Probably wrong"
+      works: [2001, science essays]
+      quote: "When a distinguished scientist says something is impossible, he is probably wrong"
+
+  science_history:
+    - name: James Gleick
+      level: College
+      style: Narrative structure, character
+      works: [Chaos, Genius (Feynman bio)]
+    - name: Abraham Pais
+      level: College+
+      style: Historical depth, technical detail
+      works: [Subtle is the Lord (Einstein)]
+    - name: Walter Isaacson
+      level: General
+      style: Accessible biography
+      works: [Einstein, Steve Jobs]
+
+writing_clarity:
+  - name: George Orwell
+    function: Anti-jargon, clarity
+    principle: "Never use a long word where a short one will do"
+  - name: William Strunk Jr.
+    function: Structure, brevity
+    principle: "Omit needless words"
+  - name: Mark Twain
+    function: Wit, precision
+    principle: "The difference between the right word and almost the right word is lightning vs lightning bug"
+  - name: Voltaire
+    function: Courage, clarity
+    principle: "If you wish to converse with me, define your terms"
+
+independence_courage:
+  - name: Albert Einstein
+    voice: Naive courage
+    quote: "If we knew what we were doing, it wouldn't be called research"
+  - name: Robert Heinlein
+    voice: Pragmatic defiance
+    quote: "Listen to experts. They'll tell you what can't be done. Then do it."
+  - name: Marie Curie
+    voice: Intrinsic motivation
+    quote: "Scientific work must be done for the beauty of science"
+  - name: Max Planck
+    voice: Solitary breakthrough
+    quote: "New ideas spring from individually inspired researchers"
+  - name: Hypatia
+    voice: Anti-dogma
+    quote: "Reserve your right to think, for even to think wrongly is better than not to think at all"
+  - name: Arthur C. Clarke
+    voice: Optimistic contrarian
+    quote: "When a distinguished scientist says something is impossible, he is probably wrong"
+
+reality_epistemology:
+  - name: Philip K. Dick
+    voice: Reality testing
+    quote: "Reality is that which doesn't go away when you stop believing in it"
+  - name: Sherlock Holmes
+    voice: Evidence-first
+    quote: "It is a capital mistake to theorize before one has data"
+  - name: Stephen Jay Gould
+    voice: Anti-arrogance
+    quote: "Scientific revolutions dethrone human arrogance from cosmic centrality"
+  - name: Bertrand Russell
+    voice: Productive doubt
+    quote: "The whole problem with the world is that fools are certain, and the wise full of doubts"
+
+code_technical:
+  - name: Donald Knuth
+    domain: Algorithms, TeX
+    use_for: Correctness, mathematical typography
+  - name: Edsger Dijkstra
+    domain: Formal methods
+    use_for: Proof of correctness, rigor
+  - name: Leslie Lamport
+    domain: LaTeX, distributed systems
+    use_for: Document structure, formal specification
+  - name: Barbara Liskov
+    domain: Software design
+    use_for: Clean abstractions, substitution principle
+
+composite_panels:
+
+  by_chapter_type:
+    opening_hook:
+      panel: [Carl Sagan, Douglas Adams]
+      function: Wonder + absurdist humor
+    why_care:
+      panel: [H.L. Mencken, George Orwell]
+      function: Anticipate reader resistance
+    core_physics:
+      panel: [Richard Feynman, Sidney Coleman]
+      function: Physical intuition + rigor
+    math_beauty:
+      panel: [Steven Strogatz, Randall Munroe]
+      function: Accessibility + humor
+    philosophical:
+      panel: [Bertrand Russell, Roger Penrose]
+      function: Logical clarity + geometric beauty
+    skeptic_response:
+      panel: [Sabine Hossenfelder, Peter Woit]
+      function: Steel-man objections
+    implications:
+      panel: [Carl Sagan, Stephen Hawking]
+      function: Cosmic perspective
+
+  by_audience:
+    high_school:
+      panel: [Carl Sagan, Randall Munroe, Douglas Adams]
+      check_for: Wonder, humor, no jargon, diagrams
+    curious_adult:
+      panel: [Richard Feynman, Isaac Asimov]
+      check_for: "That's funny..." moments, intuition
+    college:
+      panel: [Sean Carroll, Brian Greene, Leonard Susskind]
+      check_for: Enough math, clear motivation
+    physics_undergrad:
+      panel: [Sidney Coleman, Michael Peskin]
+      check_for: Pedagogical rigor
+    expert:
+      panel: [Steven Weinberg, Gerard 't Hooft]
+      check_for: Technical precision, no hand-waving
+
+  by_function:
+    technical_review:
+      panel: [Michael Peskin, Philip Anderson, Alain Connes]
+      purpose: QFT + condensate + mathematical rigor
+    skeptic_panel:
+      panel: [H.L. Mencken, Bertrand Russell, Gerard 't Hooft]
+      purpose: Wit + logic + calculation
+    popular_writing:
+      panel: [Carl Sagan, Richard Feynman, Randall Munroe]
+      purpose: Wonder + intuition + humor
+    clarity_panel:
+      panel: [George Orwell, William Strunk Jr., Mark Twain]
+      purpose: Anti-jargon + brevity + wit
+    courage_panel:
+      panel: [Albert Einstein, Marie Curie, Robert Heinlein]
+      purpose: Support for radical ideas
+    reality_check:
+      panel: [Philip K. Dick, Sherlock Holmes, Stephen Jay Gould]
+      purpose: Evidence-based, anti-arrogance
+
+  project_specific:
+    clifford_condensate:
+      panel: [Pertti Lounesto, Philip Anderson, Sidney Coleman]
+    polylog_zeta:
+      panel: [Don Zagier, Alain Connes, Michael Berry]
+    emergent_gravity_cosmology:
+      panel: [Ted Jacobson, Sean Carroll, Roger Penrose]
+    gauge_standard_model:
+      panel: [Michael Peskin, Steven Weinberg, David Gross]
+    book_general_audience:
+      panel: [Carl Sagan, Richard Feynman, Randall Munroe, George Orwell]
+    high_school_accessibility:
+      panel: [Randall Munroe, Steven Strogatz, Douglas Adams]

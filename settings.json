@@ -1,0 +1,508 @@
+{
+  "permissions": {
+    "allow": [
+      "Skill",
+      "LSP",
+      "Task",
+      "Glob",
+      "Grep",
+      "Bash(ls:*)",
+      "Bash(find:*)",
+      "Bash(fd:*)",
+      "Bash(grep:*)",
+      "Bash(rg:*)",
+      "Bash(tree:*)",
+      "Bash(xargs:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git add:*)",
+      "Bash(git ls-tree:*)",
+      "Bash(git log:*)",
+      "Bash(git commit:*)",
+      "Bash(git branch:*)",
+      "Bash(git worktree:*)",
+      "Bash(git remote:*)",
+      "Bash(git fetch:*)",
+      "Bash(git checkout:*)",
+      "Bash(git stash:*)",
+      "Bash(git submodule:*)",
+      "Bash(git show:*)",
+      "Bash(git rev-parse:*)",
+      "Bash(python -m pytest:*)",
+      "Bash(pytest:*)",
+      "Bash(python -m unittest:*)",
+      "Bash(python -m unittest discover:*)",
+      "Bash(python test_:*)",
+      "Bash(python:*)",
+      "Bash(python <<:*)",
+      "Bash(python -c:*)",
+      "Bash(python3:*)",
+      "Bash(python3 <<:*)",
+      "Bash(python3 << :*)",
+      "Bash(python3.13:*)",
+      "Bash(python3.13 <<:*)",
+      "Bash(python << 'EOF':*)",
+      "Bash(python3 << 'EOF':*)",
+      "Bash(python3.13 << 'EOF':*)",
+      "Bash(.venv/bin/python << 'EOF':*)",
+      "Bash(.venv/bin/python3 << 'EOF':*)",
+      "Bash(python3 << 'PYEOF':*)",
+      "Bash(python3 << 'ENDOFFILE':*)",
+      "Bash(python << 'PYEOF':*)",
+      "Bash(python << 'ENDOFFILE':*)",
+      "Bash(python3 <<'EOF':*)",
+      "Bash(python <<'EOF':*)",
+      "Bash(python3.13 <<'EOF':*)",
+      "Bash(.venv/bin/python <<'EOF':*)",
+      "Bash(.venv/bin/python3 <<'EOF':*)",
+      "Bash(python3 -:*)",
+      "Bash(python -:*)",
+      "Bash(cd:*)",
+      "Bash(cat >:*)",
+      "Bash(python3 -m py_compile:*)",
+      "Bash(python3.13 -m py_compile:*)",
+      "Bash(PYTHONPATH=:*)",
+      "Bash(pip show:*)",
+      "Bash(pip3 show:*)",
+      "Bash(pip install:*)",
+      "Bash(pip3 install:*)",
+      "Bash(cargo test:*)",
+      "Bash(cargo test --package:*)",
+      "Bash(cargo test --lib:*)",
+      "Bash(cargo test --bin:*)",
+      "Bash(cargo test --test:*)",
+      "Bash(cargo clippy:*)",
+      "Bash(sqlite3:*)",
+      "Bash(cargo build:*)",
+      "Bash(cargo run:*)",
+      "Bash(build-manager:*)",
+      "Bash(build-manager status:*)",
+      "Bash(build-manager start:*)",
+      "Bash(build-manager wait:*)",
+      "Bash(build-manager log:*)",
+      "Bash(build-manager history:*)",
+      "Bash(build-manager ccache-stats:*)",
+      "Bash(build-manager get-completion:*)",
+      "Bash(cmake:*)",
+      "Bash(make:*)",
+      "Bash(ninja:*)",
+      "Bash(ccache:*)",
+      "Bash(/opt/rocm/bin/hipcc:*)",
+      "Bash(hipcc:*)",
+      "Bash(rocminfo:*)",
+      "Bash(rocm-smi:*)",
+      "Bash(GPU_ARCHS=:*)",
+      "Bash(cat:*)",
+      "Bash(head:*)",
+      "Bash(tail:*)",
+      "Bash(wc:*)",
+      "Bash(mkdir:*)",
+      "Bash(cp:*)",
+      "Bash(mv:*)",
+      "Bash(touch:*)",
+      "Bash(chmod:*)",
+      "Bash(tee:*)",
+      "Bash(ldd:*)",
+      "Bash(file:*)",
+      "Bash(which:*)",
+      "Bash(pwd:*)",
+      "Bash(realpath:*)",
+      "Bash(dirname:*)",
+      "Bash(basename:*)",
+      "Bash(stat:*)",
+      "Bash(sort:*)",
+      "Bash(uniq:*)",
+      "Bash(diff:*)",
+      "Bash(patch:*)",
+      "Bash(sed:*)",
+      "Bash(awk:*)",
+      "Bash(cut:*)",
+      "Bash(tr:*)",
+      "Bash(pgrep:*)",
+      "Bash(ast-grep:*)",
+      "Bash(sg:*)",
+      "Bash(ps:*)",
+      "Bash(top:*)",
+      "Bash(htop:*)",
+      "Bash(free:*)",
+      "Bash(df:*)",
+      "Bash(du:*)",
+      "Bash(uname:*)",
+      "Bash(env:*)",
+      "Bash(echo:*)",
+      "Bash(printf:*)",
+      "Bash(date:*)",
+      "Bash(time:*)",
+      "Bash(tar:*)",
+      "Bash(unzip:*)",
+      "Bash(gzip:*)",
+      "Bash(gunzip:*)",
+      "Bash(zcat:*)",
+      "Bash(fuser:*)",
+      "Bash(./build/bin/*:*)",
+      "Bash(./bin/*:*)",
+      "Bash(curl:*)",
+      "Bash(wget:*)",
+      "Bash(timeout:*)",
+      "Bash(npm run:*)",
+      "Bash(npm test:*)",
+      "Bash(npm install:*)",
+      "Bash(npm list:*)",
+      "Bash(npm root:*)",
+      "Bash(npm audit:*)",
+      "Bash(npx:*)",
+      "Bash(yarn:*)",
+      "Bash(pnpm:*)",
+      "Bash(sage:*)",
+      "Bash(sleep:*)",
+      "Bash(pdflatex:*)",
+      "Bash(xelatex:*)",
+      "Bash(lualatex:*)",
+      "Bash(bibtex:*)",
+      "Bash(biber:*)",
+      "Bash(latexmk:*)",
+      "Bash(rustup:*)",
+      "Bash(uvicorn:*)",
+      "Bash(gunicorn:*)",
+      "Bash(source:*)",
+      "Bash(nohup:*)",
+      "Bash(.venv/bin/python:*)",
+      "Bash(.venv/bin/python <<:*)",
+      "Bash(.venv/bin/python3:*)",
+      "Bash(.venv/bin/python3 <<:*)",
+      "Bash(zig:*)",
+      "Bash(zig build:*)",
+      "Bash(kb:*)",
+      "Bash(rm:*)",
+      "Bash(rmdir:*)",
+      "Bash(KB_EMBEDDING_URL=:*)",
+      "Bash(KB_EMBEDDING_DIM=:*)",
+      "Bash(KB_LLM_URL=:*)",
+      "Bash(id:*)",
+      "Bash(whoami:*)",
+      "Bash(hostname:*)",
+      "Bash(uptime:*)",
+      "Bash(ln:*)",
+      "Bash(readlink:*)",
+      "Bash(md5sum:*)",
+      "Bash(sha256sum:*)",
+      "Bash(bc:*)",
+      "Bash(seq:*)",
+      "Bash(tac:*)",
+      "Bash(rev:*)",
+      "Bash(column:*)",
+      "Bash(paste:*)",
+      "Bash(comm:*)",
+      "Bash(yes:*)",
+      "Bash(test:*)",
+      "Bash([:*)",
+      "Bash(zip:*)",
+      "Bash(bzip2:*)",
+      "Bash(xz:*)",
+      "Bash(pacman -Q:*)",
+      "Bash(pacman -Ss:*)",
+      "Bash(yay -Q:*)",
+      "Bash(yay -Ss:*)",
+      "Bash(g++:*)",
+      "Bash(gcc:*)",
+      "Bash(clang:*)",
+      "Bash(clang++:*)",
+      "Bash(nm:*)",
+      "Bash(objdump:*)",
+      "Bash(pkg-config:*)",
+      "Bash(node:*)",
+      "Bash(deno:*)",
+      "Bash(ruby:*)",
+      "Bash(perl:*)",
+      "WebFetch(domain:*)",
+      "WebFetch(domain:docs.anthropic.com)",
+      "WebSearch",
+      "mcp__knowledge-base__kb_add",
+      "mcp__knowledge-base__kb_search",
+      "mcp__knowledge-base__kb_correct",
+      "mcp__knowledge-base__kb_list",
+      "mcp__knowledge-base__kb_get",
+      "mcp__knowledge-base__kb_stats",
+      "mcp__knowledge-base__kb_doc_add",
+      "mcp__knowledge-base__kb_doc_citations",
+      "mcp__knowledge-base__kb_doc_cite",
+      "mcp__knowledge-base__kb_doc_finding_docs",
+      "mcp__knowledge-base__kb_doc_get",
+      "mcp__knowledge-base__kb_doc_list",
+      "mcp__knowledge-base__kb_doc_search",
+      "mcp__knowledge-base__kb_doc_supersede",
+      "mcp__knowledge-base__kb_error_add",
+      "mcp__knowledge-base__kb_error_get",
+      "mcp__knowledge-base__kb_error_link",
+      "mcp__knowledge-base__kb_error_list",
+      "mcp__knowledge-base__kb_error_search",
+      "mcp__knowledge-base__kb_error_solutions",
+      "mcp__knowledge-base__kb_error_verify",
+      "mcp__knowledge-base__kb_notation_add",
+      "mcp__knowledge-base__kb_notation_history",
+      "mcp__knowledge-base__kb_notation_list",
+      "mcp__knowledge-base__kb_notation_search",
+      "mcp__knowledge-base__kb_notation_update",
+      "mcp__knowledge-base__kb_script_add",
+      "mcp__knowledge-base__kb_script_get",
+      "mcp__knowledge-base__kb_script_search",
+      "mcp__knowledge-base__kb_script_list",
+      "mcp__knowledge-base__kb_script_link_finding",
+      "mcp__knowledge-base__kb_script_findings",
+      "mcp__knowledge-base__kb_script_delete",
+      "mcp__knowledge-base__kb_delete",
+      "mcp__knowledge-base__kb_notation_delete",
+      "mcp__knowledge-base__kb_doc_delete",
+      "mcp__knowledge-base__kb_error_delete",
+      "mcp__knowledge-base__kb_suggest_tags",
+      "mcp__knowledge-base__kb_classify_type",
+      "mcp__knowledge-base__kb_detect_duplicates",
+      "mcp__knowledge-base__kb_normalize_error",
+      "mcp__knowledge-base__kb_suggest_xrefs",
+      "mcp__knowledge-base__kb_summarize_evidence",
+      "mcp__knowledge-base__kb_detect_notations",
+      "mcp__knowledge-base__kb_extract_claims",
+      "mcp__knowledge-base__kb_suggest_consolidation",
+      "mcp__knowledge-base__kb_bulk_tag",
+      "mcp__knowledge-base__kb_bulk_consolidate",
+      "mcp__knowledge-base__kb_validate",
+      "mcp__knowledge-base__kb_suggest_fix",
+      "mcp__knowledge-base__kb_related",
+      "mcp__knowledge-base__kb_add_from_template",
+      "mcp__knowledge-base__kb_review_queue",
+      "mcp__knowledge-base__kb_open_questions",
+      "mcp__knowledge-base__kb_check_contradictions",
+      "mcp__knowledge-base__kb_summarize_topic",
+      "mcp__knowledge-base__kb_ask",
+      "mcp__jupyter__query_notebook",
+      "mcp__jupyter__modify_notebook_cells",
+      "mcp__jupyter__execute_notebook_code",
+      "mcp__jupyter__setup_notebook",
+      "Edit",
+      "Write",
+      "Read"
+    ],
+    "deny": [
+      "Bash(find:*)-exec rm",
+      "Bash(find:*)-exec delete",
+      "Bash(find:*)-exec shred",
+      "Bash(find:*)-delete",
+      "Bash(find:*)-exec chmod 777",
+      "Bash(find:*)-exec chown",
+      "Bash(git add .:*)",
+      "Bash(git add -A:*)",
+      "Bash(xargs rm:*)",
+      "Bash(git add --all:*)",
+      "Bash(git push --force:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(rm -rf /:*)",
+      "Bash(rm -rf ~:*)",
+      "Bash(rm -rf /*:*)",
+      "Bash(rm -rf .:*)",
+      "Bash(rm -rf ..:*)",
+      "Bash(rm -rf :*::*)",
+      "Bash(chmod 777 -R:*)",
+      "Bash(kill -9:*)",
+      "Bash(pkill:*)",
+      "Bash(killall:*)",
+      "Bash(sudo:*)",
+      "Bash(cat <<:*)"
+    ],
+    "defaultMode": "default"
+  },
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/mcelrath/.claude/hooks/remind-patterns.sh"
+          },
+          {
+            "type": "command",
+            "command": "/home/mcelrath/.claude/hooks/auto-resume.sh"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "ExitPlanMode",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/mcelrath/.claude/hooks/expert-review-reminder.sh",
+            "timeout": 2000
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/mcelrath/.claude/hooks/block-print-spam.sh",
+            "timeout": 5000
+          }
+        ]
+      },
+      {
+        "matcher": "Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/mcelrath/.claude/hooks/dedupe-file-reads.sh",
+            "timeout": 1000
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/mcelrath/.claude/hooks/kb-search-gate.sh",
+            "timeout": 2000
+          },
+          {
+            "type": "command",
+            "command": "/home/mcelrath/.claude/hooks/check-existing-code.sh",
+            "timeout": 5000
+          }
+        ]
+      },
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/mcelrath/.claude/hooks/block-markdown-files.sh",
+            "timeout": 2000
+          }
+        ]
+      },
+      {
+        "matcher": "NotebookEdit|mcp__jupyter__modify_notebook_cells",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/mcelrath/.claude/hooks/block-presentation-cells.sh",
+            "timeout": 5000
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/mcelrath/.claude/hooks/cleanup-stale-sessions.sh"
+          },
+          {
+            "type": "command",
+            "command": "/home/mcelrath/.claude/hooks/plan-cleanup.sh"
+          },
+          {
+            "type": "command",
+            "command": "/home/mcelrath/.claude/hooks/kb-search-reset.sh"
+          },
+          {
+            "type": "command",
+            "command": "/home/mcelrath/.claude/hooks/history-isolation.sh"
+          },
+          {
+            "type": "command",
+            "command": "/home/mcelrath/.claude/hooks/build-status.sh"
+          },
+          {
+            "type": "command",
+            "command": "/home/mcelrath/.claude/hooks/lsp-setup.sh"
+          },
+          {
+            "type": "command",
+            "command": "/home/mcelrath/.claude/hooks/kb-context.sh"
+          },
+          {
+            "type": "command",
+            "command": "/home/mcelrath/.claude/hooks/session-start-resume.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "mcp__knowledge-base__kb_search",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/mcelrath/.claude/hooks/kb-search-track.sh",
+            "timeout": 2000
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/mcelrath/.claude/hooks/plan-write-review.sh",
+            "timeout": 3000
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/mcelrath/.claude/hooks/kb-error-extract.sh",
+            "timeout": 45000
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/mcelrath/.claude/hooks/kb-precompact.sh",
+            "timeout": 60000
+          },
+          {
+            "type": "command",
+            "command": "/home/mcelrath/.claude/hooks/precompact-save-state.sh",
+            "timeout": 30000
+          }
+        ]
+      }
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "/home/mcelrath/.local/bin/claude-statusline",
+    "padding": 0
+  },
+  "enabledPlugins": {
+    "clangd-lsp@claude-plugins-official": true,
+    "typescript-lsp@claude-plugins-official": true,
+    "pyright-lsp@claude-plugins-official": false,
+    "rust-analyzer-lsp@claude-plugins-official": true,
+    "lua-lsp@claude-plugins-official": true
+  },
+  "feedbackSurveyState": {
+    "lastShownTime": 1753969747772
+  },
+  "additionalDirectories": [
+    "/tmp",
+    "/home/mcelrath/.claude/",
+    "~/.claude/",
+    "/home/mcelrath/Physics/",
+    "/home/mcelrath/Projects/",
+    ".claude/plans"
+  ],
+  "env": {
+    "DISABLE_AUTOUPDATER": "1"
+  }
+}

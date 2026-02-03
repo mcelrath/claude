@@ -1,0 +1,59 @@
+{
+  "version": 2,
+  "plugins": {
+    "pyright-lsp@claude-plugins-official": [
+      {
+        "scope": "user",
+        "installPath": "/home/mcelrath/.claude/plugins/cache/claude-plugins-official/pyright-lsp/1.0.0",
+        "version": "1.0.0",
+        "installedAt": "2025-12-23T16:04:11.223Z",
+        "lastUpdated": "2025-12-23T16:04:11.223Z",
+        "isLocal": true
+      }
+    ],
+    "clangd-lsp@claude-plugins-official": [
+      {
+        "scope": "user",
+        "installPath": "/home/mcelrath/.claude/plugins/cache/claude-plugins-official/clangd-lsp/1.0.0",
+        "version": "1.0.0",
+        "installedAt": "2025-12-29T12:17:24.771Z",
+        "lastUpdated": "2025-12-29T12:17:24.771Z",
+        "gitCommitSha": "6d3752c000e2b3d0e6137bd7adb04895d6f40f14",
+        "isLocal": true
+      }
+    ],
+    "typescript-lsp@claude-plugins-official": [
+      {
+        "scope": "user",
+        "installPath": "/home/mcelrath/.claude/plugins/cache/claude-plugins-official/typescript-lsp/1.0.0",
+        "version": "1.0.0",
+        "installedAt": "2025-12-29T12:17:24.771Z",
+        "lastUpdated": "2025-12-29T12:17:24.771Z",
+        "gitCommitSha": "6d3752c000e2b3d0e6137bd7adb04895d6f40f14",
+        "isLocal": true
+      }
+    ],
+    "rust-analyzer-lsp@claude-plugins-official": [
+      {
+        "scope": "user",
+        "installPath": "/home/mcelrath/.claude/plugins/cache/claude-plugins-official/rust-analyzer-lsp/1.0.0",
+        "version": "1.0.0",
+        "installedAt": "2025-12-29T12:17:24.771Z",
+        "lastUpdated": "2025-12-29T12:17:24.771Z",
+        "gitCommitSha": "6d3752c000e2b3d0e6137bd7adb04895d6f40f14",
+        "isLocal": true
+      }
+    ],
+    "lua-lsp@claude-plugins-official": [
+      {
+        "scope": "user",
+        "installPath": "/home/mcelrath/.claude/plugins/cache/claude-plugins-official/lua-lsp/1.0.0",
+        "version": "1.0.0",
+        "installedAt": "2025-12-29T12:17:24.771Z",
+        "lastUpdated": "2025-12-29T12:17:24.771Z",
+        "gitCommitSha": "6d3752c000e2b3d0e6137bd7adb04895d6f40f14",
+        "isLocal": true
+      }
+    ]
+  }
+}
