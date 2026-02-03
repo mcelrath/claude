@@ -23,14 +23,14 @@ if [[ "$REQUIRES_REVIEW" != "true" ]]; then
 fi
 
 # Check for THIS session's plan (session isolation)
+# NO FALLBACK: If current_plan doesn't exist, this session has no plan
 SESSION_PLAN=""
 if [[ -n "$CLAUDE_SESSION_ID" && -f "$HOME/.claude/sessions/$CLAUDE_SESSION_ID/current_plan" ]]; then
     SESSION_PLAN=$(cat "$HOME/.claude/sessions/$CLAUDE_SESSION_ID/current_plan")
-fi
-
-# Fallback to recent plan (legacy, may pick wrong plan)
-if [[ -z "$SESSION_PLAN" || ! -f "$SESSION_PLAN" ]]; then
-    SESSION_PLAN=$(find ~/.claude/plans/ -name "*.md" ! -path "*/archive/*" -mmin -30 2>/dev/null | head -1)
+    # Verify the file still exists
+    if [[ ! -f "$SESSION_PLAN" ]]; then
+        SESSION_PLAN=""
+    fi
 fi
 
 if [[ -n "$SESSION_PLAN" && -f "$SESSION_PLAN" ]]; then

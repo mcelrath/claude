@@ -16,6 +16,7 @@ for session_dir in "$SESSIONS_DIR"/*/; do
 done
 
 # Archive main plan files older than 24h ONLY if not referenced by any session
+# NOTE: 2h aggressive archiving was removed - implementation-review ARCHIVE state handles archiving
 for plan in $(find "$PLANS_DIR" -maxdepth 1 -name "*.md" ! -name "*-agent-*" -mtime +1 2>/dev/null); do
     if ! grep -qF "$plan" "$ACTIVE_PLANS" 2>/dev/null; then
         mv "$plan" "$ARCHIVE_DIR/" 2>/dev/null
