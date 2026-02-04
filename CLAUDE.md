@@ -396,7 +396,8 @@ NEVER: "What would you like...", "Would you like me to...", numbered options, op
 | `Should I proceed?` / `What would you like...` | Don't ask permission. Just do it. |
 | Reading parent directory for subdirectory work | Check pwd. Read requested files. Stay where told. |
 | `DEBUG` / `Status:` / extra labels in output | Output only what was asked. Minimal, clean, relevant. |
-| Columns don't line up / inconsistent spacing | Test output visually. Fixed-width fields. Verify alignment. |
+| Columns don't line up / inconsistent spacing | Test output visually. Fixed-width fields. Verify alignment. See "Table Formatting" section. |
+| Box-drawing table (┌┬┐├┼┤└┴┘│─) | NEVER. Use: `Header  Col2\n-------  ----\nval1     val2` (dashes + spaces only) |
 | "Extracted 50,000" when expecting ~10 | Sanity check results. If output seems wrong, it is. |
 | `Should I use X or Y?` / `What is the correct approach?` | You're the expert. Figure it out yourself. |
 | Discovery without `kb_add` | kb_add immediately after any finding. |
@@ -610,6 +611,27 @@ Return ONLY valid JSON, no prose. Schema: {[fields]}
 - "As you requested..." / "As mentioned..." (redundant)
 - "Successfully" / "I was able to" (implied by result)
 - Explaining what tool you're about to use (just use it)
+
+# Table Formatting
+
+**NEVER use box-drawing characters** (┌ ─ ┬ │ etc.) for tables. They truncate unpredictably.
+
+**Required format**: Pre-measured fixed-width with dashes:
+```
+Casimir  Mult  Composition
+-------  ----  ---------------------
+0        1     (1,0,0,0)
+1/6      1     (0,1,0,0)
+7/24     4     Mixed superpositions
+```
+
+**Rules**:
+1. Measure ALL content before rendering (find longest item per column)
+2. Set column width = max(header_len, max_content_len) + 2 padding
+3. Use spaces for alignment, dashes for header separator only
+4. No vertical bars, no box corners, no grid lines
+
+**Anti-pattern**: Deciding column width from header, then truncating content to fit.
 
 # Prompt Templates
 

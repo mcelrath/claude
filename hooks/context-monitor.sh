@@ -1,9 +1,12 @@
 #!/bin/bash
 # PreToolUse hook - monitors context usage from real API token counts
-# Warns at 70%, blocks at 85%
+# Warns at 85%, blocks at 95% (except for checkpoint-essential tools)
 
 WARN_THRESHOLD=85
 BLOCK_THRESHOLD=95
+
+# Tools allowed through even at block threshold (essential for session continuity)
+ALLOWED_AT_BLOCK="mcp__knowledge-base__kb_add|mcp__knowledge-base__kb_search|Read|TaskOutput"
 
 # Read hook input JSON
 HOOK_INPUT=$(cat)
@@ -48,6 +51,15 @@ PERCENT=$((CONTEXT * 100 / LIMIT))
 echo "$(date): JSONL=$JSONL CTX=$CONTEXT PCT=$PERCENT" >> ~/.cache/context-monitor-debug.log
 
 if [[ $PERCENT -ge $BLOCK_THRESHOLD ]]; then
+    # Extract tool name from hook input
+    TOOL_NAME=$(echo "$HOOK_INPUT" | jq -r '.tool_name // ""' 2>/dev/null)
+
+    # Allow checkpoint-essential tools through
+    if [[ "$TOOL_NAME" =~ ^($ALLOWED_AT_BLOCK)$ ]]; then
+        echo "⚠️  CONTEXT CRITICAL: ${PERCENT}% but allowing ${TOOL_NAME} for checkpoint." >&2
+        exit 0  # Allow through
+    fi
+
     # Run auto-checkpoint before blocking
     "$HOME/.claude/hooks/precompact-save-state.sh" >/dev/null 2>&1
 
