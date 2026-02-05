@@ -114,6 +114,21 @@ for i, q in enumerate(queries[-3:], 1):
     print(f'{i}. {q[:150]}')
 " 2>/dev/null)
 
+# Extract expert review state
+REVIEW_SUMMARY=$(echo "$CONTEXT_JSON" | python3 -c "
+import sys,json
+d=json.load(sys.stdin)
+launches = d.get('review_launches', [])
+verdicts = d.get('review_verdicts', [])
+if not launches and not verdicts:
+    print('No expert review this session')
+else:
+    if verdicts:
+        print(f'Last verdict: {verdicts[-1]} ({len(verdicts)} total)')
+    for r in launches[-3:]:
+        print(f\"  - {r.get('type','?')}: {r.get('description','')[:80]}\")
+" 2>/dev/null)
+
 # Get plan file: ONLY from current_plan (set when plan is created/edited)
 # Do NOT grep JSONL - it finds plan mentions that aren't the actual work
 if [[ -f "$OUT_DIR/current_plan" ]]; then
@@ -122,13 +137,28 @@ else
     PLAN_FILE=""  # No plan = no plan (don't guess)
 fi
 
+# Extract plan approval status if plan exists
+PLAN_APPROVAL=""
+if [[ -n "$PLAN_FILE" ]]; then
+    FULL_PLAN="$HOME/.claude/$PLAN_FILE"
+    if [[ -f "$FULL_PLAN" ]]; then
+        PLAN_APPROVAL=$(grep -A5 "## Approval Status" "$FULL_PLAN" 2>/dev/null | head -5)
+    fi
+fi
+
 # Build LLM request for session summary
 if command -v jq &>/dev/null; then
     # Include last queries and KB added in context for better summary
     LLM_CONTEXT=$(echo "$CONTEXT_JSON" | python3 -c "
 import sys,json
 d=json.load(sys.stdin)
-out = {'last_queries': d.get('last_queries',[]), 'kb_added': d.get('kb_added',[]), 'files_edited': d.get('files_edited',[])}
+out = {
+    'last_queries': d.get('last_queries',[]),
+    'kb_added': d.get('kb_added',[]),
+    'files_edited': d.get('files_edited',[]),
+    'review_verdicts': d.get('review_verdicts',[]),
+    'review_count': len(d.get('review_launches',[]))
+}
 print(json.dumps(out))
 " 2>/dev/null)
     REQUEST=$(jq -n \
@@ -179,6 +209,12 @@ ${LAST_QUERIES:-[none captured]}
 
 ## Plan
 ${PLAN_FILE:-none}
+${PLAN_APPROVAL:+
+## Plan Approval
+$PLAN_APPROVAL}
+
+## Expert Review
+${REVIEW_SUMMARY:-No expert review this session}
 
 ## State (LLM-summarized)
 \`\`\`json

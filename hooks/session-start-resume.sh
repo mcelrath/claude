@@ -90,9 +90,15 @@ if [[ -f "$RESUME_FILE" ]]; then
         # Extract KB checkpoint ID from handoff (source of truth)
         KB_CHECKPOINT=$(grep -oE 'kb-[0-9]{8}-[0-9]{6}-[a-f0-9]{6}' "$HANDOFF" | head -1)
 
+        # Extract review status from handoff
+        REVIEW_LINE=$(grep -A1 "## Expert Review" "$HANDOFF" 2>/dev/null | tail -1)
+
         echo "RESUME: Previous session state found"
         echo "  Handoff: $HANDOFF"
         echo "  Tasks: $TASKS"
+        if [[ -n "$REVIEW_LINE" && "$REVIEW_LINE" != "No expert review this session" ]]; then
+            echo "  Expert Review: $REVIEW_LINE"
+        fi
         if [[ -n "$KB_CHECKPOINT" ]]; then
             echo "  KB Checkpoint: $KB_CHECKPOINT (SOURCE OF TRUTH)"
             echo "  Action: Read handoff, kb_list(project) for recent findings, summarize state"
@@ -102,5 +108,16 @@ if [[ -f "$RESUME_FILE" ]]; then
             echo "  Action: Read handoff, kb_list for context, summarize state"
             echo "  IMPORTANT: Do NOT auto-create tasks from tasks.json - they are often stale."
         fi
+    fi
+fi
+
+# Inject code map for projects with lib/ directory
+LIB_DIR="$(git rev-parse --show-toplevel 2>/dev/null)/lib"
+if [[ -d "$LIB_DIR" ]]; then
+    CODEMAP=$(python3 "$HOME/.claude/hooks/lib/generate_codemap.py" "$LIB_DIR" 2>/dev/null | head -80)
+    if [[ -n "$CODEMAP" ]]; then
+        echo ""
+        echo "=== Code Map ==="
+        echo "$CODEMAP"
     fi
 fi

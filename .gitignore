@@ -1,4 +1,6 @@
 # Session and cache data (private, transient)
+usage-data/
+teams/
 sessions/
 cache/
 chrome/

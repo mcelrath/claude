@@ -206,6 +206,66 @@ If these answer the question, STOP and report the finding ID.
 - Without expert panel, agents give shallow answers
 - Pre-injected context is 10x more token-efficient than agent searching
 
+## Agent Task Classification
+
+**Before launching ANY research agent, classify the task:**
+
+| Task Type | Signs | How to Handle |
+|-----------|-------|---------------|
+| **Reasoning** | "Does X connect to Y?", "Assess whether...", structural questions | Answer YOURSELF (fastest, most reliable) |
+| **Symbolic algebra** | "Compute the integral of...", "Factor this polynomial", "Simplify..." | Jupyter with SageMath/SymPy (symbolic tools are valid) |
+| **Numerical computation** | "Verify numerically", "Compute eigenvalues", "Plot X" | Agent with Jupyter/numpy |
+| **Hybrid** | "Compute X, then assess whether it implies Y" | SPLIT: compute first, then YOU reason about result |
+
+### Reasoning Questions: Answer Yourself
+
+Pure reasoning is about mathematical structure, not computation. Answer these yourself — you have KB context and domain knowledge. If delegating, use Sonnet with bounded scope (5 min phases, mandatory intermediate output).
+
+**Origin of this rule:** Three Opus agents launched for theory questions ("Does theta lift connect to RH?", etc.) spent >1 hour reading files and setting up notebooks without output. The answers were obtainable by 30 seconds of reasoning.
+
+### Agent Scope and Timeout Rules
+
+| Rule | Action |
+|------|--------|
+| **3+ parallel Opus agents** | FORBIDDEN. Use Haiku/Sonnet for at least 2. |
+| **Agent running >10 min** | Likely stuck. Check output, consider killing. |
+| **Agent reads >10 files without KB entry** | Scope too broad. Kill and answer yourself. |
+| **Numerical Jupyter for structural theory** | Wrong tool. Structural questions need reasoning or symbolic algebra, not numerics. |
+| **Mixed compute+theory prompt** | SPLIT into separate agents or answer theory part yourself. |
+
+### Bounded Agent Prompt Template
+
+```
+QUESTION: {question}
+
+## PRIOR KNOWLEDGE
+{kb_context}
+
+## SCOPE CONSTRAINTS
+- Phase 1 (5 min): State approach, produce intermediate output
+- Phase 2 (5 min): Complete computation/analysis
+- If stuck after Phase 1, kb_add what you have and RETURN
+
+DELIVERABLE: ≤300 words. Conclusion first.
+BEFORE RETURNING: kb_add(content=<findings>, finding_type="discovery", project="{project}")
+```
+
+### Decision Tree: Agent or Self?
+
+```
+Is the question answerable by reasoning from known definitions?
+├── YES → Answer yourself (fastest, most reliable)
+└── NO → Does it require symbolic algebra (integrals, factoring, simplification)?
+    ├── YES → Jupyter with SageMath/SymPy
+    └── NO → Does it require numerical computation?
+        ├── YES → Computational agent (Haiku/Sonnet with Jupyter)
+        └── NO → Does it require reading many unfamiliar files?
+            ├── YES → Explore agent (Sonnet, read-only)
+            └── NO → Answer yourself
+```
+
+**Default: answer yourself.** Agents are for parallelizing independent work, not outsourcing thinking.
+
 ## Plan Session Isolation
 
 Your current plan file path is stored in `~/.claude/sessions/<session-id>/current_plan`.
@@ -422,6 +482,13 @@ NEVER: "What would you like...", "Would you like me to...", numbered options, op
 | "Let me take a simpler approach" / "Given the complexity" | Problem has grown beyond initial plan. STOP. Enter plan mode with EnterPlanMode, reassess the problem, create new plan. |
 | Adding notebook cell to fix syntax error in previous cell | Use `modify_notebook_cells` with `operation="edit_code"` and `position_index=N` to fix the broken cell in place. |
 | Plan has `Mode: IMPLEMENTATION`, calling ExitPlanMode | Plan already approved in previous session. Execute it, don't re-ask. |
+| Opus agent for "does X connect to Y?" | **Reasoning question → answer yourself** or Sonnet with bounded scope (5 min phases). Opus agents with tools rabbit-hole into file reads. |
+| Agent prompt mixes "compute X" with "assess whether Y" | **SPLIT**: one computational agent + you assess the result. Mixed prompts cause agents to compute indefinitely. |
+| 3+ parallel Opus agents | **CPU/context explosion**. Use Haiku/Sonnet for at least 2. One Opus max per batch. |
+| Agent reads 10+ files without KB entry | **Kill it**. Scope too broad. Answer yourself or narrow the question. |
+| Numerical Jupyter for structural theory | **Wrong tool**. Structural questions need reasoning or symbolic algebra (SageMath/SymPy), not numerical notebooks. |
+| "Verify from data" applied to structural math | **MISAPPLIED RULE**. "Verify from data" means run CODE to check NUMERICAL claims. Structural math uses PROOF or symbolic algebra. |
+| Agent running >10 minutes with no KB entry | **Likely stuck**. Check output file. If agent is looping on file reads/KB searches, kill and do it yourself. |
 
 # System
 
@@ -535,6 +602,8 @@ Use `model="haiku"` for lightweight tasks beyond KB search:
 | Format conversion | "Convert this to markdown table. Return just the table." |
 
 **Keep on Sonnet/Opus**: Architectural planning, debugging, code generation, expert review, anything requiring multi-step reasoning.
+
+**Keep on SELF (no agent)**: Pure math/theory questions, assessing whether mathematical structures connect, anything answerable by reasoning from known definitions. See "Agent Task Classification".
 
 **Template**:
 ```

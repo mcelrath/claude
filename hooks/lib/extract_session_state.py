@@ -17,6 +17,8 @@ def extract_state(jsonl_path: str, max_messages: int = 50) -> dict:
     kb_all = set()  # All KB IDs mentioned (fallback)
     files_read = set()  # Files examined via Read
     files_edited = set()  # Files modified via Edit/Write
+    review_launches = []  # expert-review / implementation-review Task calls
+    review_verdicts = []  # APPROVED / REJECTED / INCOMPLETE extracted from results
 
     skip_prefixes = ('<local-command', '<system', '<command-', '<task-notification', '/clear', '/compact')
 
@@ -79,6 +81,15 @@ def extract_state(jsonl_path: str, max_messages: int = 50) -> dict:
                                     fp = inp.get('file_path', '')
                                     if fp and not fp.startswith('/tmp/'):
                                         files_edited.add(fp)
+                                # Track expert-review / implementation-review launches
+                                elif name == 'Task':
+                                    stype = inp.get('subagent_type', '')
+                                    if stype in ('expert-review', 'implementation-review'):
+                                        review_launches.append({
+                                            'type': stype,
+                                            'description': inp.get('description', '')[:100],
+                                            'prompt_preview': inp.get('prompt', '')[:200],
+                                        })
                                 messages.append({
                                     'role': 'tool',
                                     'name': name,
@@ -103,6 +114,10 @@ def extract_state(jsonl_path: str, max_messages: int = 50) -> dict:
                                 })
                                 # Extract KB IDs from kb_search results
                                 kb_queried.update(re.findall(r'kb-\d{8}-\d{6}-[a-f0-9]{6}', result_content))
+                                # Extract review verdicts from agent results
+                                for verdict in ('APPROVED', 'REJECTED', 'INCOMPLETE'):
+                                    if verdict in result_content:
+                                        review_verdicts.append(verdict)
             except Exception:
                 pass
 
@@ -160,6 +175,8 @@ def extract_state(jsonl_path: str, max_messages: int = 50) -> dict:
         'files_edited': sorted(files_edited),
         'first_request': user_queries[0] if user_queries else '',
         'last_queries': user_queries[-3:] if user_queries else [],
+        'review_launches': review_launches,
+        'review_verdicts': review_verdicts,
         'reconciliation_applied': True  # Flag that inference was applied
     }
 

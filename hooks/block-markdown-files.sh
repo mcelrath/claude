@@ -28,6 +28,10 @@ if [[ "$FILE_PATH" == *.md ]]; then
     if [[ "$FILE_PATH" == */CLAUDE.md ]] || [[ "$FILE_PATH" == */.claude/CLAUDE.md ]]; then
         exit 0
     fi
+    # Allow auto-memory files (Claude Code persistent memory)
+    if [[ "$FILE_PATH" == */.claude/*/memory/*.md ]] || [[ "$FILE_PATH" == */.claude/memory/*.md ]]; then
+        exit 0
+    fi
     echo "BLOCKED: Creating markdown file '$FILE_PATH'."
     echo "Write the content directly in your response instead."
     echo "Only create .md files if user explicitly requested one."
