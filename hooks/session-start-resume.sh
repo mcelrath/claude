@@ -28,6 +28,59 @@ if [[ ! -f "$RESUME_FILE" ]]; then
     RESUME_FILE=$(ls -t "$HOME/.claude/sessions/resume-"*.txt 2>/dev/null | head -1)
 fi
 
+# FALLBACK 2: No resume pointer at all — retroactively create handoff from previous session
+# This recovers state after /clear (which has no PreClear hook to save state)
+if [[ ! -f "$RESUME_FILE" ]]; then
+    PROJECT_PATH=$(pwd | sed 's|/|-|g; s|^-||')
+    PROJECT_DIR="$HOME/.claude/projects/-${PROJECT_PATH}"
+    HELPER="$HOME/.claude/hooks/lib/find_session_jsonl.py"
+
+    # Get SECOND most recent JSONL (n=1): current session is n=0
+    PREV_JSONL=$(python3 "$HELPER" nth "$PROJECT_DIR" 1 2>/dev/null)
+
+    if [[ -n "$PREV_JSONL" && -f "$PREV_JSONL" ]]; then
+        PREV_SID=$(basename "$PREV_JSONL" .jsonl)
+        PREV_DIR="$HOME/.claude/sessions/$PREV_SID"
+
+        if [[ -f "$PREV_DIR/handoff.md" ]]; then
+            # PreCompact already ran for this session — just create missing resume pointer
+            echo "$PREV_SID" > "$HOME/.claude/sessions/resume-${PROJECT}.txt"
+            RESUME_FILE="$HOME/.claude/sessions/resume-${PROJECT}.txt"
+        else
+            # Create lightweight handoff from JSONL (no LLM, pure file I/O)
+            mkdir -p "$PREV_DIR"
+            CONTEXT_JSON=$(python3 "$HOME/.claude/hooks/lib/extract_session_state.py" \
+                "$PREV_JSONL" 2>/dev/null)
+            if [[ -n "$CONTEXT_JSON" ]]; then
+                CONTEXT_JSON="$CONTEXT_JSON" python3 <<'PYEOF' "$PREV_SID" "$PROJECT" "$PREV_DIR"
+import sys, json, os
+ctx = json.loads(os.environ['CONTEXT_JSON'])
+sid, proj, out_dir = sys.argv[1], sys.argv[2], sys.argv[3]
+queries = ctx.get('last_queries', [])[-3:]
+files_edited = ctx.get('files_edited', [])
+kb_added = ctx.get('kb_added', [])[-3:]
+with open(f"{out_dir}/handoff.md", 'w') as f:
+    f.write("# Session Handoff (auto-recovered)\n\n")
+    f.write(f"## Session\n- ID: {sid}\n- Project: {proj}\n")
+    f.write("- Status: Auto-recovered (no /compact ran)\n\n")
+    f.write("## Last User Queries\n")
+    for i, q in enumerate(queries, 1):
+        f.write(f"{i}. {q[:150]}\n")
+    f.write("\n## Files Edited\n")
+    for fe in files_edited:
+        f.write(f"{fe}\n")
+    f.write("\n## KB Added This Session\n")
+    for ka in kb_added:
+        f.write(f"- [{ka.get('finding_type','?')}] {ka.get('content','')[:200]}\n")
+    f.write("\n## Resume\n1. kb_list(project) for recent findings\n2. Continue from last user query\n")
+PYEOF
+                echo "$PREV_SID" > "$HOME/.claude/sessions/resume-${PROJECT}.txt"
+                RESUME_FILE="$HOME/.claude/sessions/resume-${PROJECT}.txt"
+            fi
+        fi
+    fi
+fi
+
 if [[ -f "$RESUME_FILE" ]]; then
     SESSION_ID=$(cat "$RESUME_FILE")
     HANDOFF="$HOME/.claude/sessions/${SESSION_ID}/handoff.md"

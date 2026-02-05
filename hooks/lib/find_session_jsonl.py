@@ -18,18 +18,22 @@ def find_session_jsonl(session_id: str) -> str | None:
 
 def get_most_recent_for_project(project_path: str) -> str | None:
     """Fallback: get most recent JSONL in a project directory."""
+    return get_nth_most_recent_for_project(project_path, 0)
+
+
+def get_nth_most_recent_for_project(project_path: str, n: int = 0) -> str | None:
+    """Get the nth most recent JSONL in a project directory (0=most recent)."""
     project_dir = Path(project_path)
     if not project_dir.exists():
         return None
 
-    jsonls = [
-        (f.stat().st_mtime, f)
-        for f in project_dir.glob("*.jsonl")
-        if "subagents" not in str(f)
-    ]
-    if jsonls:
-        jsonls.sort(reverse=True)
-        return str(jsonls[0][1])
+    jsonls = sorted(
+        [(f.stat().st_mtime, f) for f in project_dir.glob("*.jsonl")
+         if "subagents" not in str(f)],
+        reverse=True
+    )
+    if len(jsonls) > n:
+        return str(jsonls[n][1])
     return None
 
 
@@ -47,6 +51,9 @@ if __name__ == "__main__":
     elif mode == "recent" and len(sys.argv) >= 3:
         project_path = sys.argv[2]
         result = get_most_recent_for_project(project_path)
+        print(result or "")
+    elif mode == "nth" and len(sys.argv) >= 4:
+        result = get_nth_most_recent_for_project(sys.argv[2], int(sys.argv[3]))
         print(result or "")
     else:
         print("")
