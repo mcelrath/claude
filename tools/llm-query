@@ -1,0 +1,214 @@
+#!/bin/bash
+# llm-query - Query local LLM with OpenAI-compatible chat API
+# Usage: llm-query [OPTIONS] [PROMPT]
+#        echo "question" | llm-query
+#        llm-query < file.txt
+
+set -euo pipefail
+
+# Configuration with defaults
+ENDPOINT="${LLM_ENDPOINT:-http://tardis:9510/v1/chat/completions}"
+MODEL="${LLM_MODEL:-sha256-a70437c41b3b0b768c48737e15f8160c90f13dc963f5226aabb3a160f708d1ce}"
+MAX_TOKENS="${LLM_MAX_TOKENS:-2000}"
+TEMPERATURE="${LLM_TEMPERATURE:-0.3}"
+TIMEOUT="${LLM_TIMEOUT:-120}"
+
+# Command line overrides
+SYSTEM_PROMPT=""
+VERBOSE=false
+JSON_MODE=false
+SHOW_THINKING=false
+
+usage() {
+    cat <<EOF
+Usage: llm-query [OPTIONS] [PROMPT]
+       echo "question" | llm-query
+       llm-query < file.txt
+
+Query local LLM at $ENDPOINT
+
+Options:
+  -m, --max-tokens N    Maximum tokens to generate (default: $MAX_TOKENS)
+  -t, --temperature T   Temperature 0.0-1.0 (default: $TEMPERATURE)
+  -s, --system PROMPT   System prompt (sent as system message)
+  -j, --json            Request JSON output (structured mode)
+  --timeout SECONDS     Request timeout (default: $TIMEOUT)
+  --show-thinking       Show <think> blocks from reasoning models (default: strip)
+  -v, --verbose         Show request details
+  -h, --help            Show this help
+
+Environment Variables:
+  LLM_ENDPOINT          API endpoint (default: http://tardis:9510/v1/chat/completions)
+  LLM_MODEL             Model ID
+  LLM_MAX_TOKENS        Default max tokens
+  LLM_TEMPERATURE       Default temperature
+  LLM_TIMEOUT           Request timeout in seconds
+
+Examples:
+  echo "What is 2+2?" | llm-query
+  llm-query "Explain this error: undefined reference to foo"
+  llm-query -j '{"error":"..."} Output JSON with root_cause field'
+  cat build.log | llm-query -s "Analyze this build log for errors"
+EOF
+    exit 0
+}
+
+# Parse command line arguments
+POSITIONAL_ARGS=()
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -m|--max-tokens)
+            MAX_TOKENS="$2"
+            shift 2
+            ;;
+        -t|--temperature)
+            TEMPERATURE="$2"
+            shift 2
+            ;;
+        -s|--system)
+            SYSTEM_PROMPT="$2"
+            shift 2
+            ;;
+        -j|--json)
+            JSON_MODE=true
+            shift
+            ;;
+        --timeout)
+            TIMEOUT="$2"
+            shift 2
+            ;;
+        --show-thinking)
+            SHOW_THINKING=true
+            shift
+            ;;
+        -v|--verbose)
+            VERBOSE=true
+            shift
+            ;;
+        -h|--help)
+            usage
+            ;;
+        -*)
+            echo "Unknown option: $1" >&2
+            echo "Use -h for help" >&2
+            exit 1
+            ;;
+        *)
+            POSITIONAL_ARGS+=("$1")
+            shift
+            ;;
+    esac
+done
+
+# Get prompt from positional args or stdin
+PROMPT=""
+if [[ ${#POSITIONAL_ARGS[@]} -gt 0 ]]; then
+    PROMPT="${POSITIONAL_ARGS[*]}"
+elif [[ ! -t 0 ]]; then
+    # Read from stdin
+    PROMPT=$(cat)
+else
+    echo "Error: No prompt provided" >&2
+    echo "Usage: llm-query [OPTIONS] PROMPT" >&2
+    echo "   or: echo 'prompt' | llm-query" >&2
+    exit 1
+fi
+
+# Check if endpoint is reachable
+BASE_URL="${ENDPOINT%/v1/*}"
+if ! curl -s --max-time 5 "${BASE_URL}/v1/models" >/dev/null 2>&1; then
+    echo "Error: Cannot reach LLM endpoint at $ENDPOINT" >&2
+    echo "Is the model server running?" >&2
+    exit 1
+fi
+
+# Show verbose info
+if [[ "$VERBOSE" == "true" ]]; then
+    echo "=== LLM Query ===" >&2
+    echo "Endpoint: $ENDPOINT" >&2
+    echo "Model: $MODEL" >&2
+    echo "Max tokens: $MAX_TOKENS" >&2
+    echo "Temperature: $TEMPERATURE" >&2
+    echo "Timeout: ${TIMEOUT}s" >&2
+    echo "JSON mode: $JSON_MODE" >&2
+    echo "Prompt length: $(echo -n "$PROMPT" | wc -c) chars" >&2
+    [[ -n "$SYSTEM_PROMPT" ]] && echo "System prompt: ${SYSTEM_PROMPT:0:50}..." >&2
+    echo "=================" >&2
+fi
+
+# Build messages array for chat API
+if [[ -n "$SYSTEM_PROMPT" ]]; then
+    MESSAGES=$(jq -n \
+        --arg system "$SYSTEM_PROMPT" \
+        --arg user "$PROMPT" \
+        '[{role: "system", content: $system}, {role: "user", content: $user}]')
+else
+    MESSAGES=$(jq -n \
+        --arg user "$PROMPT" \
+        '[{role: "user", content: $user}]')
+fi
+
+# Build JSON request
+if [[ "$JSON_MODE" == "true" ]]; then
+    REQUEST=$(jq -n \
+        --arg model "$MODEL" \
+        --argjson messages "$MESSAGES" \
+        --argjson max_tokens "$MAX_TOKENS" \
+        --argjson temperature "$TEMPERATURE" \
+        '{
+            model: $model,
+            messages: $messages,
+            max_tokens: $max_tokens,
+            temperature: $temperature,
+            response_format: {type: "json_object"}
+        }')
+else
+    REQUEST=$(jq -n \
+        --arg model "$MODEL" \
+        --argjson messages "$MESSAGES" \
+        --argjson max_tokens "$MAX_TOKENS" \
+        --argjson temperature "$TEMPERATURE" \
+        '{
+            model: $model,
+            messages: $messages,
+            max_tokens: $max_tokens,
+            temperature: $temperature
+        }')
+fi
+
+# Make API request
+RESPONSE=$(curl -s --max-time "$TIMEOUT" \
+    -H "Content-Type: application/json" \
+    -d "$REQUEST" \
+    "$ENDPOINT" 2>&1)
+
+# Check for curl errors
+if [[ $? -ne 0 ]]; then
+    echo "Error: API request failed" >&2
+    echo "$RESPONSE" >&2
+    exit 1
+fi
+
+# Extract content from chat response
+TEXT=$(echo "$RESPONSE" | jq -r '.choices[0].message.content // empty')
+
+if [[ -z "$TEXT" ]]; then
+    # Check for error in response
+    ERROR=$(echo "$RESPONSE" | jq -r '.error.message // .error // empty')
+    if [[ -n "$ERROR" ]]; then
+        echo "Error from LLM: $ERROR" >&2
+        exit 1
+    fi
+    echo "Error: Empty response from LLM" >&2
+    echo "Raw response: $RESPONSE" >&2
+    exit 1
+fi
+
+# Strip thinking blocks (DeepSeek reasoning models) unless --show-thinking
+if [[ "$SHOW_THINKING" != "true" ]]; then
+    # Handles: <think>...</think>, or just ...content...</think> (missing opening tag)
+    TEXT=$(echo "$TEXT" | perl -0777 -pe 's/^.*?<\/think>\s*//s; s/<think>.*?<\/think>\s*//gs')
+fi
+
+# Output the response text
+echo "$TEXT"

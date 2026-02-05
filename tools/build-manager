@@ -1,0 +1,1146 @@
+#!/bin/bash
+set -euo pipefail
+
+# Global Build Manager with flock-based locking and state tracking
+# Prevents duplicate builds across all projects and Claude sessions
+
+CACHE_DIR="${HOME}/.cache/build-manager"
+STATE_FILE="${CACHE_DIR}/state.json"
+LOCK_FILE="${CACHE_DIR}/build.lock"
+LOG_DIR="${CACHE_DIR}/logs"
+SESSION_FILE="${CACHE_DIR}/session-id"
+
+mkdir -p "$CACHE_DIR" "$LOG_DIR"
+
+# Get or create session ID
+get_session_id() {
+    # Use environment variable if set
+    if [[ -n "${CLAUDE_SESSION_ID:-}" ]]; then
+        echo "$CLAUDE_SESSION_ID"
+        return
+    fi
+
+    # Otherwise generate and cache one for this shell session
+    if [[ -f "$SESSION_FILE.$$" ]]; then
+        cat "$SESSION_FILE.$$"
+    else
+        # Make session ID more unique: timestamp + hostname + PID + random
+        local hostname=$(hostname -s 2>/dev/null || echo "unknown")
+        local random_suffix=$(head -c 4 /dev/urandom | xxd -p)
+        local session_id="claude-$(date +%Y%m%d-%H%M%S)-${hostname}-$$-${random_suffix}"
+        echo "$session_id" > "$SESSION_FILE.$$"
+        echo "$session_id"
+    fi
+}
+
+# Clean up old session files (older than 7 days)
+find "$CACHE_DIR" -name "session-id.*" -mtime +7 -delete 2>/dev/null || true
+
+# Collect git metadata for a project
+get_git_metadata() {
+    local project_dir="$1"
+    local git_commit=""
+    local git_dirty="false"
+    local git_diffstat=""
+
+    cd "$project_dir" || return
+
+    # Check if this is a git repository
+    if ! git rev-parse --git-dir >/dev/null 2>&1; then
+        echo "{}"
+        return
+    fi
+
+    # Get current commit
+    git_commit=$(git rev-parse HEAD 2>/dev/null || echo "unknown")
+
+    # Check for uncommitted changes in tracked files
+    if ! git diff-index --quiet HEAD -- 2>/dev/null; then
+        git_dirty="true"
+        # Get diffstat for uncommitted changes
+        git_diffstat=$(git diff --stat HEAD 2>/dev/null | sed 's/"/\\"/g')
+    fi
+
+    # Return as JSON
+    jq -n \
+        --arg commit "$git_commit" \
+        --arg dirty "$git_dirty" \
+        --arg diffstat "$git_diffstat" \
+        '{commit: $commit, dirty: ($dirty == "true"), diffstat: $diffstat}'
+}
+
+# Initialize state file if it doesn't exist
+if [[ ! -f "$STATE_FILE" ]]; then
+    echo '{"builds": {}, "history": []}' > "$STATE_FILE"
+fi
+
+# Utility functions
+get_project_key() {
+    # Use absolute path as project key
+    realpath "${1:-.}"
+}
+
+get_build_info() {
+    local project_key="$1"
+    # Use shared lock for safe concurrent reads
+    (
+        flock -s 200
+        jq -r ".builds[\"$project_key\"] // null" "$STATE_FILE"
+    ) 200>"${STATE_FILE}.lock"
+}
+
+update_state() {
+    local project_key="$1"
+    local data="$2"
+
+    # Use atomic update with flock
+    (
+        flock -x 200
+        local tmp_file="${STATE_FILE}.tmp.$$"
+
+        if [[ "$data" == "null" ]]; then
+            # Remove build entry
+            jq "del(.builds[\"$project_key\"])" "$STATE_FILE" > "$tmp_file"
+        else
+            # Add or update build entry
+            jq ".builds[\"$project_key\"] = $data" "$STATE_FILE" > "$tmp_file"
+        fi
+
+        mv "$tmp_file" "$STATE_FILE"
+    ) 200>"${STATE_FILE}.lock"
+}
+
+add_to_history() {
+    local project_key="$1"
+    local command="$2"
+    local status="$3"
+    local duration="$4"
+    local session_id="${5:-}"
+    local sprint_file="${6:-}"
+    local task_id="${7:-}"
+    local description="${8:-}"
+    local git_metadata="$9"
+    # Use empty object if not provided
+    if [[ -z "$git_metadata" ]]; then
+        git_metadata="{}"
+    fi
+
+    local git_file="${STATE_FILE}.git.$$"
+
+    # Write git metadata to temp file to avoid shell escaping issues
+    printf '%s' "$git_metadata" > "$git_file"
+
+    local entry=$(jq -n \
+        --arg pk "$project_key" \
+        --arg cmd "$command" \
+        --arg st "$status" \
+        --arg dur "$duration" \
+        --arg ts "$(date -Iseconds)" \
+        --arg session "$session_id" \
+        --arg sprint "$sprint_file" \
+        --arg task "$task_id" \
+        --arg desc "$description" \
+        --slurpfile git_data "$git_file" \
+        '{project: $pk, command: $cmd, status: $st, duration: $dur, timestamp: $ts, session_id: $session, sprint_file: $sprint, task_id: $task, description: $desc, git: $git_data[0]}')
+
+    rm -f "$git_file"
+
+    # Atomic update with flock
+    (
+        flock -x 200
+        local tmp_file="${STATE_FILE}.tmp.$$"
+        jq ".history += [$entry] | .history |= (if length > 100 then .[1:] else . end)" "$STATE_FILE" > "$tmp_file"
+        mv "$tmp_file" "$STATE_FILE"
+    ) 200>"${STATE_FILE}.lock"
+}
+
+is_process_alive() {
+    local pid="$1"
+    kill -0 "$pid" 2>/dev/null
+}
+
+cleanup_stale_builds() {
+    # Remove builds whose PIDs are no longer alive
+    # Atomic operation with flock
+    (
+        flock -x 200
+        local tmp_file="${STATE_FILE}.tmp.$$"
+        local stale_keys=()
+
+        # Collect stale build keys
+        while IFS=$'\t' read -r key pid; do
+            if ! is_process_alive "$pid"; then
+                echo "Cleaning up stale build: $key (PID $pid)" >&2
+                stale_keys+=("$key")
+            fi
+        done < <(jq -r '.builds | to_entries[] | "\(.key)\t\(.value.pid)"' "$STATE_FILE")
+
+        # Remove all stale builds in one operation
+        if [[ ${#stale_keys[@]} -gt 0 ]]; then
+            local jq_filter="."
+            for key in "${stale_keys[@]}"; do
+                jq_filter="$jq_filter | del(.builds[\"$key\"])"
+            done
+            jq "$jq_filter" "$STATE_FILE" > "$tmp_file"
+            mv "$tmp_file" "$STATE_FILE"
+        fi
+    ) 200>"${STATE_FILE}.lock"
+}
+
+cleanup_old_files() {
+    # Clean up old completion markers (> 7 days)
+    find "$CACHE_DIR" -name "completion.*.*" -mtime +7 -delete 2>/dev/null || true
+
+    # Clean up old log files (> 30 days)
+    find "$LOG_DIR" -name "*.log" -mtime +30 -delete 2>/dev/null || true
+
+    # Clean up old session files (> 7 days) - already done on startup but do it here too
+    find "$CACHE_DIR" -name "session-id.*" -mtime +7 -delete 2>/dev/null || true
+
+    # Clean up stale wait lock files - only if not currently locked
+    # (Safe: flock -n fails if locked, so we only delete unlocked files)
+    for lockfile in "$CACHE_DIR"/wait.*.lock; do
+        [[ -f "$lockfile" ]] || continue
+        if flock -n "$lockfile" -c "true" 2>/dev/null; then
+            # Successfully acquired lock = no one is waiting, safe to delete
+            rm -f "$lockfile"
+        fi
+    done
+}
+
+# Commands
+
+cmd_start() {
+    # Clean up stale builds first
+    cleanup_stale_builds
+
+    local project_dir="."
+    local sprint_file=""
+    local task_id=""
+    local description=""
+    local found_project_dir=false
+    local sync_mode=false
+
+    # Parse optional metadata flags
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --sprint|-s)
+                sprint_file="$2"
+                shift 2
+                ;;
+            --task|-t)
+                task_id="$2"
+                shift 2
+                ;;
+            --message|-m|--description|-d)
+                description="$2"
+                shift 2
+                ;;
+            --dir)
+                project_dir="$2"
+                shift 2
+                ;;
+            --sync)
+                sync_mode=true
+                shift
+                ;;
+            *)
+                # First non-flag arg could be project dir if it's a directory
+                if [[ ! "$1" =~ ^- ]] && [[ -d "$1" ]] && [[ "$found_project_dir" == "false" ]]; then
+                    project_dir="$1"
+                    found_project_dir=true
+                    shift
+                else
+                    # Rest is the build command
+                    break
+                fi
+                ;;
+        esac
+    done
+
+    local build_command="$*"
+
+    if [[ -z "$build_command" ]]; then
+        echo "Error: No build command specified" >&2
+        echo "Usage: build-manager start [--sprint <file>] [--task <id>] [--message <desc>] [project-dir] <command>" >&2
+        exit 1
+    fi
+
+    # Validate build-worker exists
+    local worker_script="${HOME}/.local/bin/build-worker"
+    if [[ ! -x "$worker_script" ]]; then
+        echo "ERROR: build-worker not found or not executable: $worker_script" >&2
+        exit 1
+    fi
+
+    project_dir=$(realpath "$project_dir")
+    local project_key=$(get_project_key "$project_dir")
+    local session_id=$(get_session_id)
+    # Get git metadata via temp file to avoid command substitution issues
+    local git_temp_file="${CACHE_DIR}/git-meta.$$.json"
+    get_git_metadata "$project_dir" > "$git_temp_file" 2>&1
+
+    local git_metadata=$(jq -c '.' "$git_temp_file" 2>/dev/null || echo "{}")
+    rm -f "$git_temp_file"
+    local log_file="${LOG_DIR}/$(basename "$project_dir").$(date +%Y%m%d-%H%M%S).log"
+
+    # Check if another build is running (informational check)
+    # Worker will acquire the lock, but we check here to provide better UX
+    local lock_unavailable=false
+    if ! flock -n -x "$LOCK_FILE" -c "true" 2>/dev/null; then
+        lock_unavailable=true
+        if [[ "$sync_mode" == "false" ]]; then
+            echo "ERROR: A build is already running globally!" >&2
+            echo "Use 'build-manager status' to see active builds" >&2
+            echo "Use 'build-manager wait' to wait for completion" >&2
+            echo "Or use '--sync' to wait for the lock automatically" >&2
+            exit 1
+        else
+            echo "Another build is running. Adding to queue and waiting for lock..." >&2
+            add_to_waiters "$project_key" "$project_dir" "$build_command" "$session_id" "$sprint_file" "$task_id" "$description"
+        fi
+    fi
+
+    # Check if this specific project has a build running
+    local existing_build=$(get_build_info "$project_key")
+    if [[ "$existing_build" != "null" ]]; then
+        local existing_pid=$(echo "$existing_build" | jq -r '.pid')
+        if is_process_alive "$existing_pid"; then
+            echo "ERROR: Build already running for this project!" >&2
+            echo "$existing_build" | jq -r '"  PID: \(.pid)\n  Started: \(.start_time)\n  Command: \(.command)\n  Log: \(.log_file)"'
+            exit 1
+        else
+            # Clean up stale entry
+            update_state "$project_key" "null"
+        fi
+    fi
+
+    echo "Starting build for: $project_dir"
+    echo "Session: $session_id"
+
+    # Display git metadata
+    local git_commit=$(echo "$git_metadata" | jq -r '.commit // "N/A"')
+    local git_dirty=$(echo "$git_metadata" | jq -r '.dirty // false')
+    if [[ "$git_commit" != "N/A" && "$git_commit" != "{}" ]]; then
+        echo "Git commit: ${git_commit:0:12}"
+        if [[ "$git_dirty" == "true" ]]; then
+            echo "Git status: DIRTY (uncommitted changes)"
+        else
+            echo "Git status: clean"
+        fi
+    fi
+
+    if [[ -n "$sprint_file" ]]; then
+        echo "Sprint: $sprint_file"
+    fi
+    if [[ -n "$task_id" ]]; then
+        echo "Task: $task_id"
+    fi
+    if [[ -n "$description" ]]; then
+        echo "Description: $description"
+    fi
+    echo "Command: $build_command"
+    echo "Log file: $log_file"
+    echo ""
+
+    # For both modes, record state before worker starts
+    # This ensures visibility in build-manager status
+    local build_data=$(jq -n \
+        --arg pid "$$" \
+        --arg cmd "$build_command" \
+        --arg log "$log_file" \
+        --arg start "$(date -Iseconds)" \
+        --arg dir "$project_dir" \
+        --arg session "$session_id" \
+        --arg sprint "$sprint_file" \
+        --arg task "$task_id" \
+        --arg desc "$description" \
+        --argjson git "$git_metadata" \
+        '{pid: $pid, command: $cmd, log_file: $log, start_time: $start, project_dir: $dir, session_id: $session, sprint_file: $sprint, task_id: $task, description: $desc, git: $git}')
+
+    update_state "$project_key" "$build_data"
+
+    if [[ "$sync_mode" == "true" ]]; then
+        # SYNC MODE: Call worker directly (blocking)
+        # Worker will acquire lock and hold it for entire build duration
+        # Remove from waiters if we were queued
+        if [[ "$lock_unavailable" == "true" ]]; then
+            remove_from_waiters "$project_key"
+        fi
+        echo "Running build synchronously (blocking until complete)..."
+        echo ""
+
+        "$worker_script" \
+            "$project_dir" \
+            "$project_key" \
+            "$build_command" \
+            "$log_file" \
+            "$session_id" \
+            "$sprint_file" \
+            "$task_id" \
+            "$description" \
+            "$git_metadata"
+
+        local exit_code=$?
+        echo ""
+        if [[ $exit_code -eq 0 ]]; then
+            echo "Build completed successfully"
+        else
+            echo "Build failed with exit code: $exit_code"
+        fi
+
+        return $exit_code
+    else
+        # ASYNC MODE: Start worker in background
+        # Worker will acquire lock and hold it for entire build duration
+        nohup "$worker_script" \
+            "$project_dir" \
+            "$project_key" \
+            "$build_command" \
+            "$log_file" \
+            "$session_id" \
+            "$sprint_file" \
+            "$task_id" \
+            "$description" \
+            "$git_metadata" \
+            >/dev/null 2>&1 &
+
+        # Get the worker PID and update state with correct PID
+        local worker_pid=$!
+
+        # Update PID in state (already recorded above with $$ placeholder)
+        # Check if build still exists to avoid race where worker completed before this runs
+        (
+            flock -x 200
+            if jq -e ".builds[\"$project_key\"]" "$STATE_FILE" >/dev/null 2>&1; then
+                local tmp_file="${STATE_FILE}.tmp.$$"
+                jq ".builds[\"$project_key\"].pid = \"$worker_pid\"" "$STATE_FILE" > "$tmp_file"
+                mv "$tmp_file" "$STATE_FILE"
+            fi
+        ) 200>"${STATE_FILE}.lock"
+
+        # Disown the worker so it survives shell exit
+        disown "$worker_pid" 2>/dev/null || true
+
+        echo ""
+        echo "Build started in background (worker PID: $worker_pid)"
+        echo "  Monitor: build-manager log $project_dir"
+        echo "  Check status: build-manager status"
+        echo ""
+        echo "Build will continue even if you exit Claude."
+    fi
+}
+
+cmd_status() {
+    cleanup_stale_builds
+    cleanup_old_files
+
+    local builds=$(jq -r '.builds' "$STATE_FILE")
+    local count=$(echo "$builds" | jq 'length')
+    local current_session=$(get_session_id)
+
+    if [[ "$count" -eq 0 ]]; then
+        echo "No active builds"
+        echo "Current session: $current_session"
+
+        # Check global lock
+        if flock -n -x "$LOCK_FILE" -c "true" 2>/dev/null; then
+            echo "Global lock: Available"
+        else
+            echo "WARNING: Global lock is held but no builds recorded (possible race condition)"
+        fi
+    else
+        echo "Active builds: $count"
+        echo "Current session: $current_session"
+        echo ""
+
+        # Show detailed build info with sprint context
+        echo "$builds" | jq -r --arg curr_session "$current_session" '
+            to_entries[] |
+            (.value.session_id == $curr_session | if . then " [THIS SESSION]" else "" end) as $session_marker |
+            "Project: \(.value.project_dir)\($session_marker)\n" +
+            "  Session: \(.value.session_id)\n" +
+            (if .value.git.commit then "  Git commit: \(.value.git.commit[0:12])\n" else "" end) +
+            (if .value.git.dirty then "  Git status: DIRTY (uncommitted changes)\n" else (if .value.git.commit then "  Git status: clean\n" else "" end) end) +
+            (if .value.sprint_file != "" then "  Sprint: \(.value.sprint_file)\n" else "" end) +
+            (if .value.task_id != "" then "  Task: \(.value.task_id)\n" else "" end) +
+            (if .value.description != "" then "  Description: \(.value.description)\n" else "" end) +
+            "  PID: \(.value.pid)\n" +
+            "  Started: \(.value.start_time)\n" +
+            "  Command: \(.value.command)\n" +
+            "  Log: \(.value.log_file)\n"
+        '
+    fi
+}
+
+cmd_wait() {
+    # Clean up stale builds first
+    cleanup_stale_builds
+
+    local project_dir="${1:-.}"
+    project_dir=$(realpath "$project_dir")
+    local project_key=$(get_project_key "$project_dir")
+
+    # Use a per-project wait lock to prevent multiple wait tasks
+    local wait_lock_file="${CACHE_DIR}/wait.$(echo "$project_key" | md5sum | cut -d' ' -f1).lock"
+
+    exec 201>"$wait_lock_file"
+    if ! flock -n 201; then
+        echo "Another wait is already running for: $project_dir"
+        echo "Exiting to avoid duplicate wait tasks."
+        exit 0
+    fi
+    # Lock acquired - will be released when this process exits
+
+    echo "Waiting for build to complete: $project_dir"
+
+    # Check if inotifywait is available
+    if ! command -v inotifywait &>/dev/null; then
+        echo "Warning: inotifywait not found, falling back to polling" >&2
+        # Fallback to polling
+        local waited=0
+        while true; do
+            local build_info=$(get_build_info "$project_key")
+            if [[ "$build_info" == "null" ]]; then
+                echo "Build completed (waited ${waited}s)"
+                return 0
+            fi
+
+            local pid=$(echo "$build_info" | jq -r '.pid')
+            if ! is_process_alive "$pid"; then
+                update_state "$project_key" "null"
+                echo "Build completed (process no longer running, waited ${waited}s)"
+                return 0
+            fi
+
+            sleep 5
+            waited=$((waited + 5))
+        done
+    fi
+
+    # Use inotify to efficiently wait for state file changes
+    local start_time=$(date +%s)
+    while true; do
+        local build_info=$(get_build_info "$project_key")
+        if [[ "$build_info" == "null" ]]; then
+            local end_time=$(date +%s)
+            local duration=$((end_time - start_time))
+            echo "Build completed (waited ${duration}s)"
+            return 0
+        fi
+
+        # Check if process is still alive
+        local pid=$(echo "$build_info" | jq -r '.pid')
+        if ! is_process_alive "$pid"; then
+            update_state "$project_key" "null"
+            local end_time=$(date +%s)
+            local duration=$((end_time - start_time))
+            echo "Build completed (process no longer running, waited ${duration}s)"
+            return 0
+        fi
+
+        # Wait for state file to be modified (build completed)
+        # Timeout after 60 seconds to check process status
+        inotifywait -e modify -e moved_to -t 60 "$STATE_FILE" 2>/dev/null || true
+    done
+}
+
+cmd_kill() {
+    local project_dir="${1:-.}"
+    project_dir=$(realpath "$project_dir")
+    local project_key=$(get_project_key "$project_dir")
+
+    local build_info=$(get_build_info "$project_key")
+    if [[ "$build_info" == "null" ]]; then
+        echo "No active build for: $project_dir" >&2
+        exit 1
+    fi
+
+    local pid=$(echo "$build_info" | jq -r '.pid')
+
+    if ! is_process_alive "$pid"; then
+        echo "Build process $pid is not running (stale entry)" >&2
+        update_state "$project_key" "null"
+        exit 1
+    fi
+
+    echo "Killing build:"
+    echo "$build_info" | jq -r '"  PID: \(.pid)\n  Started: \(.start_time)\n  Command: \(.command)"'
+
+    # Kill process group to get all children
+    kill -TERM -"$pid" 2>/dev/null || kill -TERM "$pid" 2>/dev/null || true
+    sleep 2
+
+    if is_process_alive "$pid"; then
+        echo "Process still alive, sending SIGKILL..."
+        kill -KILL -"$pid" 2>/dev/null || kill -KILL "$pid" 2>/dev/null || true
+    fi
+
+    update_state "$project_key" "null"
+    echo "Build killed"
+}
+
+cmd_log() {
+    local project_dir="${1:-.}"
+    project_dir=$(realpath "$project_dir")
+    local project_key=$(get_project_key "$project_dir")
+
+    local build_info=$(get_build_info "$project_key")
+    if [[ "$build_info" == "null" ]]; then
+        echo "No active build for: $project_dir" >&2
+        echo "Recent log files:" >&2
+        ls -t "${LOG_DIR}/$(basename "$project_dir")".*.log 2>/dev/null | head -5
+        exit 1
+    fi
+
+    local log_file=$(echo "$build_info" | jq -r '.log_file')
+
+    echo "Tailing log: $log_file"
+    echo ""
+    tail -f "$log_file"
+}
+
+cmd_history() {
+    local limit="${1:-20}"
+    local current_session=$(get_session_id)
+
+    echo "Recent build history (last $limit):"
+    echo "Current session: $current_session"
+    echo ""
+
+    jq -r --arg limit "$limit" --arg curr_session "$current_session" \
+        '.history | .[-($limit | tonumber):] | reverse[] |
+         (.session_id == $curr_session | if . then " [THIS SESSION]" else "" end) as $session_marker |
+         "[\(.timestamp)] \(.status) (\(.duration)s)\($session_marker)\n" +
+         "  Project: \(.project)\n" +
+         (if .git.commit then "  Git commit: \(.git.commit[0:12])" + (if .git.dirty then " (DIRTY)\n" else "\n" end) else "" end) +
+         (if .git.dirty and .git.diffstat != "" then "  Changes:\n" + (.git.diffstat | split("\n") | map("    " + .) | join("\n")) + "\n" else "" end) +
+         (if .sprint_file != "" then "  Sprint: \(.sprint_file)\n" else "" end) +
+         (if .task_id != "" then "  Task: \(.task_id)\n" else "" end) +
+         (if .description != "" then "  Description: \(.description)\n" else "" end) +
+         (if .session_id != "" then "  Session: \(.session_id)\n" else "" end) +
+         "  Command: \(.command)\n"' \
+        "$STATE_FILE"
+}
+
+cmd_logs() {
+    echo "Available log files:"
+    echo ""
+    ls -lht "$LOG_DIR" | head -20
+}
+
+cmd_ccache_stats() {
+    if ! command -v ccache &>/dev/null; then
+        echo "ccache is not installed!" >&2
+        echo "Install with: yay -S ccache" >&2
+        exit 1
+    fi
+
+    # Use user's ccache directory (override system default)
+    export CCACHE_DIR="${HOME}/.ccache"
+    echo "=== ccache Statistics ==="
+    ccache -s
+    echo ""
+    echo "Cache directory: $CCACHE_DIR"
+}
+
+cmd_ccache_clear() {
+    # Use default ccache directory (~/.ccache)
+    echo "Clearing ccache..."
+    ccache -C
+    echo "Cache cleared"
+}
+
+cmd_get_errors() {
+    local project_dir="${1:-.}"
+    project_dir=$(realpath "$project_dir")
+    local project_key=$(get_project_key "$project_dir")
+
+    # Get most recent log file for this project
+    local log_file=$(ls -t "${LOG_DIR}/$(basename "$project_dir")".*.log 2>/dev/null | head -1)
+
+    if [[ -z "$log_file" || ! -f "$log_file" ]]; then
+        echo "No log file found for: $project_dir" >&2
+        exit 1
+    fi
+
+    echo "Extracting errors from: $log_file"
+    echo ""
+
+    # Extract various error patterns
+    grep -i "error:" "$log_file" | head -50 || \
+    grep -i "fatal error" "$log_file" | head -50 || \
+    grep -i "undefined reference" "$log_file" | head -50 || \
+    echo "No errors found in log file"
+}
+
+cmd_get_completion() {
+    local project_dir="${1:-.}"
+    project_dir=$(realpath "$project_dir")
+    local project_key=$(get_project_key "$project_dir")
+
+    # Get most recent history entry for this project
+    local entry=$(jq -r --arg pk "$project_key" \
+        '.history | reverse | .[] | select(.project == $pk) | @json' "$STATE_FILE" 2>/dev/null | head -1)
+
+    if [[ -z "$entry" ]]; then
+        echo "No build history found for: $project_dir" >&2
+        exit 1
+    fi
+
+    # Parse and display formatted completion info
+    local status=$(echo "$entry" | jq -r '.status')
+    local duration=$(echo "$entry" | jq -r '.duration')
+    local timestamp=$(echo "$entry" | jq -r '.timestamp')
+    local command=$(echo "$entry" | jq -r '.command')
+    local sprint=$(echo "$entry" | jq -r '.sprint_file // ""')
+    local task=$(echo "$entry" | jq -r '.task_id // ""')
+    local description=$(echo "$entry" | jq -r '.description // ""')
+    local git_commit=$(echo "$entry" | jq -r '.git.commit // ""')
+    local git_dirty=$(echo "$entry" | jq -r '.git.dirty // false')
+    local session=$(echo "$entry" | jq -r '.session_id // ""')
+
+    echo "=== Build Completion Info ==="
+    echo "Project: $(basename "$project_dir")"
+    echo "Status: $status"
+    echo "Duration: ${duration}s"
+    echo "Completed: $timestamp"
+    echo ""
+
+    if [[ -n "$sprint" && "$sprint" != "null" ]]; then
+        echo "Sprint: $sprint"
+    fi
+    if [[ -n "$task" && "$task" != "null" ]]; then
+        echo "Task: $task"
+    fi
+    if [[ -n "$description" && "$description" != "null" ]]; then
+        echo "Description: $description"
+    fi
+
+    echo ""
+    if [[ -n "$git_commit" && "$git_commit" != "null" ]]; then
+        echo "Git commit: ${git_commit:0:12}"
+        if [[ "$git_dirty" == "true" ]]; then
+            echo "Git status: DIRTY (uncommitted changes)"
+        else
+            echo "Git status: clean"
+        fi
+    fi
+
+    echo ""
+    echo "Command: $command"
+    echo "Session: $session"
+
+    # If build failed, show errors
+    if [[ "$status" == "failed" ]]; then
+        echo ""
+        echo "=== Build Errors ==="
+        local log_file=$(ls -t "${LOG_DIR}/$(basename "$project_dir")".*.log 2>/dev/null | head -1)
+        if [[ -n "$log_file" && -f "$log_file" ]]; then
+            grep -i "error:" "$log_file" | head -20 || \
+            grep -i "fatal error" "$log_file" | head -20 || \
+            grep -i "undefined reference" "$log_file" | head -20 || \
+            echo "No specific errors found. Check log: $log_file"
+        fi
+    fi
+}
+
+cmd_completions() {
+    echo "Recent build completions:"
+    echo ""
+
+    # Find completion markers from last 24 hours
+    local markers=$(find "$CACHE_DIR" -name "completion.*.*" -mtime -1 2>/dev/null | sort -r)
+
+    if [[ -z "$markers" ]]; then
+        echo "No recent completions found (last 24 hours)"
+        return
+    fi
+
+    for marker in $markers; do
+        if [[ -f "$marker" ]]; then
+            local project=$(jq -r '.project' "$marker" 2>/dev/null || echo "unknown")
+            local exit_code=$(jq -r '.exit_code' "$marker" 2>/dev/null || echo "?")
+            local duration=$(jq -r '.duration' "$marker" 2>/dev/null || echo "0")
+            local session=$(jq -r '.session_id' "$marker" 2>/dev/null || echo "unknown")
+            local task=$(jq -r '.task_id' "$marker" 2>/dev/null || echo "")
+            local timestamp=$(jq -r '.timestamp' "$marker" 2>/dev/null || echo "unknown")
+
+            local status_icon="?"
+            [[ "$exit_code" == "0" ]] && status_icon="✓" || status_icon="✗"
+
+            echo "[$timestamp] $status_icon $(basename "$project")"
+            echo "  Session: $session"
+            if [[ -n "$task" && "$task" != "null" ]]; then
+                echo "  Task: $task"
+            fi
+            echo "  Duration: ${duration}s"
+            echo "  Exit code: $exit_code"
+            echo ""
+        fi
+    done
+}
+
+cmd_brief() {
+    # Brief status output for session resume hooks
+    cleanup_stale_builds
+
+    local current_session=$(get_session_id)
+    local builds=$(jq -r '.builds' "$STATE_FILE")
+    local total=$(echo "$builds" | jq 'length')
+    local mine=$(echo "$builds" | jq --arg sess "$current_session" '[to_entries[] | select(.value.session_id == $sess)] | length')
+
+    # Count waiters
+    local waiters=0
+    if [[ -f "${STATE_FILE%.json}.waiters.json" ]]; then
+        waiters=$(jq 'length' "${STATE_FILE%.json}.waiters.json" 2>/dev/null || echo 0)
+    fi
+
+    if [[ "$total" -eq 0 ]]; then
+        echo "No active builds"
+    else
+        echo "Active: $total builds | Mine: $mine | Queued: $waiters"
+
+        # Show brief info for each build
+        echo "$builds" | jq -r --arg curr_session "$current_session" '
+            to_entries[] |
+            (.value.session_id == $curr_session | if . then " [MINE]" else "" end) as $marker |
+            "\(.key | split("/") | .[-1])\($marker): " +
+            (if .value.sprint_file != "" then "Sprint \(.value.sprint_file | split("/") | .[-1] | gsub("\\.md$"; "")), " else "" end) +
+            (if .value.task_id != "" then "Task \(.value.task_id)" else "running" end)
+        '
+    fi
+}
+
+cmd_mine() {
+    # Show only builds from current session
+    cleanup_stale_builds
+
+    local current_session=$(get_session_id)
+    local builds=$(jq -r --arg sess "$current_session" '.builds | to_entries | map(select(.value.session_id == $sess)) | from_entries' "$STATE_FILE")
+    local count=$(echo "$builds" | jq 'length')
+
+    echo "My builds (session: $current_session)"
+    echo ""
+
+    if [[ "$count" -eq 0 ]]; then
+        echo "No active builds from this session"
+    else
+        echo "Active builds: $count"
+        echo ""
+        echo "$builds" | jq -r '
+            to_entries[] |
+            "Project: \(.value.project_dir)\n" +
+            (if .value.git.commit then "  Git commit: \(.value.git.commit[0:12])\n" else "" end) +
+            (if .value.sprint_file != "" then "  Sprint: \(.value.sprint_file)\n" else "" end) +
+            (if .value.task_id != "" then "  Task: \(.value.task_id)\n" else "" end) +
+            (if .value.description != "" then "  Description: \(.value.description)\n" else "" end) +
+            "  PID: \(.value.pid)\n" +
+            "  Started: \(.value.start_time)\n" +
+            "  Command: \(.value.command)\n" +
+            "  Log: \(.value.log_file)\n"
+        '
+    fi
+}
+
+cleanup_stale_waiters() {
+    # Remove waiters whose processes are no longer alive
+    local waiters_file="${STATE_FILE%.json}.waiters.json"
+
+    if [[ ! -f "$waiters_file" ]]; then
+        return
+    fi
+
+    # Get list of session files that still exist (indicates process is alive)
+    local active_sessions=$(ls "${CACHE_DIR}"/session-id.* 2>/dev/null | xargs -I{} basename {} | sed 's/session-id\.//' || true)
+
+    # For now, just clean up waiters older than 1 hour (stale)
+    # A more sophisticated approach would track PIDs
+    (
+        flock -x 200
+        local tmp_file="${waiters_file}.tmp.$$"
+        local one_hour_ago=$(date -d '1 hour ago' -Iseconds 2>/dev/null || date -v-1H -Iseconds 2>/dev/null || echo "")
+        if [[ -n "$one_hour_ago" ]]; then
+            jq --arg cutoff "$one_hour_ago" 'map(select(.queued_at > $cutoff))' "$waiters_file" > "$tmp_file" 2>/dev/null || cp "$waiters_file" "$tmp_file"
+            mv "$tmp_file" "$waiters_file"
+        fi
+    ) 200>"${waiters_file}.lock"
+}
+
+cmd_queue() {
+    # Show builds waiting for the lock
+    cleanup_stale_waiters
+
+    local waiters_file="${STATE_FILE%.json}.waiters.json"
+
+    if [[ ! -f "$waiters_file" ]]; then
+        echo "No builds waiting in queue"
+        return
+    fi
+
+    local count=$(jq 'length' "$waiters_file" 2>/dev/null || echo 0)
+
+    if [[ "$count" -eq 0 ]]; then
+        echo "No builds waiting in queue"
+        return
+    fi
+
+    local current_session=$(get_session_id)
+
+    echo "Builds waiting for lock: $count"
+    echo ""
+
+    jq -r --arg curr_session "$current_session" '
+        .[] |
+        (.session_id == $curr_session | if . then " [THIS SESSION]" else "" end) as $marker |
+        "Project: \(.project_dir)\($marker)\n" +
+        "  Session: \(.session_id)\n" +
+        (if .sprint_file != "" then "  Sprint: \(.sprint_file)\n" else "" end) +
+        (if .task_id != "" then "  Task: \(.task_id)\n" else "" end) +
+        (if .description != "" then "  Description: \(.description)\n" else "" end) +
+        "  Waiting since: \(.queued_at)\n" +
+        "  Command: \(.command)\n"
+    ' "$waiters_file"
+}
+
+add_to_waiters() {
+    local project_key="$1"
+    local project_dir="$2"
+    local command="$3"
+    local session_id="$4"
+    local sprint_file="$5"
+    local task_id="$6"
+    local description="$7"
+
+    local waiters_file="${STATE_FILE%.json}.waiters.json"
+
+    # Initialize waiters file if needed
+    if [[ ! -f "$waiters_file" ]]; then
+        echo '[]' > "$waiters_file"
+    fi
+
+    local entry=$(jq -n \
+        --arg pk "$project_key" \
+        --arg dir "$project_dir" \
+        --arg cmd "$command" \
+        --arg sess "$session_id" \
+        --arg sprint "$sprint_file" \
+        --arg task "$task_id" \
+        --arg desc "$description" \
+        --arg queued "$(date -Iseconds)" \
+        '{project_key: $pk, project_dir: $dir, command: $cmd, session_id: $sess, sprint_file: $sprint, task_id: $task, description: $desc, queued_at: $queued}')
+
+    (
+        flock -x 200
+        local tmp_file="${waiters_file}.tmp.$$"
+        jq ". += [$entry]" "$waiters_file" > "$tmp_file"
+        mv "$tmp_file" "$waiters_file"
+    ) 200>"${waiters_file}.lock"
+}
+
+remove_from_waiters() {
+    local project_key="$1"
+    local waiters_file="${STATE_FILE%.json}.waiters.json"
+
+    if [[ ! -f "$waiters_file" ]]; then
+        return
+    fi
+
+    (
+        flock -x 200
+        local tmp_file="${waiters_file}.tmp.$$"
+        jq --arg pk "$project_key" 'map(select(.project_key != $pk))' "$waiters_file" > "$tmp_file"
+        mv "$tmp_file" "$waiters_file"
+    ) 200>"${waiters_file}.lock"
+}
+
+cmd_analyze_errors() {
+    # Check if llm-analyze-errors is available
+    if ! command -v llm-analyze-errors &>/dev/null; then
+        echo "Error: llm-analyze-errors not found" >&2
+        echo "Install it in ~/.local/bin/llm-analyze-errors" >&2
+        exit 1
+    fi
+
+    # Pass all arguments directly to llm-analyze-errors
+    # If no args, use current directory as project
+    if [[ $# -eq 0 ]]; then
+        llm-analyze-errors --project .
+    else
+        llm-analyze-errors "$@"
+    fi
+}
+
+cmd_help() {
+    cat <<EOF
+build-manager - Global build orchestration with flock and ccache
+
+Usage: build-manager <command> [args]
+
+Commands:
+  start [options] [dir] <cmd>
+                      Start a build in directory with command
+
+                      Options:
+                        --sprint|-s <file>      Sprint file being worked on
+                        --task|-t <id>          Task ID within sprint
+                        --message|-m <desc>     Build description
+                        --dir <path>            Project directory (can also be positional)
+                        --sync                  Run synchronously (block until complete)
+                                                Default: run asynchronously in background
+
+                      Examples:
+                        build-manager start . "ninja -C build -j32"
+                        build-manager start --sync . "ninja -C build -j32"
+                        build-manager start --sprint SPRINT6.md --task 2.1 . "cmake --build build"
+                        build-manager start -s sprints/SPRINT6.md -t 2.1 -m "Building with AWQ support" . "ninja -C build"
+
+  status              Show all active builds with sprint context
+                      Highlights builds from current session with [THIS SESSION]
+
+  brief               Short status for hooks (one line per build)
+
+  mine                Show only builds from current session
+
+  queue               Show builds waiting for the global lock
+
+  wait [dir]          Wait for build in directory to complete (default: current dir)
+
+  kill [dir]          Kill build in directory (default: current dir)
+
+  log [dir]           Tail the log file for build in directory
+
+  logs                List recent log files
+
+  history [N]         Show last N builds with sprint context (default: 20)
+                      Highlights builds from current session
+
+  ccache-stats        Show ccache statistics
+
+  ccache-clear        Clear ccache
+
+  get-errors [dir]    Extract errors from most recent build log
+
+  get-completion [dir] Show detailed completion info for most recent build
+                      (includes sprint context, git info, and errors if failed)
+
+  analyze-errors [dir] Analyze build errors using local LLM with full source context
+                      (alias: analyze) Requires llm-analyze-errors tool
+
+  help                Show this help
+
+Features:
+  - Global flock-based locking prevents duplicate builds across all sessions
+  - Session tracking: Each Claude session gets a unique ID
+  - Sprint context: Track which sprint file and task triggered each build
+  - Automatic ccache integration for all builds (50GB cache)
+  - Persistent state tracking survives compaction
+  - Complete build logging with timestamps
+  - Detects and cleans stale build entries
+  - Highlights builds from current session in status/history
+
+State files:
+  Lock: ${LOCK_FILE}
+  State: ${STATE_FILE}
+  Logs: ${LOG_DIR}
+  Session: ${SESSION_FILE}.<pid>
+
+Environment:
+  CLAUDE_SESSION_ID - Set to use custom session ID (optional)
+  CCACHE_DIR set to ~/.ccache (overrides system default)
+  PATH prepends /usr/lib/ccache/bin for hipcc/gcc/clang
+  Automatically sets CC/CXX to use ccache
+  Sets CMAKE_C_COMPILER_LAUNCHER and CMAKE_CXX_COMPILER_LAUNCHER
+
+Examples:
+  # Simple build
+  build-manager start . "ninja -C build -j32"
+
+  # Build with full sprint context
+  build-manager start --sprint sprints/SPRINT6.md --task 2.1 \\
+    --message "Building with AWQ support" . "cmake --build build"
+
+  # Check if any builds are running (shows which are from this session)
+  build-manager status
+
+  # Wait for a long build to complete (can be in different Claude session)
+  build-manager wait /path/to/composable_kernel
+
+  # See recent builds with sprint context
+  build-manager history
+
+  # Monitor build progress
+  build-manager log /path/to/composable_kernel
+
+  # See ccache hit rate
+  build-manager ccache-stats
+EOF
+}
+
+# Main command dispatcher
+case "${1:-help}" in
+    start)
+        shift
+        cmd_start "$@"
+        ;;
+    status)
+        cmd_status
+        ;;
+    wait)
+        shift
+        cmd_wait "${1:-.}"
+        ;;
+    kill)
+        shift
+        cmd_kill "${1:-.}"
+        ;;
+    log)
+        shift
+        cmd_log "${1:-.}"
+        ;;
+    logs)
+        cmd_logs
+        ;;
+    history)
+        shift
+        cmd_history "${1:-20}"
+        ;;
+    ccache-stats|stats)
+        cmd_ccache_stats
+        ;;
+    ccache-clear|clear)
+        cmd_ccache_clear
+        ;;
+    completions)
+        cmd_completions
+        ;;
+    brief)
+        cmd_brief
+        ;;
+    mine)
+        cmd_mine
+        ;;
+    queue)
+        cmd_queue
+        ;;
+    get-errors)
+        shift
+        cmd_get_errors "${1:-.}"
+        ;;
+    get-completion)
+        shift
+        cmd_get_completion "${1:-.}"
+        ;;
+    analyze-errors|analyze)
+        shift
+        cmd_analyze_errors "${1:-.}"
+        ;;
+    help|--help|-h)
+        cmd_help
+        ;;
+    *)
+        echo "Unknown command: $1" >&2
+        echo "Run 'build-manager help' for usage" >&2
+        exit 1
+        ;;
+esac

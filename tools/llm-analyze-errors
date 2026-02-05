@@ -1,0 +1,253 @@
+#!/usr/bin/env python3
+"""Analyze compiler errors using ast-grep context + local LLM.
+
+This script gathers structural context for compiler errors and queries
+the local LLM for analysis. The LLM can acknowledge whether it has
+sufficient context or request additional files.
+
+Usage:
+    build-manager get-errors | llm-analyze-errors [project-dir]
+    llm-analyze-errors [project-dir] < error.txt
+"""
+
+import sys
+import json
+import subprocess
+import argparse
+from pathlib import Path
+
+# Import from the context gathering module
+sys.path.insert(0, str(Path(__file__).parent))
+from llm_gather_context import gather_context, format_context, parse_error_locations
+
+
+def query_llm(prompt: str, json_mode: bool = True) -> dict | str:
+    """Query local LLM and return response.
+
+    Args:
+        prompt: The prompt to send
+        json_mode: Whether to request JSON output
+
+    Returns:
+        Parsed JSON dict if json_mode, otherwise raw string
+    """
+    cmd = ["llm-query"]
+    if json_mode:
+        cmd.append("-j")
+
+    result = subprocess.run(
+        cmd,
+        input=prompt,
+        capture_output=True,
+        text=True,
+        timeout=300  # 5 minute timeout
+    )
+
+    if result.returncode != 0:
+        print(f"LLM query failed: {result.stderr}", file=sys.stderr)
+        return {"error": result.stderr}
+
+    if json_mode:
+        try:
+            return json.loads(result.stdout)
+        except json.JSONDecodeError:
+            return {"error": "Invalid JSON response", "raw": result.stdout}
+    return result.stdout
+
+
+def read_additional_file(filepath: str | Path) -> str:
+    """Read an additional file requested by the LLM."""
+    path = Path(filepath)
+    if not path.exists():
+        return f"File not found: {filepath}"
+    try:
+        return path.read_text()
+    except Exception as e:
+        return f"Error reading {filepath}: {e}"
+
+
+def build_analysis_prompt(error_text: str, context: str,
+                          unresolved_refs: list[str] | None = None) -> str:
+    """Build the analysis prompt with context acknowledgment schema."""
+
+    unresolved_warning = ""
+    if unresolved_refs:
+        refs_list = ", ".join(f"`{r}`" for r in unresolved_refs)
+        unresolved_warning = f"""
+WARNING: The following type/scope references in the context could NOT be resolved:
+{refs_list}
+
+You MUST set "has_sufficient_context": false and request these identifiers.
+"""
+
+    return f"""Analyze this compiler error.
+
+RULES:
+1. If context shows "UNRESOLVED REFERENCES", set has_sufficient_context=false and request those types.
+2. If you see Foo::bar but no definition of Foo, set has_sufficient_context=false.
+3. Never invent identifiers - only mention names that appear verbatim in the context.
+{unresolved_warning}
+OUTPUT FORMAT - Use EXACTLY these field names, no others:
+
+Option A - You have enough context:
+{{"has_sufficient_context":true,"root_cause":"...","file":"...","line":123,"fix":"..."}}
+
+Option B - You need more context:
+{{"has_sufficient_context":false,"reason":"...","request_identifiers":["TypeA","TypeB"],"partial_analysis":"..."}}
+
+ERROR:
+{error_text}
+
+CONTEXT:
+{context}
+
+JSON:"""
+
+
+def analyze_with_retry(error_text: str, project_dir: Path, max_retries: int = 2) -> dict:
+    """Analyze error with retry for context requests.
+
+    If the LLM requests more context, we gather it and retry.
+    """
+    # Initial context gathering
+    ctx = gather_context(error_text, project_dir)
+    context = format_context(ctx)
+    unresolved_refs = ctx.unresolved_refs
+
+    for attempt in range(max_retries + 1):
+        prompt = build_analysis_prompt(error_text, context, unresolved_refs)
+        result = query_llm(prompt)
+
+        if isinstance(result, dict) and "error" in result:
+            return result
+
+        # Check if LLM has sufficient context
+        if result.get("has_sufficient_context", True):
+            return result
+
+        # LLM requested more context
+        if attempt < max_retries:
+            print(f"LLM requested more context (attempt {attempt + 1}/{max_retries})", file=sys.stderr)
+
+            additional_context = []
+
+            # Handle file requests
+            for filepath in result.get("request_files", []):
+                file_content = read_additional_file(filepath)
+                additional_context.append(f"=== {filepath} ===\n{file_content}")
+
+            # Handle identifier requests - use ripgrep (faster than ast-grep)
+            for ident in result.get("request_identifiers", []):
+                from llm_gather_context import grep_find_definition
+                grep_def = grep_find_definition(ident, project_dir)
+                if grep_def:
+                    additional_context.append(f"=== grep {ident} ===\n{grep_def}")
+
+            if additional_context:
+                context += "\n\nADDITIONAL CONTEXT (requested):\n" + "\n\n".join(additional_context)
+                # Remove resolved identifiers from unresolved list
+                resolved = set(result.get("request_identifiers", []))
+                unresolved_refs = [r for r in unresolved_refs if r not in resolved]
+            else:
+                # Couldn't find requested context
+                result["note"] = "Could not find all requested context"
+                return result
+
+    return result
+
+
+def format_output(result: dict, output_format: str = "text") -> str:
+    """Format the analysis result for output."""
+    if output_format == "json":
+        return json.dumps(result, indent=2)
+
+    if "error" in result:
+        return f"Error: {result['error']}"
+
+    lines = ["\n=== Build Error Analysis ===\n"]
+
+    if result.get("has_sufficient_context") is False:
+        lines.append("Status: INSUFFICIENT CONTEXT")
+        lines.append(f"Reason: {result.get('reason', 'Unknown')}")
+        if result.get("request_files"):
+            lines.append(f"Requested files: {', '.join(result['request_files'])}")
+        if result.get("partial_analysis"):
+            lines.append(f"\nPartial analysis: {result['partial_analysis']}")
+    else:
+        lines.append(f"Root cause: {result.get('root_cause', 'Unknown')}")
+        if result.get("file"):
+            lines.append(f"File: {result.get('file')}:{result.get('line', '?')}")
+        lines.append(f"Fix: {result.get('fix', 'Unknown')}")
+        if result.get("code_change"):
+            lines.append(f"\nCode change:\n{result['code_change']}")
+
+    return "\n".join(lines)
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Analyze compiler errors using ast-grep context + LLM"
+    )
+    parser.add_argument(
+        "project_dir",
+        nargs="?",
+        default=".",
+        help="Project directory to search for context (default: current)"
+    )
+    parser.add_argument(
+        "-o", "--output",
+        choices=["text", "json", "markdown"],
+        default="text",
+        help="Output format"
+    )
+    parser.add_argument(
+        "-r", "--retries",
+        type=int,
+        default=2,
+        help="Max retries for context requests"
+    )
+    parser.add_argument(
+        "-v", "--verbose",
+        action="store_true",
+        help="Show verbose output"
+    )
+    parser.add_argument(
+        "--no-llm",
+        action="store_true",
+        help="Only gather context, don't query LLM"
+    )
+
+    args = parser.parse_args()
+
+    # Read error from stdin
+    if sys.stdin.isatty():
+        print("Error: No error text provided. Pipe error output to this script.", file=sys.stderr)
+        print("Usage: build-manager get-errors | llm-analyze-errors [project-dir]", file=sys.stderr)
+        sys.exit(1)
+
+    error_text = sys.stdin.read()
+    if not error_text.strip():
+        print("Error: Empty input", file=sys.stderr)
+        sys.exit(1)
+
+    project_dir = Path(args.project_dir).resolve()
+
+    if args.verbose:
+        print(f"Project directory: {project_dir}", file=sys.stderr)
+        print(f"Error text length: {len(error_text)} chars", file=sys.stderr)
+
+    # If --no-llm, just show gathered context
+    if args.no_llm:
+        ctx = gather_context(error_text, project_dir)
+        print(format_context(ctx))
+        sys.exit(0)
+
+    # Run analysis with retry
+    result = analyze_with_retry(error_text, project_dir, args.retries)
+
+    # Format and print output
+    print(format_output(result, args.output))
+
+
+if __name__ == "__main__":
+    main()

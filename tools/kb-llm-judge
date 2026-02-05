@@ -1,0 +1,59 @@
+#!/bin/bash
+# kb-llm-judge: Fast LLM judgment for KB hooks
+# Uses llama.cpp server at tardis:9510 with grammar-constrained JSON output
+#
+# Usage: kb-llm-judge <system_prompt> <user_content>
+# Output: JSON to stdout
+
+LLM_URL="${KB_LLM_URL:-http://tardis:9510/v1/chat/completions}"
+TIMEOUT="${KB_LLM_TIMEOUT:-30}"
+MAX_TOKENS="${KB_LLM_MAX_TOKENS:-4096}"
+
+SYSTEM_PROMPT="$1"
+USER_CONTENT="$2"
+
+if [[ -z "$SYSTEM_PROMPT" || -z "$USER_CONTENT" ]]; then
+    echo '{"error": "Usage: kb-llm-judge <system_prompt> <user_content>"}' >&2
+    exit 1
+fi
+
+# Escape JSON strings properly
+escape_json() {
+    python3 -c "import json,sys; print(json.dumps(sys.stdin.read())[1:-1])"
+}
+
+ESCAPED_SYSTEM=$(echo -n "$SYSTEM_PROMPT" | escape_json)
+ESCAPED_USER=$(echo -n "$USER_CONTENT" | escape_json)
+
+# Call the OpenAI-compatible endpoint with JSON mode
+RESPONSE=$(timeout "$TIMEOUT" curl -s "$LLM_URL" \
+    -H "Content-Type: application/json" \
+    -d "{
+        \"model\": \"default\",
+        \"messages\": [
+            {\"role\": \"system\", \"content\": \"$ESCAPED_SYSTEM\"},
+            {\"role\": \"user\", \"content\": \"$ESCAPED_USER\"}
+        ],
+        \"response_format\": {\"type\": \"json_object\"},
+        \"temperature\": 0.1,
+        \"max_tokens\": $MAX_TOKENS
+    }" 2>/dev/null)
+
+if [[ -z "$RESPONSE" ]]; then
+    echo '{"error": "No response from LLM server"}' >&2
+    exit 1
+fi
+
+# Extract the content from the response
+echo "$RESPONSE" | python3 -c "
+import sys, json
+try:
+    data = json.load(sys.stdin)
+    content = data['choices'][0]['message']['content']
+    # Validate it's valid JSON by parsing it
+    parsed = json.loads(content)
+    print(json.dumps(parsed))
+except Exception as e:
+    print(json.dumps({'error': str(e)}), file=sys.stderr)
+    sys.exit(1)
+"
