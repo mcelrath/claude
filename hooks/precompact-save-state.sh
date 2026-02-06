@@ -87,6 +87,19 @@ mkdir -p "$OUT_DIR"
 CONTEXT_JSON=$(python3 "$HOME/.claude/hooks/lib/extract_session_state.py" "$JSONL" 2>/dev/null)
 CONTEXT_JSON=${CONTEXT_JSON:-'{"messages":[],"tasks":[],"kb_ids":[]}'}
 
+# Detect active agent team
+TEAM_CONFIG=$(ls -t "$HOME/.claude/teams"/*/config.json 2>/dev/null | head -1)
+if [[ -n "$TEAM_CONFIG" && -f "$TEAM_CONFIG" ]]; then
+    TEAM_NAME=$(python3 -c "import json; d=json.load(open('$TEAM_CONFIG')); print(d.get('name','unknown'))" 2>/dev/null)
+    TEAM_MEMBERS=$(python3 -c "
+import json
+d=json.load(open('$TEAM_CONFIG'))
+for m in d.get('members', d.get('teammates', [])):
+    name = m.get('name', m) if isinstance(m, dict) else str(m)
+    print(f'  - {name}')
+" 2>/dev/null)
+fi
+
 # Extract tasks to file (for session resume)
 if command -v jq &>/dev/null; then
     echo "$CONTEXT_JSON" | jq -c '.tasks // []' > "$OUT_DIR/tasks.json"
@@ -213,6 +226,10 @@ ${PLAN_APPROVAL:+
 ## Plan Approval
 $PLAN_APPROVAL}
 
+${TEAM_NAME:+## Agent Team: $TEAM_NAME
+$TEAM_MEMBERS
+Note: Teammates do not survive /compact. Spawn fresh if needed.
+}
 ## Expert Review
 ${REVIEW_SUMMARY:-No expert review this session}
 

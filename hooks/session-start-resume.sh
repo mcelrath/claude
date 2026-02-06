@@ -69,6 +69,19 @@ with open(f"{out_dir}/handoff.md", 'w') as f:
     f.write("\n## Files Edited\n")
     for fe in files_edited:
         f.write(f"{fe}\n")
+    # Include plan path if current_plan exists in session dir
+    cp_file = os.path.join(out_dir, 'current_plan')
+    if os.path.isfile(cp_file):
+        plan_path = open(cp_file).read().strip()
+        if plan_path:
+            rel = plan_path.replace(os.path.expanduser('~/.claude/'), '')
+            f.write(f"\n## Plan\n{rel}\n")
+    else:
+        # Check if any edited file is a plan
+        plan_files = [fe for fe in files_edited if '/.claude/plans/' in fe]
+        if plan_files:
+            rel = plan_files[0].replace(os.path.expanduser('~/.claude/'), '')
+            f.write(f"\n## Plan\n{rel}\n")
     f.write("\n## KB Added This Session\n")
     for ka in kb_added:
         f.write(f"- [{ka.get('finding_type','?')}] {ka.get('content','')[:200]}\n")
@@ -107,6 +120,24 @@ if [[ -f "$RESUME_FILE" ]]; then
         else
             echo "  Action: Read handoff, kb_list for context, summarize state"
             echo "  IMPORTANT: Do NOT auto-create tasks from tasks.json - they are often stale."
+        fi
+        # Warn about orphaned agent teams
+        if ls "$HOME/.claude/teams"/*/config.json &>/dev/null; then
+            echo "  WARNING: Agent team config found. Teammates don't survive /compact."
+            echo "  Spawn fresh teammates if team work needs to continue."
+        fi
+        # Detect plan file migration needed (plan mode across /clear)
+        # Try relative path first (PreCompact handoff: "plans/foo.md")
+        PREV_PLAN_REL=$(grep -E "^plans/" "$HANDOFF" 2>/dev/null | head -1)
+        if [[ -n "$PREV_PLAN_REL" ]]; then
+            PREV_PLAN_FULL="$HOME/.claude/$PREV_PLAN_REL"
+        else
+            # Try full path (FALLBACK 2 handoff: "/home/.../.claude/plans/foo.md")
+            PREV_PLAN_FULL=$(grep -oE '/[^ ]*/.claude/plans/[a-z0-9][-a-z0-9_]+\.md' "$HANDOFF" 2>/dev/null | head -1)
+        fi
+        if [[ -n "$PREV_PLAN_FULL" && -f "$PREV_PLAN_FULL" ]]; then
+            echo "  PLAN_MIGRATION: $PREV_PLAN_FULL"
+            echo "  ACTION: If in plan mode, copy contents to your new plan file"
         fi
     fi
 fi

@@ -19,6 +19,7 @@ def extract_state(jsonl_path: str, max_messages: int = 50) -> dict:
     files_edited = set()  # Files modified via Edit/Write
     review_launches = []  # expert-review / implementation-review Task calls
     review_verdicts = []  # APPROVED / REJECTED / INCOMPLETE extracted from results
+    team_actions = []  # Agent team tool usage (TeammateTool, SendMessage, etc.)
 
     skip_prefixes = ('<local-command', '<system', '<command-', '<task-notification', '/clear', '/compact')
 
@@ -81,6 +82,13 @@ def extract_state(jsonl_path: str, max_messages: int = 50) -> dict:
                                     fp = inp.get('file_path', '')
                                     if fp and not fp.startswith('/tmp/'):
                                         files_edited.add(fp)
+                                # Track agent team tool usage
+                                elif name in ('TeammateTool', 'SendMessage', 'Teammate', 'spawnTeam'):
+                                    team_actions.append({
+                                        'tool': name,
+                                        'action': inp.get('action', ''),
+                                        'teammate': inp.get('name', inp.get('teammate', '')),
+                                    })
                                 # Track expert-review / implementation-review launches
                                 elif name == 'Task':
                                     stype = inp.get('subagent_type', '')
@@ -177,6 +185,7 @@ def extract_state(jsonl_path: str, max_messages: int = 50) -> dict:
         'last_queries': user_queries[-3:] if user_queries else [],
         'review_launches': review_launches,
         'review_verdicts': review_verdicts,
+        'team_actions': team_actions,
         'reconciliation_applied': True  # Flag that inference was applied
     }
 

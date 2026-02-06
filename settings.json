@@ -1,6 +1,7 @@
 {
   "env": {
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
+    "KB_EMBEDDING_URL": "http://ash:8080/embedding",
     "DISABLE_AUTOUPDATER": "0"
   },
   "permissions": {
@@ -314,6 +315,7 @@
     ],
     "defaultMode": "default"
   },
+  "model": "sonnet",
   "hooks": {
     "UserPromptSubmit": [
       {

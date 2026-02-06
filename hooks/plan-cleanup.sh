@@ -15,6 +15,14 @@ for session_dir in "$SESSIONS_DIR"/*/; do
     fi
 done
 
+# Also protect plans referenced in recent handoffs (for PLAN_MIGRATION)
+for session_dir in "$SESSIONS_DIR"/*/; do
+    if [[ -f "${session_dir}handoff.md" ]]; then
+        grep -oE 'plans/[a-z0-9][-a-z0-9_]+\.md' "${session_dir}handoff.md" \
+            | sed "s|^|$HOME/.claude/|" >> "$ACTIVE_PLANS" 2>/dev/null
+    fi
+done
+
 # Archive main plan files older than 24h ONLY if not referenced by any session
 # NOTE: 2h aggressive archiving was removed - implementation-review ARCHIVE state handles archiving
 for plan in $(find "$PLANS_DIR" -maxdepth 1 -name "*.md" ! -name "*-agent-*" -mtime +1 2>/dev/null); do
