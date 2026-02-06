@@ -78,6 +78,38 @@ Your current plan file path is stored in `~/.claude/sessions/<session-id>/curren
 - Read this file to know YOUR plan (don't use `find | head -1`)
 - After implementation-review APPROVED: plan is automatically archived by the agent
 
+## Git Commit After Implementation (MANDATORY)
+
+**After implementation-review returns APPROVED, commit your changes immediately.**
+
+Rules:
+1. **Commit ONLY files you touched** — use `git add <file1> <file2> ...` with explicit paths
+2. **Never use `git add .` or `git add -A`** — other Claude sessions may be working on other files
+3. **Check what's staged** — run `git status --short` before committing to verify you're only committing your changes
+4. **Use `--no-gpg-sign`** — GPG signing doesn't work in non-interactive sessions
+
+Example workflow:
+```bash
+# Check what you modified
+git status --short
+
+# Add ONLY the files you changed for this implementation
+git add path/to/file1.py path/to/file2.py
+
+# Verify staging
+git status --short
+
+# Commit with descriptive message
+git commit --no-gpg-sign -m "Brief description of changes
+
+Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
+```
+
+**When NOT to commit:**
+- If implementation-review returns INCOMPLETE or REJECTED
+- If there are test failures
+- If the user asks you to hold off on committing
+
 ### implementation-review Prompt Formats
 
 Supported invocation formats (ARCHIVE state handles all):
