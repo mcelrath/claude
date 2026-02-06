@@ -10,261 +10,65 @@
 **Triggers for implementation-review**: "done", "complete", "tests pass", after Edit/Write tools
 **Triggers for expert-review**: "plan ready", before ExitPlanMode
 
-## Named Reviewer Personas
+## Agent Dispatch
 
-See `~/.claude/reviewers.yaml` for expert personas organized by domain.
+**Default: answer yourself.** Agents parallelize, not outsource.
+- Reasoning/structural → answer yourself
+- Symbolic algebra → Jupyter SageMath/SymPy
+- Numerical → computational agent (Haiku/Sonnet + Jupyter)
+- Many unfamiliar files → Explore agent (Sonnet, read-only)
+- 3+ parallel independent streams → Agent Team
 
-**Usage**: Invoke by name to trigger domain associations:
-- "Review as Sidney Coleman" → careful QFT reasoning
-- "Use the Munroe-Strogatz panel" → high school accessibility
-- "What would Mencken object to?" → witty skepticism
+### Reviewer Personas & Review Panel
 
-**Key panels**:
-- `technical_review`: Peskin + Anderson + Connes
-- `popular_writing`: Sagan + Feynman + Munroe + Orwell
-- `skeptic_panel`: Mencken + Russell + 't Hooft
+Personas in `~/.claude/reviewers.yaml`. Key panels: `technical_review` (Peskin+Anderson+Connes), `popular_writing` (Sagan+Feynman+Munroe+Orwell), `skeptic_panel` (Mencken+Russell+'t Hooft). Invoke by name: "Review as Peskin", "use the skeptic panel".
 
-## Auto-Select Review Panel (MANDATORY)
+**Auto-select triggers** (case-insensitive): "critically review", "review this", "sanity check", "verify this", "is this correct", "does this make sense", "what do you think" (about correctness).
 
-When user says any of these trigger phrases, AUTOMATICALLY spawn Haiku to select reviewers:
-
-**Trigger phrases** (case-insensitive):
-- "critically review" / "critical review"
-- "review this" / "review your work" / "review the above"
-- "sanity check" / "check this"
-- "verify this" / "is this correct" / "does this make sense"
-- "what do you think" (when asking about correctness, not preferences)
-
-**Automatic action**:
+On trigger, spawn Haiku to select panel:
 ```python
 Task(subagent_type="general-purpose", model="haiku", prompt=f"""
-Read ~/.claude/reviewers.yaml and select 2-3 expert reviewers for this content.
-
-CONTENT TO REVIEW:
-{summary of recent work: last code written, calculations done, or claims made}
-
-PROJECT: {current project from pwd}
-
-Select reviewers whose expertise matches the content domain.
+Read ~/.claude/reviewers.yaml, select 2-3 experts for: {summary}. PROJECT: {project}.
 ALWAYS include Claude for anti-pattern detection.
-
-Return ONLY valid JSON:
-{{
-  "panel": [
-    {{"name": "Reviewer Name", "domain": "specialty", "focus": ["areas"]}},
-    {{"name": "Claude", "domain": "anti-pattern detection", "focus": ["CLAUDE.md violations"]}}
-  ],
-  "reason": "why these reviewers"
-}}
+Return ONLY JSON: {{"panel": [{{"name":str,"domain":str,"focus":[str]}}], "reason":str}}
 """)
 ```
+Then adopt each reviewer's voice. Report as: `## Review Panel: [names]` with `### [Name] ([domain]):` subsections. Skip auto-select if user specifies reviewers by name.
 
-Then adopt each reviewer's voice to critique the work. Report findings as:
-```
-## Review Panel: [names]
+### Subagent Rules (MANDATORY)
 
-### [Reviewer 1] ([domain]):
-[critique in their voice]
+- **Review agents**: always `run_in_background=True` (prevents 34GB+ memory growth)
+- **All agents**: kb_add before returning; parent verifies KB entry exists
+- **Parent**: pre-search KB via Haiku agent (try 3+ phrasings), include findings in prompt, require expert panel for domain questions
+- **Output**: structured JSON with schema; caller formats for user. Mandatory suffix: `Return ONLY valid JSON. Schema: {[fields]}`
+- **Model selection**: Haiku for lookups/KB search/existence checks, Sonnet for implementation, Opus for lead only (max 1 per batch)
+- **KB search**: use Haiku agent for ALL KB exploration (faster/cheaper, tries multiple phrasings)
 
-### [Reviewer 2] ([domain]):
-[critique in their voice]
+**Agent prompts, templates, expert panels:** See `~/.claude/docs/reference/agent-prompts.md`
 
-### Claude (anti-patterns):
-[CLAUDE.md violations, if any]
-```
-
-**Skip auto-select if**: User specifies reviewers by name ("review as Peskin", "use the skeptic panel").
-
-## Background Isolation (MANDATORY for review agents)
-
-**All review agents MUST run in background** to prevent memory exhaustion in parent context.
-
-```python
-# CORRECT: Background execution
-Task(
-    subagent_type="expert-review",
-    prompt="Review: ...",
-    run_in_background=True
-)
-# Then poll with TaskOutput or Read the output file
-
-# WRONG: Foreground execution (causes 34GB+ memory growth)
-Task(subagent_type="expert-review", prompt="Review: ...")
-```
-
-**Polling pattern:**
-```python
-result = Task(..., run_in_background=True)  # Returns immediately with output_file
-# Wait for completion:
-TaskOutput(task_id=result.task_id, block=True)  # Waits until done
-# Or check status without blocking:
-TaskOutput(task_id=result.task_id, block=False)
-```
-
-**Why:** Nested agents accumulate context unbounded. Background isolation runs in separate process.
-
-## Research Agent KB Recording (MANDATORY)
-
-**All research/investigation agents MUST record their findings in the KB before returning.**
-
-When spawning agents to investigate questions, answer research queries, or explore topics:
-
-1. **Include KB instruction in prompt**:
-```
-After completing your investigation, use kb_add to record your findings:
-- finding_type: "discovery" for new insights, "success" for verified results, "failure" for dead ends
-- project: "{current_project}"
-- Include open_questions if any remain
-```
-
-2. **Standard prompt suffix for research agents**:
-```
-BEFORE RETURNING: Use kb_add(content=<your_findings>, finding_type="discovery",
-project="{project}", tags="<relevant,tags>", verified=<bool>,
-open_questions=[<any_remaining_questions>])
-```
-
-3. **Parent verification**: After agent completes, check if KB entry was created. If not, add one summarizing the agent's findings.
-
-**Why:** Research findings are valuable even if the investigation reaches a dead end. Recording prevents re-investigation and preserves institutional knowledge.
-
-## Research Agent Context Injection (MANDATORY)
-
-**Before launching a research agent, the PARENT must:**
-
-1. **Pre-search KB** for relevant findings (saves agent tokens, ensures context)
-2. **Include findings in prompt** as structured context
-3. **Require expert panel selection** for domain-specific questions
-
-### Standard Research Agent Prompt Template
-
-```
-TASK: {task_description}
-
-## PRIOR KNOWLEDGE (from KB)
-{kb_findings_summary}
-- kb-XXXXX: {one-line summary}
-- kb-YYYYY: {one-line summary}
-If these answer the question, STOP and report "Already resolved: kb-XXXXX"
-
-## EXPERT PANEL REQUIREMENT
-Before deep investigation, select 2-3 domain experts from:
-- {domain1}: (e.g., {expert_names})
-- {domain2}: (e.g., {expert_names})
-State your panel and their relevance to this specific question.
-
-## TECHNICAL QUESTIONS
-1. {specific_question_1}
-2. {specific_question_2}
-
-## DELIVERABLE
-{expected_output_format}
-
-BEFORE RETURNING: kb_add(content=<findings>, finding_type="discovery",
-project="{project}", tags="{tags}", verified=<bool>)
-```
-
-### Parent Pre-Search Pattern
-
-Before calling Task for research:
-```python
-# 1. Search KB for relevant findings
-findings = kb_search("relevant terms", project="claude", limit=5)
-
-# 2. Format as context block (token-efficient)
-kb_context = "\n".join([
-    f"- {f.id}: {f.summary[:80]}" for f in findings
-])
-
-# 3. Include in agent prompt
-prompt = f"""
-TASK: {task}
-
-## PRIOR KNOWLEDGE (from KB)
-{kb_context}
-If these answer the question, STOP and report the finding ID.
-
-## EXPERT PANEL REQUIREMENT
-...
-"""
-```
-
-### Expert Panel Domains Reference
-
-| Topic | Suggested Experts |
-|-------|-------------------|
-| Categories/Functors | Baez, Mac Lane, Lurie |
-| Polylogarithms/K-theory | Zagier, Goncharov, Brown |
-| Clifford algebras | Lounesto, Porteous, Atiyah |
-| Hodge theory | Deligne, Schmid, Saito |
-| Representation theory | Vogan, Kazhdan, Lusztig |
-| Physics/QFT | Peskin, Weinberg, Coleman |
-| Anti-patterns | Claude (always include) |
-
-**Why this matters:**
-- Agents often re-discover what KB already knows (wasted tokens)
-- Without expert panel, agents give shallow answers
-- Pre-injected context is 10x more token-efficient than agent searching
-
-## Agent Task Classification
-
-**Before launching ANY research agent, classify the task:**
+### Agent Task Classification
 
 | Task Type | Signs | How to Handle |
 |-----------|-------|---------------|
-| **Reasoning** | "Does X connect to Y?", "Assess whether...", structural questions | Answer YOURSELF (fastest, most reliable) |
-| **Symbolic algebra** | "Compute the integral of...", "Factor this polynomial", "Simplify..." | Jupyter with SageMath/SymPy (symbolic tools are valid) |
-| **Numerical computation** | "Verify numerically", "Compute eigenvalues", "Plot X" | Agent with Jupyter/numpy |
-| **Hybrid** | "Compute X, then assess whether it implies Y" | SPLIT: compute first, then YOU reason about result |
+| **Reasoning** | "Does X connect to Y?", structural questions | Answer YOURSELF. If delegating: Sonnet with bounded scope (5 min phases). |
+| **Symbolic algebra** | "Compute integral", "Factor polynomial" | Jupyter with SageMath/SymPy |
+| **Numerical computation** | "Verify numerically", "Plot X" | Agent with Jupyter/numpy |
+| **Hybrid** | "Compute X, then assess Y" | SPLIT: compute first, then YOU reason about result |
 
-### Reasoning Questions: Answer Yourself
+### Agent Teams
 
-Pure reasoning is about mathematical structure, not computation. Answer these yourself — you have KB context and domain knowledge. If delegating, use Sonnet with bounded scope (5 min phases, mandatory intermediate output).
+Use when: 3+ independent parallel streams. NOT for sequential/same-file/under-15-min work.
+Rules: Max 3-4 teammates (Sonnet), Opus lead only. Assign file ownership (no concurrent edits). Lead delegates (Shift+Tab), teammates kb_add before completing. Lead runs expert-review on combined output.
 
-**Origin of this rule:** Three Opus agents launched for theory questions ("Does theta lift connect to RH?", etc.) spent >1 hour reading files and setting up notebooks without output. The answers were obtainable by 30 seconds of reasoning.
-
-### Agent Scope and Timeout Rules
+### Scope and Timeout Rules
 
 | Rule | Action |
 |------|--------|
 | **3+ parallel Opus agents** | FORBIDDEN. Use Haiku/Sonnet for at least 2. |
 | **Agent running >10 min** | Likely stuck. Check output, consider killing. |
 | **Agent reads >10 files without KB entry** | Scope too broad. Kill and answer yourself. |
-| **Numerical Jupyter for structural theory** | Wrong tool. Structural questions need reasoning or symbolic algebra, not numerics. |
-| **Mixed compute+theory prompt** | SPLIT into separate agents or answer theory part yourself. |
-
-### Bounded Agent Prompt Template
-
-```
-QUESTION: {question}
-
-## PRIOR KNOWLEDGE
-{kb_context}
-
-## SCOPE CONSTRAINTS
-- Phase 1 (5 min): State approach, produce intermediate output
-- Phase 2 (5 min): Complete computation/analysis
-- If stuck after Phase 1, kb_add what you have and RETURN
-
-DELIVERABLE: ≤300 words. Conclusion first.
-BEFORE RETURNING: kb_add(content=<findings>, finding_type="discovery", project="{project}")
-```
-
-### Decision Tree: Agent or Self?
-
-```
-Is the question answerable by reasoning from known definitions?
-├── YES → Answer yourself (fastest, most reliable)
-└── NO → Does it require symbolic algebra (integrals, factoring, simplification)?
-    ├── YES → Jupyter with SageMath/SymPy
-    └── NO → Does it require numerical computation?
-        ├── YES → Computational agent (Haiku/Sonnet with Jupyter)
-        └── NO → Does it require reading many unfamiliar files?
-            ├── YES → Explore agent (Sonnet, read-only)
-            └── NO → Answer yourself
-```
-
-**Default: answer yourself.** Agents are for parallelizing independent work, not outsourcing thinking.
+| **Numerical Jupyter for structural theory** | Wrong tool. Use reasoning or symbolic algebra. |
+| **Mixed compute+theory prompt** | SPLIT into separate agents or answer theory yourself. |
 
 ## Plan Session Isolation
 
@@ -301,107 +105,26 @@ When presenting a plan for approval, include:
 
 ## ExitPlanMode Workflow
 
-**Before calling ExitPlanMode**, append to the plan file:
+Before ExitPlanMode, append `## Approval Status` with `expert-review: APPROVED`, `User: PENDING`, `Mode: PLANNING`.
+On resume: check `Mode:` — if `IMPLEMENTATION`, execute plan (don't call ExitPlanMode again). Hook updates Mode automatically on user approval.
 
-```markdown
----
-## Approval Status
-- expert-review: APPROVED
-- User: PENDING
-- Mode: PLANNING
-```
+## Lean Plan Format
 
-**After user approves** (context clears, plan injected into new session):
-
-The new session MUST check the plan's `## Approval Status` section:
-- If `Mode: PLANNING` or no status section → normal planning flow
-- If `Mode: IMPLEMENTATION` → **do NOT call ExitPlanMode**, begin executing the plan
-
-**Hook responsibility**: When user approves via ExitPlanMode, update the plan file:
-```markdown
-## Approval Status
-- expert-review: APPROVED
-- User: APPROVED
-- Mode: IMPLEMENTATION — Execute plan, do not call ExitPlanMode
-```
-
-## Lean Plan Format (Context-Efficient)
-
-**Max 50 lines**. Plans describe WHAT, agents do HOW.
-
-```markdown
-# Plan: [name]
-
-## Objective
-[1-2 sentences]
-
-## Phase 1: [title]
-- [ ] AGENT(haiku): [query] → JSON:{schema}
-- [ ] AGENT(sonnet): [modification task]
-- [ ] Verify: [single assertion]
-- [ ] CHECKPOINT: kb_add, pause for user
-
-## Phase 2: [title]
-...
-
-## Success: [single measurable criterion]
-```
-
-**Mandatory offloads** (NEVER inline in plan):
-
-| Task Type | Offload To |
-|-----------|------------|
-| Find files matching pattern | `AGENT(haiku): find X → {files:[], count:int}` |
-| List functions in module | `AGENT(haiku): list functions → {functions:[]}` |
-| Code examples/patterns | Reference doc: `docs/patterns/X.md` or `lib/patterns/` |
-| Before/after comparisons | Agent applies pattern, confirms |
-| Background/context | KB lookup (already known) |
-| Mathematical derivations | KB finding or separate doc |
-| File-by-file modifications | `AGENT(sonnet): apply fix to files in list` |
-| Verification tests | `AGENT(haiku): run test → {passed:bool}` |
-
-**What stays in plan**: Objective, phase structure, checkpoints, success criterion
-**What's offloaded**: Discovery, modification, verification, examples, background
-
-**Checkpoint rule**: Every 3-5 tasks, insert:
-```
-- [ ] CHECKPOINT: kb_add findings, report to user, await "continue"
-```
-
-At checkpoint: save state to KB, output summary, STOP until user responds.
+**Max 50 lines**. Plans: Objective → Phases (with `AGENT(model): task → JSON:{schema}`) → Success criterion.
+Offload discovery/modification/verification to agents. Keep only structure + checkpoints in plan.
+**Checkpoint rule**: Every 3-5 tasks: `CHECKPOINT: kb_add, report to user, await "continue"`.
 
 ## Session Checkpoints
 
-When completing significant work or before context might be lost, create a KB checkpoint:
-
-```python
-kb_add(
-    content="SESSION CHECKPOINT: {1-2 sentence summary}\n\nCOMPLETED:\n- {items}\n\nIN PROGRESS:\n- {current work}\n\nRESUME FROM: {next action}",
-    finding_type="discovery",
-    project=PROJECT,
-    tags="session-checkpoint"
-)
-```
-
-The precompact hook automatically captures KB IDs in handoff.md when /compact or /clear runs.
+Before context loss: `kb_add(content="SESSION CHECKPOINT: ...\nCOMPLETED:\n- ...\nRESUME FROM: ...", tags="session-checkpoint")`. Precompact hook captures KB IDs in handoff.md automatically.
 
 ## Session Resume
 
-Hook `session-start-resume.sh` outputs `RESUME:` if previous state exists.
+On `RESUME:` from hook: read handoff.md, `kb_list(project)` (source of truth, not tasks.json), summarize, clear resume file, continue. Per-terminal (`resume-{project}-{tty}.txt`).
 
-**TTY-aware**: Resume files are per-terminal (`resume-{project}-{tty}.txt`), so concurrent sessions in same project don't conflict.
+## Plan Migration on /clear
 
-On seeing `RESUME:` in hook output:
-1. Read the handoff.md file shown
-2. `kb_list(project)` for recent findings - THIS is the source of truth
-3. Review tasks.json for CONTEXT only - DO NOT auto-create tasks (they're often stale)
-4. Summarize what was actually done based on KB findings
-5. `rm ~/.claude/sessions/resume-{PROJECT}-{TTY}.txt` to clear pointer (or project-wide if no TTY)
-6. Continue from where handoff indicates
-
-**Why no auto-TaskCreate**: Agents don't reliably call TaskUpdate when completing work.
-The JSONL-extracted tasks.json shows tasks as "pending" even when completed.
-KB findings show actual work done and are authoritative.
+On `PLAN_MIGRATION: <path>`: read previous plan, write to current session plan file, preserve `## Approval Status` exactly, continue (don't re-plan).
 
 ---
 
@@ -446,14 +169,10 @@ NEVER: "What would you like...", "Would you like me to...", numbered options, op
 
 | If you write... | STOP because... |
 |-----------------|-----------------|
-| `python3 -c "print('...')..."` with mostly prints | Scripts are for COMPUTATION. Write formatted output directly in your response. |
-| `python -c` with more print() than computations | Hook blocks >70% print ratio. Return JSON/dict, format in response. |
-| Heredoc >5 lines | Use Jupyter MCP for computation, or Write a script file. Import lib/ functions. |
-| Markdown cell in notebook | Notebooks are for computation only. Explanation goes in your response text. |
+| Print-heavy scripts / notebook presentation | Blocked by hooks (block-print-spam.sh, block-presentation-cells.sh). See Jupyter section for rules. |
 | Any comment in notebook | No comments of any kind. Not `# Setup`, not `# TODO`, nothing. Just code. |
-| `print("text...")` in notebook | Only print computed values/variables. No labels, descriptions, or status messages. |
 | `I believe` / `This likely` / `This probably` | Speculation without verification. Run code, verify from data. |
-| `Should I proceed?` / `What would you like...` | Don't ask permission. Just do it. |
+| `Should I proceed?` / `What would you like...` / `What should I...` | Just do it. Options → `AskUserQuestion` tool. Never open-ended prompts. |
 | Reading parent directory for subdirectory work | Check pwd. Read requested files. Stay where told. |
 | `DEBUG` / `Status:` / extra labels in output | Output only what was asked. Minimal, clean, relevant. |
 | Columns don't line up / inconsistent spacing | Test output visually. Fixed-width fields. Verify alignment. See "Table Formatting" section. |
@@ -468,27 +187,12 @@ NEVER: "What would you like...", "Would you like me to...", numbered options, op
 | Mixing conventions (bit-pattern vs gamma, two definitions of same thing) | One codebase = one convention. Check existing code first. |
 | Creating duplicate section/KB entry | Search before writing. Consolidate, don't duplicate. |
 | "Let me fix this" without identifying root cause | State the bug first. "The bug is X because Y. Fixing by Z." |
-| Editing plan after expert-review, then calling ExitPlanMode | Re-run expert-review after EVERY substantive plan edit. Adding tests/sections counts. |
-| `expert-review` returning APPROVED without verification | Run expert-review UNTIL APPROVED as instructed - check the actual approval status |
-| `touch *.approved` without running expert-review | NEVER bypass expert-review by manually creating approval files. The hook exists to enforce review. |
-| Calling ExitPlanMode after expert-review returned anything other than APPROVED | Re-run expert-review until it explicitly returns APPROVED. "REJECTED", "INCOMPLETE", "NEEDS REVISION" all require iteration. |
-| `print("=== Section ===")` or `print("Key finding:")` in notebook | Headers/labels go in response text, not notebooks. |
-| `print(f"x = {x}, which means...")` in notebook | Split: `print(x)` in notebook, explanation in response. |
-| Multiple print() showing a "story" in notebook | Notebook computes; you narrate in response text. |
+| ExitPlanMode without APPROVED expert-review | Re-run expert-review after EVERY substantive plan edit, until explicitly APPROVED. Never bypass with `touch *.approved`. |
 | `TaskUpdate(status="completed")` then summarizing to user | Run `implementation-review` BEFORE reporting results. Task completion ≠ review complete. |
-| `What would you like...` / `What should I...` / `What do you want...` | Work is done → STOP. Need options → use `AskUserQuestion` tool. Never open-ended prompts. |
-| `print("SUMMARY ...` or `print("""` or `print("="*70)` | present results directly to the user, do not print them with python |
-| Notebook cell with >3 print() but <3 computations | Hook blocks cells >70% presentation. Compute values, return tuple/dict, narrate in response. |
 | "Let me take a simpler approach" / "Given the complexity" | Problem has grown beyond initial plan. STOP. Enter plan mode with EnterPlanMode, reassess the problem, create new plan. |
 | Adding notebook cell to fix syntax error in previous cell | Use `modify_notebook_cells` with `operation="edit_code"` and `position_index=N` to fix the broken cell in place. |
 | Plan has `Mode: IMPLEMENTATION`, calling ExitPlanMode | Plan already approved in previous session. Execute it, don't re-ask. |
-| Opus agent for "does X connect to Y?" | **Reasoning question → answer yourself** or Sonnet with bounded scope (5 min phases). Opus agents with tools rabbit-hole into file reads. |
-| Agent prompt mixes "compute X" with "assess whether Y" | **SPLIT**: one computational agent + you assess the result. Mixed prompts cause agents to compute indefinitely. |
-| 3+ parallel Opus agents | **CPU/context explosion**. Use Haiku/Sonnet for at least 2. One Opus max per batch. |
-| Agent reads 10+ files without KB entry | **Kill it**. Scope too broad. Answer yourself or narrow the question. |
-| Numerical Jupyter for structural theory | **Wrong tool**. Structural questions need reasoning or symbolic algebra (SageMath/SymPy), not numerical notebooks. |
-| "Verify from data" applied to structural math | **MISAPPLIED RULE**. "Verify from data" means run CODE to check NUMERICAL claims. Structural math uses PROOF or symbolic algebra. |
-| Agent running >10 minutes with no KB entry | **Likely stuck**. Check output file. If agent is looping on file reads/KB searches, kill and do it yourself. |
+| Agent misuse (3+ Opus, >10min stuck, 10+ files w/o KB, mixed compute+theory) | See Scope and Timeout Rules section. Split compute from theory, kill stuck agents. |
 
 # System
 
@@ -572,67 +276,6 @@ Use `maple_proxy` kernel. Python default; Maple via `%maple` prefix.
 
 **Kernel setup:** Create notebook file with maple_proxy kernel, or manually select in Jupyter UI.
 
-# KB Search via Haiku Agent
-
-**For ALL KB exploration**, use a Haiku agent instead of direct search:
-```
-Task(subagent_type="general-purpose", model="haiku",
-     prompt="Search KB (project='PROJECT') for [TOPIC]. Try 3+ search phrasings
-             from different angles. Summarize relevant findings with IDs.")
-```
-
-**When to use**:
-- Before starting work on any topic
-- When surprised by a result (contradicts belief or seems "too good/bad")
-- Before adding a finding (check for duplicates/contradictions)
-
-**Why agent**: Haiku is faster/cheaper, and thorough KB search requires multiple phrasings.
-
-# Haiku Task Delegation
-
-Use `model="haiku"` for lightweight tasks beyond KB search:
-
-| Task Type | Example Prompt |
-|-----------|----------------|
-| Existence check | "Does lib/ contain any file implementing X? Return JSON: {found: bool, files: []}" |
-| File summary | "Summarize src/foo.py purpose in 1 sentence. Return JSON: {purpose: str}" |
-| Signature extraction | "List public functions in module X. Return JSON: {functions: [{name, args, returns}]}" |
-| Pattern search | "Find files importing Y. Return JSON: {files: []}" |
-| Validation | "Run pytest test_foo.py. Return JSON: {passed: bool, failures: []}" |
-| Format conversion | "Convert this to markdown table. Return just the table." |
-
-**Keep on Sonnet/Opus**: Architectural planning, debugging, code generation, expert review, anything requiring multi-step reasoning.
-
-**Keep on SELF (no agent)**: Pure math/theory questions, assessing whether mathematical structures connect, anything answerable by reasoning from known definitions. See "Agent Task Classification".
-
-**Template**:
-```
-Task(subagent_type="general-purpose", model="haiku",
-     prompt="[task]. Return JSON: {[schema]}")
-```
-
-# Agent Output Compression
-
-**All agent prompts MUST request structured output** to minimize return tokens:
-
-| Instead of | Use |
-|------------|-----|
-| "Find X and explain what you found" | "Find X. Return JSON: {found: bool, path: str, line: int}" |
-| "Summarize the results" | "Return JSON: {summary: str (max 50 words), items: []}" |
-| "Tell me if it passes" | "Return JSON: {passed: bool, error: str|null}" |
-
-**Mandatory suffix for all Task prompts**:
-```
-Return ONLY valid JSON, no prose. Schema: {[fields]}
-```
-
-**Caller responsibility**: The agent returns data; YOU format it for the user in your response text.
-
-**Anti-patterns**:
-- Agent prompt without output schema → verbose prose response
-- Asking agent to "explain" → paragraphs of explanation
-- No length constraint → unbounded output
-
 # Tool Output Truncation
 
 **Always use truncation parameters** to limit tool output tokens:
@@ -702,31 +345,7 @@ Casimir  Mult  Composition
 
 **Anti-pattern**: Deciding column width from header, then truncating content to fit.
 
-# Prompt Templates
-
-Ready-to-use terse prompts for common Haiku agent tasks:
-
-```python
-# File existence
-'Does {path} contain files matching {pattern}? JSON: {found:bool, files:[], count:int}'
-
-# Function search
-'Find function {name} in {path}. JSON: {found:bool, file:str, line:int, signature:str}'
-
-# Import check
-'What does {file} import? JSON: {imports:[], from_imports:[{module,names}]}'
-
-# Test result
-'Run pytest {path}. JSON: {passed:bool, total:int, failed:int, errors:[]}'
-
-# Diff summary
-'Summarize changes in {file}. JSON: {added:int, removed:int, functions_changed:[]}'
-
-# Type check
-'What type is {symbol} in {file}? JSON: {type:str, defined_at:str}'
-```
-
-**Usage**: Copy template, fill placeholders, wrap in Task call with `model="haiku"`.
+**Prompt Templates:** See `~/.claude/docs/reference/agent-prompts.md`
 
 # "Not Found" Is Not "Open"
 
@@ -764,21 +383,12 @@ When sources disagree, follow this precedence:
 
 **Recording Findings**: After ANY discovery, failure, or verification:
 1. Search KB via Haiku agent first
-2. `kb_check_contradictions("<content>", project="PROJECT")` for surprising findings
-3. `kb_add(content, finding_type, project="PROJECT", tags)`
+2. `kb_add(content, finding_type, project="PROJECT", tags)`
 
 Finding types: `success`, `failure`, `discovery`, `experiment`
 Tags: `proven`/`heuristic`/`open-problem`, domain-specific
 
-**Good Finding Structure**:
-- **Title**: Direct fact statement (NOT "RESOLVED:", "PHASE N:")
-- **Content**: Self-contained (no opaque kb-XXXXX cross-refs)
-- **Code ref**: file:function for verification
+**Good Finding Structure**: Title = direct fact statement. Content = self-contained. Code ref = file:function.
 
-**Maintenance**:
-```
-kb_review_queue(project="PROJECT")
-kb_suggest_consolidation(project="PROJECT")
-kb_validate(project="PROJECT", use_llm=True)
-```
+**Maintenance** (requires `knowledge-base-advanced` server): `kb_review_queue`, `kb_suggest_consolidation`, `kb_validate`
 

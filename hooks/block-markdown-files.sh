@@ -21,7 +21,7 @@ if [[ "$FILE_PATH" == *.md ]]; then
         exit 0
     fi
     # Allow docs/reference for relocated CLAUDE.md content
-    if [[ "$FILE_PATH" == */docs/reference/*.md ]]; then
+    if [[ "$FILE_PATH" == */docs/reference/*.md ]] || [[ "$FILE_PATH" == */.claude/docs/*.md ]] || [[ "$FILE_PATH" == */.claude/docs/**/*.md ]]; then
         exit 0
     fi
     # Allow CLAUDE.md files (project configuration)
