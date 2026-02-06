@@ -496,7 +496,7 @@
   },
   "statusLine": {
     "type": "command",
-    "command": "/home/mcelrath/.local/bin/claude-statusline",
+    "command": "/home/mcelrath/.claude/bin/claude-statusline",
     "padding": 0
   },
   "enabledPlugins": {

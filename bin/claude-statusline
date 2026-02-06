@@ -1,0 +1,205 @@
+#!/bin/bash
+# Custom status line for Claude Code
+# Shows: model, context bar, cwd, git branch, build status
+
+# ANSI colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+BLUE='\033[0;34m'
+MAGENTA='\033[0;35m'
+CYAN='\033[0;36m'
+WHITE='\033[0;37m'
+BOLD='\033[1m'
+DIM='\033[2m'
+RESET='\033[0m'
+
+# Read JSON input from stdin
+input=$(cat)
+
+# Parse JSON data - parse numbers separately, sum in bash
+model=$(echo "$input" | jq -r '.model.display_name // "?"')
+context_size=$(echo "$input" | jq '.context_window.context_window_size // 200000')
+[[ -z "$context_size" || "$context_size" == "null" ]] && context_size=200000
+
+# Get individual token counts for visualization (parse separately, sum in bash)
+direct_tokens=$(echo "$input" | jq '.context_window.current_usage.input_tokens // 0')
+[[ -z "$direct_tokens" || "$direct_tokens" == "null" ]] && direct_tokens=0
+cache_create=$(echo "$input" | jq '.context_window.current_usage.cache_creation_input_tokens // 0')
+[[ -z "$cache_create" || "$cache_create" == "null" ]] && cache_create=0
+cached_tokens=$(echo "$input" | jq '.context_window.current_usage.cache_read_input_tokens // 0')
+[[ -z "$cached_tokens" || "$cached_tokens" == "null" ]] && cached_tokens=0
+
+fresh_tokens=$((direct_tokens + cache_create))
+input_tokens=$((fresh_tokens + cached_tokens))
+
+cwd=$(echo "$input" | jq -r '.cwd // .workspace.current_dir // ""')
+cost=$(echo "$input" | jq '.cost.total_cost_usd // 0')
+
+# Calculate context usage percentage
+if [[ "$context_size" -gt 0 && "$input_tokens" != "null" ]]; then
+    percent=$((input_tokens * 100 / context_size))
+else
+    percent=0
+fi
+
+# Build context bar (20 chars wide) with cached/fresh distinction
+bar_width=20
+
+# Calculate bar segments
+cached_percent=$((cached_tokens * 100 / context_size))
+fresh_percent=$((fresh_tokens * 100 / context_size))
+total_percent=$((cached_percent + fresh_percent))
+
+cached_chars=$((cached_percent * bar_width / 100))
+fresh_chars=$((fresh_percent * bar_width / 100))
+# Ensure at least 1 char for fresh if there are fresh tokens
+[[ $fresh_tokens -gt 0 && $fresh_chars -eq 0 ]] && fresh_chars=1
+total_filled=$((cached_chars + fresh_chars))
+[[ $total_filled -gt $bar_width ]] && total_filled=$bar_width
+empty_chars=$((bar_width - total_filled))
+
+# Build the bar: cached (cyan), fresh (green/yellow/red based on total), empty (dim)
+cached_str=""
+fresh_str=""
+empty_str=""
+for ((i=0; i<cached_chars; i++)); do cached_str+="█"; done
+for ((i=0; i<fresh_chars; i++)); do fresh_str+="█"; done
+for ((i=0; i<empty_chars; i++)); do empty_str+="░"; done
+
+# Color fresh portion based on total usage
+if [[ $total_percent -lt 50 ]]; then
+    fresh_color="$GREEN"
+elif [[ $total_percent -lt 75 ]]; then
+    fresh_color="$YELLOW"
+else
+    fresh_color="$RED"
+fi
+
+bar="${CYAN}${cached_str}${fresh_color}${fresh_str}${DIM}${empty_str}${RESET}"
+percent=$total_percent
+
+# Add compact warning indicator
+compact_warn=""
+if [[ $percent -ge 90 ]]; then
+    compact_warn="${RED}${BOLD}⚠ COMPACT${RESET} "
+elif [[ $percent -ge 80 ]]; then
+    compact_warn="${YELLOW}⚡${RESET}"
+fi
+
+# Get git branch if in a git repo
+git_branch=""
+if [[ -n "$cwd" ]]; then
+    git_branch=$(cd "$cwd" 2>/dev/null && git rev-parse --is-inside-work-tree </dev/null &>/dev/null && (git branch --show-current </dev/null 2>/dev/null || git rev-parse --short HEAD </dev/null 2>/dev/null))
+fi
+
+# Shorten cwd (show last 2 components)
+short_cwd=""
+if [[ -n "$cwd" ]]; then
+    short_cwd=$(echo "$cwd" | awk -F/ '{if(NF>2) print $(NF-1)"/"$NF; else print $0}')
+fi
+
+# Build status from state file
+build_status=""
+if [[ -f ~/.cache/build-manager/state.json ]]; then
+    count=$(jq '.builds | length' ~/.cache/build-manager/state.json </dev/null 2>/dev/null || echo 0)
+    if [[ "$count" -gt 0 ]]; then
+        build_parts=()
+        while IFS= read -r line; do
+            [[ -n "$line" ]] && build_parts+=("$line")
+        done < <(jq -r '
+            .builds | to_entries[] |
+            (.value.start_time | sub("\\+.*$"; "Z") | sub("-[0-9]{2}:[0-9]{2}$"; "Z") | fromdateiso8601) as $start |
+            (now - $start) as $elapsed |
+            (if $elapsed < 60 then "\($elapsed | floor)s"
+             elif $elapsed < 3600 then "\($elapsed / 60 | floor)m"
+             else "\($elapsed / 3600 | floor)h\(($elapsed % 3600) / 60 | floor)m"
+             end) as $duration |
+            (.key | split("/") | .[-1]) as $project |
+            (if .value.task_id != "" then .value.task_id else "" end) as $task |
+            "\($project)" + (if $task != "" then "/\($task)" else "" end) + " \($duration)"
+        ' ~/.cache/build-manager/state.json </dev/null 2>/dev/null)
+
+        if [[ ${#build_parts[@]} -eq 1 ]]; then
+            build_status="${YELLOW}🔨 ${build_parts[0]}${RESET}"
+        elif [[ ${#build_parts[@]} -ge 2 ]]; then
+            build_status="${YELLOW}🔨 ${#build_parts[@]}: ${build_parts[0]}${RESET}"
+        fi
+    fi
+fi
+
+# Background tasks
+task_count=0
+for task_dir in /tmp/claude/*/tasks; do
+    [[ -d "$task_dir" ]] || continue
+    for f in "$task_dir"/*.output; do
+        [[ -f "$f" ]] || continue
+        if fuser "$f" </dev/null 2>/dev/null | grep -q .; then
+            ((task_count++))
+        fi
+    done
+done
+task_status=""
+[[ $task_count -gt 0 ]] && task_status="${CYAN}⏳${task_count}${RESET}"
+
+# Format cost (2 decimal places, skip if zero/null)
+cost_str=""
+if [[ -n "$cost" && "$cost" != "0" && "$cost" != "null" ]]; then
+    cost_fmt=$(printf "%.2f" "$cost" 2>/dev/null || echo "$cost")
+    # Only show if non-zero after formatting
+    if [[ "$cost_fmt" != "0.00" ]]; then
+        cost_str="${DIM}\$${cost_fmt}${RESET}"
+    fi
+fi
+
+# Read work summary if available (per-session, in .claude/work-summary-<session>.txt)
+# Only look in git project root to avoid cross-project pollution
+work_summary=""
+if [[ -n "$cwd" ]]; then
+    # Find git root for this project
+    project_root=$(cd "$cwd" 2>/dev/null && git rev-parse --show-toplevel </dev/null 2>/dev/null)
+    if [[ -n "$project_root" ]]; then
+        session_id=$(echo "$input" | jq -r '.session_id // ""')
+
+        # Try session-specific file first
+        summary_file=""
+        if [[ -n "$session_id" ]]; then
+            summary_file="$project_root/.claude/work-summary-${session_id}.txt"
+        fi
+
+        # Fall back to shared file if session-specific doesn't exist
+        if [[ -z "$summary_file" || ! -f "$summary_file" ]]; then
+            summary_file="$project_root/.claude/work-summary.txt"
+        fi
+
+        if [[ -f "$summary_file" ]]; then
+            # Only use if file is less than 1 hour old
+            if [[ $(find "$summary_file" -mmin -60 </dev/null 2>/dev/null) ]]; then
+                work_summary=$(head -1 "$summary_file" 2>/dev/null | cut -c1-50)
+            fi
+        fi
+    fi
+fi
+
+# Assemble status line (multiple lines)
+line1_parts=()
+line1_parts+=("${MAGENTA}${BOLD}${model}${RESET}")
+line1_parts+=("${compact_warn}[${bar}${percent}%]")
+[[ -n "$short_cwd" ]] && line1_parts+=("${BLUE}${short_cwd}${RESET}")
+[[ -n "$git_branch" ]] && line1_parts+=("${GREEN}⎇ ${git_branch}${RESET}")
+[[ -n "$task_status" ]] && line1_parts+=("$task_status")
+[[ -n "$cost_str" ]] && line1_parts+=("$cost_str")
+
+line2_parts=()
+[[ -n "$work_summary" ]] && line2_parts+=("${CYAN}📝 ${work_summary}${RESET}")
+
+line3_parts=()
+[[ -n "$build_status" ]] && line3_parts+=("$build_status")
+
+# Output lines
+echo -e "${line1_parts[*]}"
+[[ ${#line2_parts[@]} -gt 0 ]] && echo -e "${line2_parts[*]}"
+[[ ${#line3_parts[@]} -gt 0 ]] && echo -e "${line3_parts[*]}"
+
+# Always exit 0 - non-zero exits cause Claude Code to hide the status line
+exit 0
