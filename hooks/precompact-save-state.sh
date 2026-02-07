@@ -17,7 +17,7 @@ create_minimal_handoff() {
 ## Session
 - ID: $SESSION_ID
 - Project: ${PROJECT_NAME:-unknown}
-- Extracted: $(date -Iseconds)
+- Extracted: $(python3 -c "from datetime import datetime as d;print(d.now().astimezone().isoformat())" 2>/dev/null || date +%Y-%m-%dT%H:%M:%S)
 - Status: Precompact failed, minimal fallback
 
 ## Plan
@@ -221,7 +221,7 @@ cat > "$OUT_DIR/handoff.md.tmp" << EOF
 ## Session
 - ID: $SESSION_ID
 - Project: $PROJECT_NAME
-- Extracted: $(date -Iseconds)
+- Extracted: $(python3 -c "from datetime import datetime as d;print(d.now().astimezone().isoformat())" 2>/dev/null || date +%Y-%m-%dT%H:%M:%S)
 
 ## Last User Queries
 ${LAST_QUERIES:-[none captured]}

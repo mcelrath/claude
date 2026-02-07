@@ -41,13 +41,13 @@ rm -f "$ACTIVE_PLANS"
 session_dirs=("$SESSIONS_DIR"/*/)
 if [[ ${#session_dirs[@]} -gt 0 && -d "${session_dirs[0]}" ]]; then
     for plan in $(find "$PLANS_DIR" -maxdepth 1 -name "*.md" ! -name "*-agent-*" -mmin +5 2>/dev/null); do
-        plan_realpath=$(realpath "$plan" 2>/dev/null)
+        plan_realpath=$(python3 -c "import os,sys;print(os.path.realpath(sys.argv[1]))" "$plan" 2>/dev/null)
         plan_referenced=false
 
         for session_dir in "${session_dirs[@]}"; do
             if [[ -f "${session_dir}current_plan" ]]; then
                 current_plan_path=$(cat "${session_dir}current_plan" 2>/dev/null)
-                current_plan_realpath=$(realpath "$current_plan_path" 2>/dev/null)
+                current_plan_realpath=$(python3 -c "import os,sys;print(os.path.realpath(sys.argv[1]))" "$current_plan_path" 2>/dev/null)
 
                 if [[ "$plan_realpath" == "$current_plan_realpath" ]]; then
                     # Check if session is recent (modified in last 24h)

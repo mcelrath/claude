@@ -26,7 +26,7 @@ if [[ ! -f "$JSONL" ]]; then
 fi
 
 # Get usage from last line containing "usage" (most recent API call)
-USAGE_LINE=$(tac "$JSONL" | grep -m1 '"usage"' 2>/dev/null)
+USAGE_LINE=$(grep '"usage"' "$JSONL" 2>/dev/null | tail -1)
 
 if [[ -z "$USAGE_LINE" ]]; then
     exit 0

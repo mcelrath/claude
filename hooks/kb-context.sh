@@ -49,7 +49,7 @@ fi
 
 # Show last work context if available and recent (within last hour)
 if [[ -f "$CONTEXT_FILE" ]]; then
-    CONTEXT_AGE=$(($(date +%s) - $(stat -c %Y "$CONTEXT_FILE" 2>/dev/null || echo 0)))
+    CONTEXT_AGE=$(($(date +%s) - $(python3 -c "import os;print(int(os.path.getmtime('$CONTEXT_FILE')))" 2>/dev/null || echo 0)))
     if [[ $CONTEXT_AGE -lt 3600 ]]; then
         SAVED_PROJECT=$(grep "^Project:" "$CONTEXT_FILE" | cut -d: -f2- | xargs)
         if [[ "$SAVED_PROJECT" == "$PROJECT" ]]; then

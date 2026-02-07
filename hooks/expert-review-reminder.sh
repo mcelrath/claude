@@ -32,8 +32,8 @@ PENDING_MARKER="$PLAN_DIR/${PLAN_BASE}.pending"
 
 # Check for approval marker (must be newer than plan.md)
 if [[ -f "$APPROVED_MARKER" ]]; then
-    PLAN_MTIME=$(stat -c %Y "$PLAN_FILE" 2>/dev/null || stat -f %m "$PLAN_FILE" 2>/dev/null)
-    MARKER_MTIME=$(stat -c %Y "$APPROVED_MARKER" 2>/dev/null || stat -f %m "$APPROVED_MARKER" 2>/dev/null)
+    PLAN_MTIME=$(python3 -c "import os;print(int(os.path.getmtime('$PLAN_FILE')))" 2>/dev/null || echo 0)
+    MARKER_MTIME=$(python3 -c "import os;print(int(os.path.getmtime('$APPROVED_MARKER')))" 2>/dev/null || echo 0)
     if [[ "$MARKER_MTIME" -ge "$PLAN_MTIME" ]]; then
         exit 0  # Marker is newer than plan - approval valid
     else
@@ -46,8 +46,8 @@ fi
 # Agents can't create .approved (sandbox), but this hook runs outside sandbox
 AGENT_OUTPUT=$(ls -t "$PLAN_DIR"/agent-output/*-agent-*.md "$PLAN_DIR"/*-agent-*.md 2>/dev/null | head -1)
 if [[ -n "$AGENT_OUTPUT" ]]; then
-    PLAN_MTIME=$(stat -c %Y "$PLAN_FILE" 2>/dev/null || stat -f %m "$PLAN_FILE" 2>/dev/null)
-    AGENT_MTIME=$(stat -c %Y "$AGENT_OUTPUT" 2>/dev/null || stat -f %m "$AGENT_OUTPUT" 2>/dev/null)
+    PLAN_MTIME=$(python3 -c "import os;print(int(os.path.getmtime('$PLAN_FILE')))" 2>/dev/null || echo 0)
+    AGENT_MTIME=$(python3 -c "import os;print(int(os.path.getmtime('$AGENT_OUTPUT')))" 2>/dev/null || echo 0)
     if [[ "$AGENT_MTIME" -ge "$PLAN_MTIME" ]]; then
         if grep -qE '^## (Verdict|Status|Review Status):.*APPROVED' "$AGENT_OUTPUT" 2>/dev/null; then
             touch "$APPROVED_MARKER"

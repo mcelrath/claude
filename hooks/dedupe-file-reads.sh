@@ -21,7 +21,7 @@ touch "$READS_FILE"
 
 # Check if already read
 if grep -qF "$FILE_PATH" "$READS_FILE" 2>/dev/null; then
-    SIZE=$(stat -c%s "$FILE_PATH" 2>/dev/null || echo 0)
+    SIZE=$(python3 -c "import os;print(os.path.getsize('$FILE_PATH'))" 2>/dev/null || echo 0)
     if [[ $SIZE -gt 5000 ]]; then
         echo "NOTE: $FILE_PATH ($(($SIZE/1024))KB) was already read this session"
     fi
