@@ -28,11 +28,7 @@ if echo "$COMMAND" | grep -qE "<<\s*['\"]?[A-Za-z_][A-Za-z0-9_]*['\"]?" 2>/dev/n
         HEREDOC_LINES=$(echo "$COMMAND" | sed -n "/<<.*${DELIM}/,/^${DELIM}\$/p" 2>/dev/null | wc -l) || true
 
         if [[ "$HEREDOC_LINES" -gt 5 ]]; then
-            echo "BLOCKED: Heredoc is $HEREDOC_LINES lines." >&2
-            echo "For quick calculations: use Jupyter MCP (setup_notebook, query_notebook, modify_notebook_cells)." >&2
-            echo "For permanent code: Write a script in lib/ or exploration/." >&2
-            echo "If Jupyter server not running: Write a script file instead." >&2
-            echo "Import existing lib/ functions - don't reimplement." >&2
+            echo "WARNING: Heredoc is $HEREDOC_LINES lines. Use Jupyter MCP or Write a script file instead. Commentary belongs in your text response." >&2
             exit 2
         fi
     fi
@@ -45,17 +41,15 @@ if echo "$COMMAND" | grep -qE "python3?\s+(-c|<<)" 2>/dev/null; then
     # Actual computation: assignments with expressions, function calls that aren't print, loops, conditionals
     CODE_LINES=$(echo "$COMMAND" | grep -vE '^\s*(#|print\(|import |from |"""|'"'"''"'"''"'"'|\s*$|[A-Z]+$)' 2>/dev/null | wc -l) || CODE_LINES=0
 
-    # Block if: (>5 prints with <10 logic) OR (prints dominate: >2 prints and prints > code)
+    # Warn (not block) if prints dominate - avoids sibling tool call cascades
     if [[ "$PRINT_COUNT" -gt 5 ]] && [[ "$CODE_LINES" -lt 10 ]]; then
-        echo "BLOCKED: Python script has $PRINT_COUNT print() calls but only $CODE_LINES lines of logic." >&2
-        echo "This is formatted output, not computation. Write it directly in your response text." >&2
-        exit 2
+        echo "WARNING: Python script has $PRINT_COUNT print() calls but only $CODE_LINES lines of logic. Put formatted output in your text response." >&2
+        exit 0
     fi
 
     if [[ "$PRINT_COUNT" -gt 2 ]] && [[ "$PRINT_COUNT" -gt "$CODE_LINES" ]]; then
-        echo "BLOCKED: Python script has $PRINT_COUNT print() calls but only $CODE_LINES lines of actual code." >&2
-        echo "Output text belongs in your response, not in a script. Just write the table/text directly." >&2
-        exit 2
+        echo "WARNING: Python script has $PRINT_COUNT print() calls but only $CODE_LINES lines of actual code. Output text belongs in your response." >&2
+        exit 0
     fi
 fi
 

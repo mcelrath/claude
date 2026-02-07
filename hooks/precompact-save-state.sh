@@ -28,7 +28,13 @@ ${PLAN_FILE:-unknown}
 2. kb_search for recent findings
 3. TaskList for task state
 MINEOF
-        echo "$SESSION_ID" > "$HOME/.claude/sessions/resume-${PROJECT_NAME:-unknown}.txt" 2>/dev/null
+        source "$HOME/.claude/hooks/lib/get_terminal_id.sh" 2>/dev/null
+        _TERM_ID=$(_get_terminal_id 2>/dev/null)
+        if [[ -n "$_TERM_ID" ]]; then
+            echo "$SESSION_ID" > "$HOME/.claude/sessions/resume-${PROJECT_NAME:-unknown}-${_TERM_ID}.txt" 2>/dev/null
+        else
+            echo "$SESSION_ID" > "$HOME/.claude/sessions/resume-${PROJECT_NAME:-unknown}.txt" 2>/dev/null
+        fi
         echo "PRE-COMPACT: Minimal handoff created (fallback)"
     fi
 }
@@ -264,11 +270,11 @@ EOF
 # Atomic commit
 mv "$OUT_DIR/handoff.md.tmp" "$OUT_DIR/handoff.md"
 
-# Use terminal-specific resume file to avoid concurrent session conflicts
-# TTY persists across /clear (unlike PPID which changes)
-TTY_ID=$(tty 2>/dev/null | tr '/' '-' | sed 's/^-//')
-if [[ -n "$TTY_ID" && "$TTY_ID" != "not a tty" ]]; then
-    echo "$SESSION_ID" > "$HOME/.claude/sessions/resume-${PROJECT_NAME}-${TTY_ID}.txt"
+# Get terminal-specific ID (PTY from /proc walk, falls back to CLAUDE_SESSION env)
+source "$HOME/.claude/hooks/lib/get_terminal_id.sh"
+TERM_ID=$(_get_terminal_id)
+if [[ -n "$TERM_ID" ]]; then
+    echo "$SESSION_ID" > "$HOME/.claude/sessions/resume-${PROJECT_NAME}-${TERM_ID}.txt"
 else
     # Fallback to project-wide (may have conflicts with concurrent sessions)
     echo "$SESSION_ID" > "$HOME/.claude/sessions/resume-${PROJECT_NAME}.txt"

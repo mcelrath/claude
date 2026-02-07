@@ -39,6 +39,7 @@ Then adopt each reviewer's voice. Report as: `## Review Panel: [names]` with `##
 
 - **Review agents**: always `run_in_background=True` (prevents 34GB+ memory growth)
 - **All agents**: kb_add before returning; parent verifies KB entry exists
+- **Turn budget**: ALWAYS set `max_turns` on Task calls. Include TURN BUDGET section in prompt (see agent-prompts.md). Agents killed without kb_add lose ALL work.
 - **Parent**: pre-search KB via Haiku agent (try 3+ phrasings), include findings in prompt, require expert panel for domain questions
 - **Output**: structured JSON with schema; caller formats for user. Mandatory suffix: `Return ONLY valid JSON. Schema: {[fields]}`
 - **Model selection**: Haiku for lookups/KB search/existence checks, Sonnet for implementation, Opus for lead only (max 1 per batch)
@@ -69,6 +70,8 @@ Rules: Max 3-4 teammates (Sonnet), Opus lead only. Assign file ownership (no con
 | **Agent reads >10 files without KB entry** | Scope too broad. Kill and answer yourself. |
 | **Numerical Jupyter for structural theory** | Wrong tool. Use reasoning or symbolic algebra. |
 | **Mixed compute+theory prompt** | SPLIT into separate agents or answer theory yourself. |
+| **Agent spawned without max_turns** | FORBIDDEN. Always set max_turns (see agent-prompts.md). |
+| **Agent prompt without TURN BUDGET section** | Add it. Agents terminated without kb_add lose ALL work. |
 
 ## Plan Session Isolation
 

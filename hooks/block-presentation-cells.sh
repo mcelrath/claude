@@ -162,26 +162,12 @@ case "$ANALYSIS" in
     BLOCK:*)
         PRES_COUNT=$(echo "$ANALYSIS" | cut -d: -f2)
         COMP_COUNT=$(echo "$ANALYSIS" | cut -d: -f3)
-        echo "BLOCKED: Presentation-only notebook cell detected." >&2
-        echo "" >&2
-        echo "Analysis: $PRES_COUNT presentation statements, $COMP_COUNT computation statements" >&2
-        echo "" >&2
-        echo "This cell appears to be displaying/formatting results rather than computing them." >&2
-        echo "If you understand the calculation, DERIVE it from first principles." >&2
-        echo "If the calculation seems trivial or you're unsure, use AskUserQuestion to clarify:" >&2
-        echo "  - What specific quantity should be computed?" >&2
-        echo "  - What derivation steps are needed?" >&2
-        echo "  - Is this a known result that should be verified, or a new computation?" >&2
-        echo "" >&2
-        echo "NEVER create cells that just print known values with decorative formatting." >&2
-        exit 2
+        echo "WARNING: Presentation-heavy cell ($PRES_COUNT presentation, $COMP_COUNT computation). MCP server will filter presentation content. Put commentary in your text response." >&2
+        exit 0
         ;;
     BLOCK_MARKDOWN)
-        echo "BLOCKED: Markdown cells not allowed in notebooks." >&2
-        echo "" >&2
-        echo "Notebooks are for computation only. All explanation belongs in your response text to the user." >&2
-        echo "Use add_code operation, not add_markdown." >&2
-        exit 2
+        echo "WARNING: Markdown cell intercepted. MCP server will reject it. Put commentary in your text response." >&2
+        exit 0
         ;;
     *)
         exit 0

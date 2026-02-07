@@ -17,20 +17,19 @@ else
     PROJECT=$(basename "$PWD")
 fi
 
-# Check terminal-specific resume file first (avoids concurrent session conflicts)
-TTY_ID=$(tty 2>/dev/null | tr '/' '-' | sed 's/^-//')
-if [[ -n "$TTY_ID" && "$TTY_ID" != "not a tty" ]]; then
-    RESUME_FILE="$HOME/.claude/sessions/resume-${PROJECT}-${TTY_ID}.txt"
+# Get terminal-specific ID (PTY from /proc walk, falls back to CLAUDE_SESSION env)
+source "$HOME/.claude/hooks/lib/get_terminal_id.sh"
+TERM_ID=$(_get_terminal_id)
+
+# Terminal-specific resume file first
+RESUME_FILE=""
+if [[ -n "$TERM_ID" ]]; then
+    RESUME_FILE="$HOME/.claude/sessions/resume-${PROJECT}-${TERM_ID}.txt"
 fi
 
-# Fallback to project-wide
-if [[ ! -f "$RESUME_FILE" ]]; then
+# Fallback to project-wide (safe only if single session per project)
+if [[ -z "$RESUME_FILE" || ! -f "$RESUME_FILE" ]]; then
     RESUME_FILE="$HOME/.claude/sessions/resume-${PROJECT}.txt"
-fi
-
-# FALLBACK: If project-specific doesn't exist, check for ANY resume file (most recent)
-if [[ ! -f "$RESUME_FILE" ]]; then
-    RESUME_FILE=$(ls -t "$HOME/.claude/sessions/resume-"*.txt 2>/dev/null | head -1)
 fi
 
 # Check if resume file exists

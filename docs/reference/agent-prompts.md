@@ -32,8 +32,16 @@ If these answer the question, STOP and report "Already resolved: kb-XXXXX"
 Select 2-3 domain experts from: {domain1} ({expert_names}), {domain2} ({expert_names}).
 State panel and relevance to this question.
 
+## TURN BUDGET: {max_turns} turns (MANDATORY)
+You have {max_turns} tool calls before forced termination.
+- AFTER EVERY 5 tool calls: kb_add a checkpoint of findings so far
+- At turn {max_turns - 3}: STOP research. kb_add ALL findings immediately.
+- At turn {max_turns - 1}: Return your final answer. Do NOT start new work.
+- Each Read/Grep/Bash/kb_add = 1 turn. Count them.
+If you are terminated without kb_add, ALL YOUR WORK IS LOST.
+
 ## SCOPE CONSTRAINTS
-- Phase 1 (5 min): State approach, produce intermediate output
+- Phase 1 (5 min): State approach, produce intermediate output, kb_add checkpoint
 - Phase 2 (5 min): Complete computation/analysis
 - If stuck after Phase 1, kb_add what you have and RETURN
 
@@ -45,6 +53,18 @@ State panel and relevance to this question.
 BEFORE RETURNING: kb_add(content=<findings>, finding_type="discovery",
 project="{project}", tags="{tags}", verified=<bool>)
 ```
+
+## Recommended max_turns by Task Type
+
+| Task Type | max_turns | Rationale |
+|-----------|-----------|-----------|
+| KB search / existence check | 5 | Simple lookup, should finish in 2-3 |
+| Code exploration | 15 | Read a few files, grep, summarize |
+| Research / analysis | 25 | Multiple file reads, KB operations |
+| Implementation | 40 | Edit files, run tests, iterate |
+| Review agents | 30 | Read plan, check files, produce verdict |
+
+**Parent must always set `max_turns`**. Default (no limit) risks agents running indefinitely.
 
 ## Expert Panel Domains
 

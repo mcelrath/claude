@@ -9,89 +9,19 @@ else
     PROJECT=$(basename "$PWD")
 fi
 
-# Check terminal-specific resume file first (avoids concurrent session conflicts)
-TTY_ID=$(tty 2>/dev/null | tr '/' '-' | sed 's/^-//')
-if [[ -n "$TTY_ID" && "$TTY_ID" != "not a tty" ]]; then
-    RESUME_FILE="$HOME/.claude/sessions/resume-${PROJECT}-${TTY_ID}.txt"
-else
-    RESUME_FILE="$HOME/.claude/sessions/resume-${PROJECT}.txt"
+# Get terminal-specific ID (PTY from /proc walk, falls back to CLAUDE_SESSION env)
+source "$HOME/.claude/hooks/lib/get_terminal_id.sh"
+TERM_ID=$(_get_terminal_id)
+
+# Terminal-specific resume file first
+RESUME_FILE=""
+if [[ -n "$TERM_ID" ]]; then
+    RESUME_FILE="$HOME/.claude/sessions/resume-${PROJECT}-${TERM_ID}.txt"
 fi
 
-# Fallback to project-wide if terminal-specific doesn't exist
+# Fallback to project-wide (safe only if single session per project)
 if [[ ! -f "$RESUME_FILE" ]]; then
     RESUME_FILE="$HOME/.claude/sessions/resume-${PROJECT}.txt"
-fi
-
-# FALLBACK: If project-specific doesn't exist, check for ANY resume file (most recent)
-# This handles cases where Claude starts from different directory than /compact ran
-if [[ ! -f "$RESUME_FILE" ]]; then
-    RESUME_FILE=$(ls -t "$HOME/.claude/sessions/resume-"*.txt 2>/dev/null | head -1)
-fi
-
-# FALLBACK 2: No resume pointer at all — retroactively create handoff from previous session
-# This recovers state after /clear (which has no PreClear hook to save state)
-if [[ ! -f "$RESUME_FILE" ]]; then
-    PROJECT_PATH=$(pwd | sed 's|/|-|g; s|^-||')
-    PROJECT_DIR="$HOME/.claude/projects/-${PROJECT_PATH}"
-    HELPER="$HOME/.claude/hooks/lib/find_session_jsonl.py"
-
-    # Get SECOND most recent JSONL (n=1): current session is n=0
-    PREV_JSONL=$(python3 "$HELPER" nth "$PROJECT_DIR" 1 2>/dev/null)
-
-    if [[ -n "$PREV_JSONL" && -f "$PREV_JSONL" ]]; then
-        PREV_SID=$(basename "$PREV_JSONL" .jsonl)
-        PREV_DIR="$HOME/.claude/sessions/$PREV_SID"
-
-        if [[ -f "$PREV_DIR/handoff.md" ]]; then
-            # PreCompact already ran for this session — just create missing resume pointer
-            echo "$PREV_SID" > "$HOME/.claude/sessions/resume-${PROJECT}.txt"
-            RESUME_FILE="$HOME/.claude/sessions/resume-${PROJECT}.txt"
-        else
-            # Create lightweight handoff from JSONL (no LLM, pure file I/O)
-            mkdir -p "$PREV_DIR"
-            CONTEXT_JSON=$(python3 "$HOME/.claude/hooks/lib/extract_session_state.py" \
-                "$PREV_JSONL" 2>/dev/null)
-            if [[ -n "$CONTEXT_JSON" ]]; then
-                CONTEXT_JSON="$CONTEXT_JSON" python3 <<'PYEOF' "$PREV_SID" "$PROJECT" "$PREV_DIR"
-import sys, json, os
-ctx = json.loads(os.environ['CONTEXT_JSON'])
-sid, proj, out_dir = sys.argv[1], sys.argv[2], sys.argv[3]
-queries = ctx.get('last_queries', [])[-3:]
-files_edited = ctx.get('files_edited', [])
-kb_added = ctx.get('kb_added', [])[-3:]
-with open(f"{out_dir}/handoff.md", 'w') as f:
-    f.write("# Session Handoff (auto-recovered)\n\n")
-    f.write(f"## Session\n- ID: {sid}\n- Project: {proj}\n")
-    f.write("- Status: Auto-recovered (no /compact ran)\n\n")
-    f.write("## Last User Queries\n")
-    for i, q in enumerate(queries, 1):
-        f.write(f"{i}. {q[:150]}\n")
-    f.write("\n## Files Edited\n")
-    for fe in files_edited:
-        f.write(f"{fe}\n")
-    # Include plan path if current_plan exists in session dir
-    cp_file = os.path.join(out_dir, 'current_plan')
-    if os.path.isfile(cp_file):
-        plan_path = open(cp_file).read().strip()
-        if plan_path:
-            rel = plan_path.replace(os.path.expanduser('~/.claude/'), '')
-            f.write(f"\n## Plan\n{rel}\n")
-    else:
-        # Check if any edited file is a plan
-        plan_files = [fe for fe in files_edited if '/.claude/plans/' in fe]
-        if plan_files:
-            rel = plan_files[0].replace(os.path.expanduser('~/.claude/'), '')
-            f.write(f"\n## Plan\n{rel}\n")
-    f.write("\n## KB Added This Session\n")
-    for ka in kb_added:
-        f.write(f"- [{ka.get('finding_type','?')}] {ka.get('content','')[:200]}\n")
-    f.write("\n## Resume\n1. kb_list(project) for recent findings\n2. Continue from last user query\n")
-PYEOF
-                echo "$PREV_SID" > "$HOME/.claude/sessions/resume-${PROJECT}.txt"
-                RESUME_FILE="$HOME/.claude/sessions/resume-${PROJECT}.txt"
-            fi
-        fi
-    fi
 fi
 
 if [[ -f "$RESUME_FILE" ]]; then
@@ -100,10 +30,7 @@ if [[ -f "$RESUME_FILE" ]]; then
     TASKS="$HOME/.claude/sessions/${SESSION_ID}/tasks.json"
 
     if [[ -f "$HANDOFF" ]]; then
-        # Extract KB checkpoint ID from handoff (source of truth)
         KB_CHECKPOINT=$(grep -oE 'kb-[0-9]{8}-[0-9]{6}-[a-f0-9]{6}' "$HANDOFF" | head -1)
-
-        # Extract review status from handoff
         REVIEW_LINE=$(grep -A1 "## Expert Review" "$HANDOFF" 2>/dev/null | tail -1)
 
         echo "RESUME: Previous session state found"
@@ -121,18 +48,15 @@ if [[ -f "$RESUME_FILE" ]]; then
             echo "  Action: Read handoff, kb_list for context, summarize state"
             echo "  IMPORTANT: Do NOT auto-create tasks from tasks.json - they are often stale."
         fi
-        # Warn about orphaned agent teams
-        if ls "$HOME/.claude/teams"/*/config.json &>/dev/null; then
+        if ls "$HOME/.claude/teams"/*/config.json &>/dev/null 2>&1; then
             echo "  WARNING: Agent team config found. Teammates don't survive /compact."
             echo "  Spawn fresh teammates if team work needs to continue."
         fi
-        # Detect plan file migration needed (plan mode across /clear)
-        # Try relative path first (PreCompact handoff: "plans/foo.md")
+        # Detect plan file migration needed
         PREV_PLAN_REL=$(grep -E "^plans/" "$HANDOFF" 2>/dev/null | head -1)
         if [[ -n "$PREV_PLAN_REL" ]]; then
             PREV_PLAN_FULL="$HOME/.claude/$PREV_PLAN_REL"
         else
-            # Try full path (FALLBACK 2 handoff: "/home/.../.claude/plans/foo.md")
             PREV_PLAN_FULL=$(grep -oE '/[^ ]*/.claude/plans/[a-z0-9][-a-z0-9_]+\.md' "$HANDOFF" 2>/dev/null | head -1)
         fi
         if [[ -n "$PREV_PLAN_FULL" && -f "$PREV_PLAN_FULL" ]]; then
