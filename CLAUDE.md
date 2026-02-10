@@ -15,7 +15,8 @@
 **Default: answer yourself.** Agents parallelize, not outsource.
 - Reasoning/structural → answer yourself
 - Symbolic algebra → Jupyter SageMath/SymPy
-- Numerical → computational agent (Haiku/Sonnet + Jupyter)
+- Numerical → computational agent (Haiku/Sonnet + scripts, Jupyter only if iterating)
+- Literature/KB/web search → Haiku sub-agent (10x cheaper, saves parent turns)
 - Many unfamiliar files → Explore agent (Sonnet, read-only)
 - 3+ parallel independent streams → Agent Team
 
@@ -39,11 +40,13 @@ Then adopt each reviewer's voice. Report as: `## Review Panel: [names]` with `##
 
 - **Review agents**: always `run_in_background=True` (prevents 34GB+ memory growth)
 - **All agents**: kb_add before returning; parent verifies KB entry exists
+- **All agents**: Include "Read docs/reference/api_signatures.md BEFORE importing from lib/" in prompt
+- **All agents**: Include "For literature/KB/web search, use kb-research agent (5 rounds, 12 turns)" in prompt
+- **All agents**: Prefer scripts over Jupyter for computation (fewer turn-wasting API errors)
 - **Turn budget**: ALWAYS set `max_turns` on Task calls. Include TURN BUDGET section in prompt (see agent-prompts.md). Agents killed without kb_add lose ALL work.
-- **Parent**: pre-search KB via Haiku agent (try 3+ phrasings), include findings in prompt, require expert panel for domain questions
 - **Output**: structured JSON with schema; caller formats for user. Mandatory suffix: `Return ONLY valid JSON. Schema: {[fields]}`
-- **Model selection**: Haiku for lookups/KB search/existence checks, Sonnet for implementation, Opus for lead only (max 1 per batch)
-- **KB search**: use Haiku agent for ALL KB exploration (faster/cheaper, tries multiple phrasings)
+- **Model selection**: Haiku for lookups/existence checks, Sonnet for implementation, Opus for lead only (max 1 per batch)
+- **KB search**: use kb-research agent (see `~/.claude/agents/kb-research.md`)
 
 **Agent prompts, templates, expert panels:** See `~/.claude/docs/reference/agent-prompts.md`
 
@@ -141,7 +144,8 @@ When presenting a plan for approval, include:
 ## ExitPlanMode Workflow
 
 Before ExitPlanMode, append `## Approval Status` with `expert-review: APPROVED`, `User: PENDING`, `Mode: PLANNING`.
-On resume: check `Mode:` — if `IMPLEMENTATION`, execute plan (don't call ExitPlanMode again). Hook updates Mode automatically on user approval.
+On resume: check `Mode:` — if `IMPLEMENTATION`, execute plan (don't call ExitPlanMode again).
+PostToolUse hook `plan-mode-approved.sh` updates `Mode: PLANNING` → `Mode: IMPLEMENTATION` automatically when user approves ExitPlanMode.
 
 ## Lean Plan Format
 
@@ -165,7 +169,7 @@ On `PLAN_MIGRATION: <path>`: read previous plan, write to current session plan f
 
 # Rules
 
-kb_search before implementation. Enforced by hook.
+kb-research agent before implementation. Enforced by hook.
 
 Before implementing ANY new function/struct/algorithm:
 1. `rg "similar_name\|related_term"` across codebase
@@ -216,9 +220,9 @@ NEVER: "What would you like...", "Would you like me to...", numbered options, op
 | `Should I use X or Y?` / `What is the correct approach?` | You're the expert. Figure it out yourself. |
 | Discovery without `kb_add` | kb_add immediately after any finding. |
 | Research agent returns without KB entry | Agent prompts MUST include KB recording instruction. Parent verifies. |
-| Launching research agent without pre-searching KB | **PARENT must search KB first**, include findings in prompt. Agents re-discovering known facts = wasted tokens. |
-| Research agent prompt without expert panel requirement | Domain questions need expert panel. Include "Select 2-3 experts from: [domains]" in prompt. |
-| Agent finding duplicates KB entry | Parent didn't pre-search. If agent finds what KB has, parent failed. |
+| Calling `kb_search()` directly (main agent) | Spawn kb-research agent instead. See `~/.claude/agents/kb-research.md`. |
+| Haiku search with single round of queries | **SHALLOW SEARCH**. Use iterative template (5 rounds, 12 turns): seed → follow-up → cross-ref → tex/code → contradiction check. |
+| Search returns results, agent doesn't follow up | **Each round's queries must come from PREVIOUS round's results.** Extract terms, chase kb_get cross-refs, form new queries. |
 | Mixing conventions (bit-pattern vs gamma, two definitions of same thing) | One codebase = one convention. Check existing code first. |
 | Creating duplicate section/KB entry | Search before writing. Consolidate, don't duplicate. |
 | "Let me fix this" without identifying root cause | State the bug first. "The bug is X because Y. Fixing by Z." |
@@ -233,13 +237,23 @@ NEVER: "What would you like...", "Would you like me to...", numbered options, op
 
 Arch. pacman/yay. Python 3.13. rg/fd. git --no-gpg-sign.
 
-# KB
+# KB Access
 
-```
-kb_search(query, project)
-kb_add(content, finding_type, project, tags, evidence)
-kb_correct(supersedes_id, content, reason)
-```
+| Operation | Direct Call? | Notes |
+|-----------|--------------|-------|
+| kb_search | NO | Spawn kb-research agent instead |
+| kb_add | YES | Recording findings |
+| kb_correct | YES | Fixing findings |
+| kb_get | YES | Reading known ID |
+| kb_list | YES | Session resume |
+
+**Before Edit/Write**: Spawn `kb-research` agent. Hook enforces this.
+
+**Base case**: Spawning kb-research does NOT require pre-search.
+The agent's internal kb_search calls satisfy the gate for you.
+
+**Template**: `Task(subagent_type="kb-research", model="haiku", max_turns=12, prompt="TOPIC: {x}")`
+Full template: See `~/.claude/agents/kb-research.md`
 
 Tags: proven|heuristic|open-problem, core-result|technique|detail
 
@@ -388,7 +402,7 @@ Casimir  Mult  Composition
 
 **Before declaring something "open", "incomplete", or "unresolved"**:
 
-1. **Search KB via Haiku agent** (try multiple phrasings)
+1. **Use kb-research agent** (5 rounds, tries multiple phrasings)
 2. **Search code for implementations**: `rg "relevant_term" lib/`
 3. **Cross-check comments vs implementations**: Trust code over comments
 
@@ -397,7 +411,7 @@ Casimir  Mult  Composition
 | Wrong | Right |
 |-------|-------|
 | "This is an open question" | "I found no KB finding or implementation for this" |
-| "No KB finding exists for X" | "Haiku KB search returned no results for X (tried: [queries])" |
+| "No KB finding exists for X" | "kb-research agent returned no results for X (tried: [queries])" |
 | Trusting a "TODO" comment | Search for implementations that may have been added after comment |
 
 # Truth Hierarchy: Code > Comments > KB
@@ -417,8 +431,7 @@ When sources disagree, follow this precedence:
 # KB Guidelines
 
 **Recording Findings**: After ANY discovery, failure, or verification:
-1. Search KB via Haiku agent first
-2. `kb_add(content, finding_type, project="PROJECT", tags)`
+`kb_add(content, finding_type, project="PROJECT", tags)` — this call is OK to do directly
 
 Finding types: `success`, `failure`, `discovery`, `experiment`
 Tags: `proven`/`heuristic`/`open-problem`, domain-specific
