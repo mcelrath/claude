@@ -315,7 +315,6 @@
     ],
     "defaultMode": "default"
   },
-  "model": "sonnet",
   "hooks": {
     "UserPromptSubmit": [
       {
@@ -358,6 +357,11 @@
             "type": "command",
             "command": "/home/mcelrath/.claude/hooks/block-print-spam.sh",
             "timeout": 5000
+          },
+          {
+            "type": "command",
+            "command": "/home/mcelrath/.claude/hooks/canonical-results-check.sh",
+            "timeout": 2000
           }
         ]
       },
@@ -403,6 +407,11 @@
             "type": "command",
             "command": "/home/mcelrath/.claude/hooks/block-presentation-cells.sh",
             "timeout": 5000
+          },
+          {
+            "type": "command",
+            "command": "/home/mcelrath/.claude/hooks/canonical-results-check.sh",
+            "timeout": 2000
           }
         ]
       }
@@ -413,6 +422,10 @@
           {
             "type": "command",
             "command": "/home/mcelrath/.claude/hooks/cleanup-stale-sessions.sh"
+          },
+          {
+            "type": "command",
+            "command": "/home/mcelrath/.claude/hooks/team-cleanup.sh"
           },
           {
             "type": "command",
@@ -475,6 +488,16 @@
             "timeout": 45000
           }
         ]
+      },
+      {
+        "matcher": "ExitPlanMode",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/mcelrath/.claude/hooks/plan-mode-approved.sh",
+            "timeout": 2000
+          }
+        ]
       }
     ],
     "PreCompact": [
@@ -516,5 +539,6 @@
     "/home/mcelrath/Physics/",
     "/home/mcelrath/Projects/",
     ".claude/plans"
-  ]
+  ],
+  "autoUpdatesChannel": "stable"
 }

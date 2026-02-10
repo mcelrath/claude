@@ -48,10 +48,8 @@ if [[ -f "$RESUME_FILE" ]]; then
             echo "  Action: Read handoff, kb_list for context, summarize state"
             echo "  IMPORTANT: Do NOT auto-create tasks from tasks.json - they are often stale."
         fi
-        if ls "$HOME/.claude/teams"/*/config.json &>/dev/null 2>&1; then
-            echo "  WARNING: Agent team config found. Teammates don't survive /compact."
-            echo "  Spawn fresh teammates if team work needs to continue."
-        fi
+        # Team state is handled by team-cleanup.sh (reconnect or orphan cleanup).
+        # Its TEAM_RECONNECTED output appears earlier in SessionStart output.
         # Detect plan file migration needed
         PREV_PLAN_REL=$(grep -E "^plans/" "$HANDOFF" 2>/dev/null | head -1)
         if [[ -n "$PREV_PLAN_REL" ]]; then

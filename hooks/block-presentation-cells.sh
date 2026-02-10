@@ -60,7 +60,31 @@ if not source.strip():
     print("EMPTY")
     sys.exit(0)
 
-lines = [l.strip() for l in source.split('\n') if l.strip() and not l.strip().startswith('#')]
+def collapse_multiline_strings(src):
+    raw_lines = src.split('\n')
+    result = []
+    acc = None
+    for ln in raw_lines:
+        if acc is not None:
+            acc.append(ln)
+            if '"""' in ln or "'''" in ln:
+                result.append('\n'.join(acc))
+                acc = None
+            continue
+        s = ln.strip()
+        if s.startswith('print') and ('"""' in s or "'''" in s):
+            q = '"""' if '"""' in s else "'''"
+            after = s.split(q, 1)[1]
+            if q not in after:
+                acc = [ln]
+                continue
+        result.append(ln)
+    if acc:
+        result.append('\n'.join(acc))
+    return result
+
+logical = collapse_multiline_strings(source)
+lines = [l.strip() for l in logical if l.strip() and not l.strip().startswith('#')]
 
 if not lines:
     print("COMMENTS_ONLY")
@@ -162,11 +186,15 @@ case "$ANALYSIS" in
     BLOCK:*)
         PRES_COUNT=$(echo "$ANALYSIS" | cut -d: -f2)
         COMP_COUNT=$(echo "$ANALYSIS" | cut -d: -f3)
-        echo "WARNING: Presentation-heavy cell ($PRES_COUNT presentation, $COMP_COUNT computation). MCP server will filter presentation content. Put commentary in your text response." >&2
+        echo "WARNING: Presentation-heavy cell ($PRES_COUNT presentation, $COMP_COUNT computation). Put commentary in your text response, not in notebook cells."
         exit 0
         ;;
     BLOCK_MARKDOWN)
-        echo "WARNING: Markdown cell intercepted. MCP server will reject it. Put commentary in your text response." >&2
+        echo "WARNING: Markdown cells not allowed. Notebooks are for computation only. Put commentary in your text response."
+        exit 0
+        ;;
+    COMMENTS_ONLY)
+        echo "WARNING: Cell contains only comments. No comments in notebooks. Put code or nothing."
         exit 0
         ;;
     *)

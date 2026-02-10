@@ -93,17 +93,54 @@ mkdir -p "$OUT_DIR"
 CONTEXT_JSON=$(python3 "$HOME/.claude/hooks/lib/extract_session_state.py" "$JSONL" 2>/dev/null)
 CONTEXT_JSON=${CONTEXT_JSON:-'{"messages":[],"tasks":[],"kb_ids":[]}'}
 
-# Detect active agent team
-TEAM_CONFIG=$(ls -t "$HOME/.claude/teams"/*/config.json 2>/dev/null | head -1)
+# Detect active agent team (match by current session ID)
+TEAM_CONFIG=""
+TEAM_NAME=""
+TEAM_STATE=""
+for tc in "$HOME/.claude/teams"/*/config.json; do
+    [[ -f "$tc" ]] || continue
+    tc_session=$(python3 -c "import json; print(json.load(open('$tc')).get('leadSessionId',''))" 2>/dev/null)
+    if [[ "$tc_session" == "$SESSION_ID" || "$tc_session" == "$CURRENT_SESSION_ID" ]]; then
+        TEAM_CONFIG="$tc"
+        break
+    fi
+done
 if [[ -n "$TEAM_CONFIG" && -f "$TEAM_CONFIG" ]]; then
-    TEAM_NAME=$(python3 -c "import json; d=json.load(open('$TEAM_CONFIG')); print(d.get('name','unknown'))" 2>/dev/null)
-    TEAM_MEMBERS=$(python3 -c "
-import json
-d=json.load(open('$TEAM_CONFIG'))
-for m in d.get('members', d.get('teammates', [])):
-    name = m.get('name', m) if isinstance(m, dict) else str(m)
-    print(f'  - {name}')
-" 2>/dev/null)
+    TEAM_STATE=$(python3 - "$TEAM_CONFIG" "$TASKS_DIR" << 'PYEOF'
+import json, sys, glob, os
+
+config_path = sys.argv[1]
+tasks_base = sys.argv[2] if len(sys.argv) > 2 else ""
+cfg = json.load(open(config_path))
+team_name = cfg.get('name', 'unknown')
+lines = []
+
+lines.append(f"## Agent Team: {team_name}")
+lines.append(f"Description: {cfg.get('description', 'none')}")
+lines.append("Members:")
+for m in cfg.get('members', []):
+    lines.append(f"  - {m['name']} ({m.get('agentType','?')}, {m.get('model','?')})")
+
+task_dir = os.path.join(tasks_base, team_name) if tasks_base else ""
+if task_dir and os.path.isdir(task_dir):
+    tasks = []
+    for tf in sorted(glob.glob(os.path.join(task_dir, '*.json'))):
+        try:
+            tasks.append(json.load(open(tf)))
+        except Exception:
+            pass
+    if tasks:
+        lines.append(f"Tasks ({len(tasks)}):")
+        for t in tasks:
+            owner = t.get('owner', '')
+            owner_str = f" [{owner}]" if owner else ""
+            lines.append(f"  {t['id']}. [{t.get('status','?')}]{owner_str} {t.get('subject','?')}")
+
+lines.append("Note: team-cleanup.sh will reconnect this team on /clear.")
+print('\n'.join(lines))
+PYEOF
+)
+    TEAM_NAME=$(python3 -c "import json; print(json.load(open('$TEAM_CONFIG')).get('name','unknown'))" 2>/dev/null)
 fi
 
 # Extract tasks to file (for session resume)
@@ -232,10 +269,8 @@ ${PLAN_APPROVAL:+
 ## Plan Approval
 $PLAN_APPROVAL}
 
-${TEAM_NAME:+## Agent Team: $TEAM_NAME
-$TEAM_MEMBERS
-Note: Teammates do not survive /compact. Spawn fresh if needed.
-}
+${TEAM_STATE}
+
 ## Expert Review
 ${REVIEW_SUMMARY:-No expert review this session}
 
