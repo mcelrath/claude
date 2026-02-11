@@ -11,7 +11,10 @@ TOOL_NAME=$(echo "$INPUT" | python3 -c "import sys,json; print(json.load(sys.std
 
 # Read session ID from PPID mapping (set by history-isolation.sh)
 SESSION_FILE="$STATE_DIR/session-$PPID"
-[[ ! -f "$SESSION_FILE" ]] && exit 0
+if [[ ! -f "$SESSION_FILE" ]]; then
+    echo "WARNING: Session file $SESSION_FILE not found (PPID=$PPID)" >&2
+    exit 0
+fi
 SESSION_ID=$(cat "$SESSION_FILE")
 
 # Direct kb_search call
