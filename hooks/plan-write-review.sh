@@ -63,6 +63,12 @@ if [[ "$REQUIRES_REVIEW" != "true" ]]; then
     exit 0
 fi
 
+# Skip review reminder if plan is already approved and in implementation mode
+# This prevents re-review when a plan is migrated to a new session
+if grep -q 'Mode: IMPLEMENTATION' "$FILE_PATH" 2>/dev/null; then
+    exit 0
+fi
+
 PLAN_NAME=$(basename "$FILE_PATH")
 
 cat << EOF

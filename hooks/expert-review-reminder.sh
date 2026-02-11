@@ -23,6 +23,13 @@ SESSION_ID=$(cat "$SESSION_FILE")
 SESSION_PLAN_LINK="$HOME/.claude/sessions/$SESSION_ID/current_plan"
 [[ -f "$SESSION_PLAN_LINK" ]] && PLAN_FILE=$(cat "$SESSION_PLAN_LINK")
 [[ -z "$PLAN_FILE" || ! -f "$PLAN_FILE" ]] && exit 0
+
+# If plan is already in IMPLEMENTATION mode, review was completed in a prior session
+# Allow ExitPlanMode without re-review (Claude shouldn't call it, but don't block if it does)
+if grep -q 'Mode: IMPLEMENTATION' "$PLAN_FILE" 2>/dev/null; then
+    exit 0
+fi
+
 PLAN_DIR=$(dirname "$PLAN_FILE")
 PLAN_BASE=$(basename "$PLAN_FILE" .md)
 
