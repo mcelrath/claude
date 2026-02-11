@@ -470,6 +470,16 @@
         ]
       },
       {
+        "matcher": "Task",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/mcelrath/.claude/hooks/kb-search-track.sh",
+            "timeout": 2000
+          }
+        ]
+      },
+      {
         "matcher": "Edit|Write",
         "hooks": [
           {
@@ -529,6 +539,7 @@
     "rust-analyzer-lsp@claude-plugins-official": true,
     "lua-lsp@claude-plugins-official": true
   },
+  "autoUpdatesChannel": "latest",
   "feedbackSurveyState": {
     "lastShownTime": 1753969747772
   },
@@ -540,5 +551,5 @@
     "/home/mcelrath/Projects/",
     ".claude/plans"
   ],
-  "autoUpdatesChannel": "stable"
+  "model": "sonnet"
 }
