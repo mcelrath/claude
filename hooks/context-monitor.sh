@@ -44,7 +44,7 @@ except:
 " 2>/dev/null)
 
 CONTEXT=${CONTEXT:-0}
-LIMIT=200000
+LIMIT=1000000
 PERCENT=$((CONTEXT * 100 / LIMIT))
 
 # Debug: log to file

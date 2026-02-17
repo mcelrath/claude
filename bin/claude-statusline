@@ -19,8 +19,8 @@ input=$(cat)
 
 # Parse JSON data - parse numbers separately, sum in bash
 model=$(echo "$input" | jq -r '.model.display_name // "?"')
-context_size=$(echo "$input" | jq '.context_window.context_window_size // 200000')
-[[ -z "$context_size" || "$context_size" == "null" ]] && context_size=200000
+context_size=$(echo "$input" | jq '.context_window.context_window_size // 1000000')
+[[ -z "$context_size" || "$context_size" == "null" ]] && context_size=1000000
 
 # Get individual token counts for visualization (parse separately, sum in bash)
 direct_tokens=$(echo "$input" | jq '.context_window.current_usage.input_tokens // 0')
