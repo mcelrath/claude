@@ -13,7 +13,7 @@
 | Implementation complete | `implementation-review` until APPROVED | Prove you're done to experts |
 | Expert review corrections applied | `expert-review` until APPROVED | Plan changed, re-reviewed required |
 
-**Triggers for implementation-review**: "done", "complete", "tests pass", after Edit/Write tools
+**Triggers for implementation-review**: "done", "complete", "tests pass" (session-end gate — not per-file)
 **Triggers for expert-review**: "plan ready", before ExitPlanMode
 
 ## Agent Dispatch
@@ -148,6 +148,17 @@ When presenting a plan for approval, include:
 3. **Experts consulted**: List which domain experts reviewed the plan (e.g., physics, architecture, security)
 
 ## ExitPlanMode Workflow
+
+**Expert-review loop** (runs in background to prevent memory growth):
+```
+1. Task(subagent_type="expert-review", run_in_background=True, ...)
+2. task_id = result from Task call
+3. output = TaskOutput(task_id, block=True, timeout=120000)
+4. Parse verdict from output (APPROVED / REJECTED / INCOMPLETE)
+5. If REJECTED or INCOMPLETE: revise plan, go to step 1
+6. If APPROVED: append ## Approval Status and call ExitPlanMode
+```
+Do NOT call ExitPlanMode until TaskOutput returns APPROVED.
 
 Before ExitPlanMode, append `## Approval Status` with `expert-review: APPROVED`, `User: PENDING`, `Mode: PLANNING`.
 On resume: check `Mode:` — if `IMPLEMENTATION`, execute plan (don't call ExitPlanMode again).
