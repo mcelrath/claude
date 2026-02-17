@@ -1,10 +1,16 @@
+# Global Development Rules
+
+**For physics-specific methodology, gatekeepers, and computation rules**: See project `CLAUDE.md`
+
+---
+
 # Review Agents (MANDATORY)
 
 | When | Agent | Action |
 |------|-------|--------|
 | Before ExitPlanMode | `expert-review` until APPROVED | Check plan before presenting it |
-| code complete | `implementation-review` until ACCEPTED | Check correctness, verify archival |
-| Implementation complete | `implementation-review` until ACCEPTED | Prove you're done to experts |
+| code complete | `implementation-review` until APPROVED | Check correctness, verify archival |
+| Implementation complete | `implementation-review` until APPROVED | Prove you're done to experts |
 | Expert review corrections applied | `expert-review` until APPROVED | Plan changed, re-reviewed required |
 
 **Triggers for implementation-review**: "done", "complete", "tests pass", after Edit/Write tools
@@ -40,7 +46,7 @@ Then adopt each reviewer's voice. Report as: `## Review Panel: [names]` with `##
 
 - **Review agents**: always `run_in_background=True` (prevents 34GB+ memory growth)
 - **All agents**: kb_add before returning; parent verifies KB entry exists
-- **All agents**: Include "Read docs/reference/api_signatures.md BEFORE importing from lib/" in prompt
+- **Physics project agents only**: Include "Read docs/reference/api_signatures.md BEFORE importing from lib/" in prompt
 - **All agents**: Include "For literature/KB/web search, use kb-research agent (5 rounds, 12 turns)" in prompt
 - **All agents**: Prefer scripts over Jupyter for computation (fewer turn-wasting API errors)
 - **Turn budget**: ALWAYS set `max_turns` on Task calls. Include TURN BUDGET section in prompt (see agent-prompts.md). Agents killed without kb_add lose ALL work.
@@ -147,6 +153,8 @@ Before ExitPlanMode, append `## Approval Status` with `expert-review: APPROVED`,
 On resume: check `Mode:` — if `IMPLEMENTATION`, execute plan (don't call ExitPlanMode again).
 PostToolUse hook `plan-mode-approved.sh` updates `Mode: PLANNING` → `Mode: IMPLEMENTATION` automatically when user approves ExitPlanMode.
 
+**CRITICAL:** If session resumes with `Mode: IMPLEMENTATION`, the plan was ALREADY approved. Do NOT call ExitPlanMode - this causes double-approval and confuses the user. Do NOT start implementing from hook output alone — after `/clear`, Claude Code sends the plan as a user message. Wait for that message before acting.
+
 ## Lean Plan Format
 
 **Max 50 lines**. Plans: Objective → Phases (with `AGENT(model): task → JSON:{schema}`) → Success criterion.
@@ -160,6 +168,40 @@ Before context loss: `kb_add(content="SESSION CHECKPOINT: ...\nCOMPLETED:\n- ...
 ## Session Resume
 
 On `RESUME:` from hook: read handoff.md, `kb_list(project)` (source of truth, not tasks.json), summarize, clear resume file, continue. Per-terminal (`resume-{project}-{tty}.txt`).
+
+## Session Work Context
+
+**Purpose**: Prevent sessions from stomping on each other by tracking what type of work THIS session is doing.
+
+Each session has `~/.claude/sessions/{id}/work_context.json`:
+```json
+{
+  "work_type": "implementation",     // or "meta", "debugging", "research"
+  "primary_task": "description",
+  "my_plan": "path/to/plan.md",      // Plan THIS session is implementing (or null)
+  "plans_referenced": ["other.md"]   // Plans examined but not implementing
+}
+```
+
+**Work types:**
+- `implementation` - Implementing a specific plan (normal development)
+- `meta` - Fixing systems, debugging workflows (NOT implementing plans)
+- `debugging` - Debugging other sessions or investigating issues
+- `research` - Research, exploration, no specific deliverable
+
+**Automatic setting:**
+- ExitPlanMode approval → sets `work_type: "implementation"` and `my_plan`
+- Manual: `~/.claude/hooks/set-work-context.sh <type> <task> [plan]`
+
+**Resume behavior:**
+- `implementation` → Resume plan implementation
+- `meta` or `debugging` → Summarize work done, don't resume implementation
+- Plans in `plans_referenced` were examined, NOT for implementation
+
+**Rules for meta-work sessions:**
+- When debugging another session's plan, call `add_referenced_plan()` to mark it
+- Don't set `my_plan` unless THIS session is implementing it
+- Handoff will show work_type and resume won't incorrectly resume implementation
 
 ## Plan Migration on /clear
 
@@ -230,7 +272,7 @@ NEVER: "What would you like...", "Would you like me to...", numbered options, op
 | `TaskUpdate(status="completed")` then summarizing to user | Run `implementation-review` BEFORE reporting results. Task completion ≠ review complete. |
 | "Let me take a simpler approach" / "Given the complexity" | Problem has grown beyond initial plan. STOP. Enter plan mode with EnterPlanMode, reassess the problem, create new plan. |
 | Adding notebook cell to fix syntax error in previous cell | Use `modify_notebook_cells` with `operation="edit_code"` and `position_index=N` to fix the broken cell in place. |
-| Plan has `Mode: IMPLEMENTATION`, calling ExitPlanMode | Plan already approved in previous session. Execute it, don't re-ask. |
+| Plan has `Mode: IMPLEMENTATION`, calling ExitPlanMode | Plan already approved. Don't re-ask. Wait for plan migration message before implementing. |
 | Agent misuse (3+ Opus, >10min stuck, 10+ files w/o KB, mixed compute+theory) | See Scope and Timeout Rules section. Split compute from theory, kill stuck agents. |
 
 # System
@@ -241,7 +283,7 @@ Arch. pacman/yay. Python 3.13. rg/fd. git --no-gpg-sign.
 
 | Operation | Direct Call? | Notes |
 |-----------|--------------|-------|
-| kb_search | NO | Spawn kb-research agent instead |
+| kb_search | NO | Spawn kb-research agent — its internal calls satisfy the Edit/Write gate |
 | kb_add | YES | Recording findings |
 | kb_correct | YES | Fixing findings |
 | kb_get | YES | Reading known ID |
