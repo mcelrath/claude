@@ -19,7 +19,7 @@ fi
 
 # Check for any heredoc (python, bash, etc) - match ANY delimiter
 # Skip git commit commands (heredocs are the recommended way to pass commit messages)
-if echo "$COMMAND" | grep -qE "^git\s+commit" 2>/dev/null; then
+if echo "$COMMAND" | grep -qE "^git\s+(-[A-Za-z]+\s+\S+\s+)*commit" 2>/dev/null; then
     exit 0
 fi
 if echo "$COMMAND" | grep -qE "<<\s*['\"]?[A-Za-z_][A-Za-z0-9_]*['\"]?" 2>/dev/null; then
@@ -47,12 +47,12 @@ if echo "$COMMAND" | grep -qE "python3?\s+(-c|<<)" 2>/dev/null; then
 
     # Warn (not block) if prints dominate - avoids sibling tool call cascades
     if [[ "$PRINT_COUNT" -gt 5 ]] && [[ "$CODE_LINES" -lt 10 ]]; then
-        echo "WARNING: Python script has $PRINT_COUNT print() calls but only $CODE_LINES lines of logic. Put formatted output in your text response." >&2
+        echo "WARNING: Python script has $PRINT_COUNT print() calls but only $CODE_LINES lines of logic. Put formatted output in your text response."
         exit 0
     fi
 
     if [[ "$PRINT_COUNT" -gt 2 ]] && [[ "$PRINT_COUNT" -gt "$CODE_LINES" ]]; then
-        echo "WARNING: Python script has $PRINT_COUNT print() calls but only $CODE_LINES lines of actual code. Output text belongs in your response." >&2
+        echo "WARNING: Python script has $PRINT_COUNT print() calls but only $CODE_LINES lines of actual code. Output text belongs in your response."
         exit 0
     fi
 fi

@@ -1,5 +1,6 @@
 #!/bin/bash
 # UserPromptSubmit hook - expands minimal input to resume instructions if resume file exists
+source "$(dirname "$0")/lib/claude-env.sh"
 
 # Read the user's input from stdin (JSON format)
 INPUT=$(cat)
@@ -18,18 +19,18 @@ else
 fi
 
 # Get terminal-specific ID (PTY from /proc walk, falls back to CLAUDE_SESSION env)
-source "$HOME/.claude/hooks/lib/get_terminal_id.sh"
+source "$CLAUDE_DIR/hooks/lib/get_terminal_id.sh"
 TERM_ID=$(_get_terminal_id)
 
 # Terminal-specific resume file first
 RESUME_FILE=""
 if [[ -n "$TERM_ID" ]]; then
-    RESUME_FILE="$HOME/.claude/sessions/resume-${PROJECT}-${TERM_ID}.txt"
+    RESUME_FILE="$CLAUDE_DIR/sessions/resume-${PROJECT}-${TERM_ID}.txt"
 fi
 
 # Fallback to project-wide (safe only if single session per project)
 if [[ -z "$RESUME_FILE" || ! -f "$RESUME_FILE" ]]; then
-    RESUME_FILE="$HOME/.claude/sessions/resume-${PROJECT}.txt"
+    RESUME_FILE="$CLAUDE_DIR/sessions/resume-${PROJECT}.txt"
 fi
 
 # Check if resume file exists
@@ -38,7 +39,7 @@ if [[ ! -f "$RESUME_FILE" ]]; then
 fi
 
 SESSION_ID=$(cat "$RESUME_FILE")
-HANDOFF="$HOME/.claude/sessions/${SESSION_ID}/handoff.md"
+HANDOFF="$CLAUDE_DIR/sessions/${SESSION_ID}/handoff.md"
 
 if [[ ! -f "$HANDOFF" ]]; then
     exit 0

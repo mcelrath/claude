@@ -41,7 +41,7 @@ fi
 if [[ -f "Cargo.toml" ]]; then
     if command -v rust-analyzer &>/dev/null; then
         # Start rust-analyzer in background to pre-warm index
-        project_hash=$(python3 -c "import hashlib;print(hashlib.md5(b'$cwd').hexdigest()[:8])")
+        project_hash=$(python3 -c "import hashlib;print(hashlib.md5(b'$cwd').hexdigest()[:8])" 2>/dev/null)
         pidfile="$LSP_CACHE_DIR/rust-analyzer-${project_hash}.pid"
 
         # Check if already running

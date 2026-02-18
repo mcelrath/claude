@@ -81,7 +81,7 @@ def llm_complete(prompt: str, max_tokens: int = 2000) -> str | None:
             data = json.loads(resp.read().decode("utf-8"))
             return data["choices"][0]["message"]["content"].strip()
     except Exception as e:
-        print(f"LLM error: {e}", file=sys.stderr)
+        print(f"LLM error: {e}")
         return None
 
 def add_to_kb(content: str, finding_type: str, tags: list[str], evidence: str = "") -> bool:
@@ -119,7 +119,7 @@ Maximum 5 findings. Empty array if nothing significant.'''
 result = llm_complete(EXTRACT_PROMPT)
 
 if not result:
-    print("KB: No LLM response", file=sys.stderr)
+    print("KB: No LLM response")
     sys.exit(0)
 
 # Debug: log raw LLM response
@@ -133,14 +133,14 @@ try:
     json_start = result.find("{")
     json_end = result.rfind("}") + 1
     if json_start == -1 or json_end == 0:
-        print("KB: No JSON found in response", file=sys.stderr)
+        print("KB: No JSON found in response")
         sys.exit(0)
 
     json_text = result[json_start:json_end]
     data = json.loads(json_text)
 except json.JSONDecodeError as e:
-    print(f"KB: JSON parse error: {e}", file=sys.stderr)
-    print(f"KB: Raw JSON: {json_text[:500]}", file=sys.stderr)
+    print(f"KB: JSON parse error: {e}")
+    print(f"KB: Raw JSON: {json_text[:500]}")
     sys.exit(0)
 
 # Save work context for post-compact reference
@@ -150,12 +150,12 @@ if work_context:
     with open(context_file, "w") as f:
         f.write(f"Project: {PROJECT}\n")
         f.write(f"Context: {work_context}\n")
-    print(f"KB: Work context saved: {work_context[:80]}...", file=sys.stderr)
+    print(f"KB: Work context saved: {work_context[:80]}...")
 
 # Process findings
 findings = data.get("findings", [])
 if not findings:
-    print("KB: No significant findings extracted", file=sys.stderr)
+    print("KB: No significant findings extracted")
     sys.exit(0)
 
 added = 0
@@ -177,10 +177,10 @@ for f in findings:
 
     if add_to_kb(content, ftype, tags, evidence):
         added += 1
-        print(f"KB: [{ftype.upper()}] {content[:70]}...", file=sys.stderr)
+        print(f"KB: [{ftype.upper()}] {content[:70]}...")
 
 if added > 0:
-    print(f"\nKB: Extracted {added} finding(s) before compact", file=sys.stderr)
+    print(f"\nKB: Extracted {added} finding(s) before compact")
 PYTHON_SCRIPT
 
 EXIT_CODE=$?

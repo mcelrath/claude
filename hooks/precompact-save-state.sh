@@ -1,11 +1,12 @@
 #!/bin/bash
 # PreCompact hook - extracts session state from JSONL using local LLM
 # Creates handoff.md for session resume after compact
+source "$(dirname "$0")/lib/claude-env.sh"
 
 LLM_URL="http://localhost:9510/v1/chat/completions"
 
 # Ensure lib directory exists
-mkdir -p "$HOME/.claude/hooks/lib"
+mkdir -p "$CLAUDE_DIR/hooks/lib"
 
 # Trap to create minimal handoff if script fails
 create_minimal_handoff() {
@@ -28,12 +29,12 @@ ${PLAN_FILE:-unknown}
 2. kb_search for recent findings
 3. TaskList for task state
 MINEOF
-        source "$HOME/.claude/hooks/lib/get_terminal_id.sh" 2>/dev/null
+        source "$CLAUDE_DIR/hooks/lib/get_terminal_id.sh" 2>/dev/null
         _TERM_ID=$(_get_terminal_id 2>/dev/null)
         if [[ -n "$_TERM_ID" ]]; then
-            echo "$SESSION_ID" > "$HOME/.claude/sessions/resume-${PROJECT_NAME:-unknown}-${_TERM_ID}.txt" 2>/dev/null
+            echo "$SESSION_ID" > "$CLAUDE_DIR/sessions/resume-${PROJECT_NAME:-unknown}-${_TERM_ID}.txt" 2>/dev/null
         else
-            echo "$SESSION_ID" > "$HOME/.claude/sessions/resume-${PROJECT_NAME:-unknown}.txt" 2>/dev/null
+            echo "$SESSION_ID" > "$CLAUDE_DIR/sessions/resume-${PROJECT_NAME:-unknown}.txt" 2>/dev/null
         fi
         echo "PRE-COMPACT: Minimal handoff created (fallback)"
     fi
@@ -57,9 +58,9 @@ elif [[ -f "$STATE_DIR/session-$PPID" ]]; then
 fi
 
 # Find session JSONL - search ALL projects if we have session ID
-FIND_HELPER="$HOME/.claude/hooks/lib/find_session_jsonl.py"
+FIND_HELPER="$CLAUDE_DIR/hooks/lib/find_session_jsonl.py"
 
-CONTEXT_HELPER="$HOME/.claude/hooks/lib/gather_session_context.py"
+CONTEXT_HELPER="$CLAUDE_DIR/hooks/lib/gather_session_context.py"
 
 if [[ -z "$CURRENT_SESSION_ID" ]]; then
     echo "PRE-COMPACT: RECOVERY NEEDED - No session ID available"
@@ -86,18 +87,18 @@ echo "PRE-COMPACT: Found session $CURRENT_SESSION_ID in $(dirname "$JSONL" | xar
 
 # SESSION_ID from JSONL filename (consistent source)
 SESSION_ID=$(basename "$JSONL" .jsonl)
-OUT_DIR="$HOME/.claude/sessions/$SESSION_ID"
+OUT_DIR="$CLAUDE_DIR/sessions/$SESSION_ID"
 mkdir -p "$OUT_DIR"
 
 # Use Python helper with error handling for task extraction
-CONTEXT_JSON=$(python3 "$HOME/.claude/hooks/lib/extract_session_state.py" "$JSONL" 2>/dev/null)
+CONTEXT_JSON=$(python3 "$CLAUDE_DIR/hooks/lib/extract_session_state.py" "$JSONL" 2>/dev/null)
 CONTEXT_JSON=${CONTEXT_JSON:-'{"messages":[],"tasks":[],"kb_ids":[]}'}
 
 # Detect active agent team (match by current session ID)
 TEAM_CONFIG=""
 TEAM_NAME=""
 TEAM_STATE=""
-for tc in "$HOME/.claude/teams"/*/config.json; do
+for tc in "$CLAUDE_DIR/teams"/*/config.json; do
     [[ -f "$tc" ]] || continue
     tc_session=$(python3 -c "import json; print(json.load(open('$tc')).get('leadSessionId',''))" 2>/dev/null)
     if [[ "$tc_session" == "$SESSION_ID" || "$tc_session" == "$CURRENT_SESSION_ID" ]]; then
@@ -196,7 +197,7 @@ fi
 # Extract plan approval status if plan exists
 PLAN_APPROVAL=""
 if [[ -n "$PLAN_FILE" ]]; then
-    FULL_PLAN="$HOME/.claude/$PLAN_FILE"
+    FULL_PLAN="$CLAUDE_DIR/$PLAN_FILE"
     if [[ -f "$FULL_PLAN" ]]; then
         PLAN_APPROVAL=$(grep -A5 "## Approval Status" "$FULL_PLAN" 2>/dev/null | head -5)
     fi
@@ -335,13 +336,13 @@ EOF
 mv "$OUT_DIR/handoff.md.tmp" "$OUT_DIR/handoff.md"
 
 # Get terminal-specific ID (PTY from /proc walk, falls back to CLAUDE_SESSION env)
-source "$HOME/.claude/hooks/lib/get_terminal_id.sh"
+source "$CLAUDE_DIR/hooks/lib/get_terminal_id.sh"
 TERM_ID=$(_get_terminal_id)
 if [[ -n "$TERM_ID" ]]; then
-    echo "$SESSION_ID" > "$HOME/.claude/sessions/resume-${PROJECT_NAME}-${TERM_ID}.txt"
+    echo "$SESSION_ID" > "$CLAUDE_DIR/sessions/resume-${PROJECT_NAME}-${TERM_ID}.txt"
 else
     # Fallback to project-wide (may have conflicts with concurrent sessions)
-    echo "$SESSION_ID" > "$HOME/.claude/sessions/resume-${PROJECT_NAME}.txt"
+    echo "$SESSION_ID" > "$CLAUDE_DIR/sessions/resume-${PROJECT_NAME}.txt"
 fi
 
 echo "PRE-COMPACT: State saved (LLM-summarized)"

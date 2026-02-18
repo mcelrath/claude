@@ -1,10 +1,11 @@
 #!/bin/bash
 # SessionStart hook: Clean up old plan files
 # SAFE: Only archives plans NOT referenced by any active session
+source "$(dirname "$0")/lib/claude-env.sh"
 
-PLANS_DIR="$HOME/.claude/plans"
+PLANS_DIR="$CLAUDE_DIR/plans"
 ARCHIVE_DIR="$PLANS_DIR/archive"
-SESSIONS_DIR="$HOME/.claude/sessions"
+SESSIONS_DIR="$CLAUDE_DIR/sessions"
 mkdir -p "$ARCHIVE_DIR"
 
 # Build list of plans referenced by active sessions
@@ -19,7 +20,7 @@ done
 for session_dir in "$SESSIONS_DIR"/*/; do
     if [[ -f "${session_dir}handoff.md" ]]; then
         grep -oE 'plans/[a-z0-9][-a-z0-9_]+\.md' "${session_dir}handoff.md" \
-            | sed "s|^|$HOME/.claude/|" >> "$ACTIVE_PLANS" 2>/dev/null
+            | sed "s|^|$CLAUDE_DIR/|" >> "$ACTIVE_PLANS" 2>/dev/null
     fi
 done
 

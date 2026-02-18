@@ -1,6 +1,7 @@
 #!/bin/bash
 # PreToolUse hook for ExitPlanMode
 # Uses CLAUDE_SESSION_ID directly (no PPID mapping needed)
+source "$(dirname "$0")/lib/claude-env.sh"
 
 INPUT=$(cat)
 TOOL_NAME=$(echo "$INPUT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('tool_name',''))" 2>/dev/null)
@@ -20,7 +21,7 @@ SESSION_FILE="$STATE_DIR/session-$PPID"
 [[ ! -f "$SESSION_FILE" ]] && exit 0
 SESSION_ID=$(cat "$SESSION_FILE")
 
-SESSION_PLAN_LINK="$HOME/.claude/sessions/$SESSION_ID/current_plan"
+SESSION_PLAN_LINK="$CLAUDE_DIR/sessions/$SESSION_ID/current_plan"
 [[ -f "$SESSION_PLAN_LINK" ]] && PLAN_FILE=$(cat "$SESSION_PLAN_LINK")
 [[ -z "$PLAN_FILE" || ! -f "$PLAN_FILE" ]] && exit 0
 

@@ -7,12 +7,13 @@
 #   meta          - Fixing systems, debugging workflows (not implementing plans)
 #   debugging     - Debugging other sessions or investigating issues
 #   research      - Research, exploration, no specific deliverable
+source "$(dirname "$0")/lib/claude-env.sh"
 
 WORK_TYPE="${1:-research}"
 PRIMARY_TASK="${2:-Unspecified task}"
 MY_PLAN="${3:-}"
 
-source "$HOME/.claude/hooks/lib/work_context.sh"
+source "$CLAUDE_DIR/hooks/lib/work_context.sh"
 
 if init_work_context "$WORK_TYPE" "$PRIMARY_TASK" "$MY_PLAN"; then
     echo "Work context set:"

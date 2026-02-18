@@ -12,7 +12,7 @@ TOOL_NAME=$(echo "$INPUT" | python3 -c "import sys,json; print(json.load(sys.std
 # Read session ID from PPID mapping (set by history-isolation.sh)
 SESSION_FILE="$STATE_DIR/session-$PPID"
 if [[ ! -f "$SESSION_FILE" ]]; then
-    echo "WARNING: Session file $SESSION_FILE not found (PPID=$PPID)" >&2
+    echo "WARNING: Session file $SESSION_FILE not found (PPID=$PPID)"
     exit 0
 fi
 SESSION_ID=$(cat "$SESSION_FILE")

@@ -1,6 +1,7 @@
 #!/bin/bash
 # PreToolUse hook - monitors context usage from real API token counts
 # Warns at 85%, blocks at 95% (except for checkpoint-essential tools)
+source "$(dirname "$0")/lib/claude-env.sh"
 
 WARN_THRESHOLD=85
 BLOCK_THRESHOLD=95
@@ -18,7 +19,7 @@ JSONL=$(echo "$HOOK_INPUT" | jq -r '.transcript_path // ""' 2>/dev/null)
 # Fallback: construct path from session_id and cwd
 if [[ ! -f "$JSONL" && -n "$SESSION_ID" ]]; then
     PROJECT_PATH=$(pwd | sed 's|/|-|g; s|^-||')
-    JSONL="$HOME/.claude/projects/-${PROJECT_PATH}/${SESSION_ID}.jsonl"
+    JSONL="$CLAUDE_DIR/projects/-${PROJECT_PATH}/${SESSION_ID}.jsonl"
 fi
 
 if [[ ! -f "$JSONL" ]]; then
@@ -56,19 +57,19 @@ if [[ $PERCENT -ge $BLOCK_THRESHOLD ]]; then
 
     # Allow checkpoint-essential tools through
     if [[ "$TOOL_NAME" =~ ^($ALLOWED_AT_BLOCK)$ ]]; then
-        echo "⚠️  CONTEXT CRITICAL: ${PERCENT}% but allowing ${TOOL_NAME} for checkpoint." >&2
+        echo "CONTEXT CRITICAL: ${PERCENT}% but allowing ${TOOL_NAME} for checkpoint."
         exit 0  # Allow through
     fi
 
     # Run auto-checkpoint before blocking
-    "$HOME/.claude/hooks/precompact-save-state.sh" >/dev/null 2>&1
+    "$CLAUDE_DIR/hooks/precompact-save-state.sh" >/dev/null 2>&1
 
     echo "BLOCKED: Context at ${PERCENT}% (${CONTEXT}/${LIMIT} tokens)." >&2
     echo "Auto-checkpoint saved. Run /clear to continue from checkpoint." >&2
     exit 2  # Block tool use
 
 elif [[ $PERCENT -ge $WARN_THRESHOLD ]]; then
-    echo "⚠️  CONTEXT: ${PERCENT}% used (${CONTEXT}/${LIMIT} tokens). Consider /save-state soon." >&2
+    echo "CONTEXT: ${PERCENT}% used (${CONTEXT}/${LIMIT} tokens). Consider /save-state soon."
 fi
 
 exit 0

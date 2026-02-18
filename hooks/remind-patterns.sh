@@ -2,6 +2,7 @@
 # user-prompt-submit hook
 # Injects reminder about common failure patterns
 # Also detects plan mode and reminds about expert-review
+source "$(dirname "$0")/lib/claude-env.sh"
 
 # Compressed reminders (token-efficient)
 echo "RULES: rg-before-new-code | no-mocks | options→AskUserQuestion | verify-not-guess | check-pwd"
@@ -25,8 +26,8 @@ fi
 # Check for THIS session's plan (session isolation)
 # NO FALLBACK: If current_plan doesn't exist, this session has no plan
 SESSION_PLAN=""
-if [[ -n "$CLAUDE_SESSION_ID" && -f "$HOME/.claude/sessions/$CLAUDE_SESSION_ID/current_plan" ]]; then
-    SESSION_PLAN=$(cat "$HOME/.claude/sessions/$CLAUDE_SESSION_ID/current_plan")
+if [[ -n "$CLAUDE_SESSION_ID" && -f "$CLAUDE_DIR/sessions/$CLAUDE_SESSION_ID/current_plan" ]]; then
+    SESSION_PLAN=$(cat "$CLAUDE_DIR/sessions/$CLAUDE_SESSION_ID/current_plan")
     # Verify the file still exists
     if [[ ! -f "$SESSION_PLAN" ]]; then
         SESSION_PLAN=""

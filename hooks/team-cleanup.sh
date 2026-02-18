@@ -8,13 +8,14 @@
 # 1. Teams owned by our OLD session → update leadSessionId to NEW (reconnect)
 # 2. Teams owned by other live sessions → leave alone
 # 3. Teams owned by dead sessions → delete (orphan cleanup)
+source "$(dirname "$0")/lib/claude-env.sh"
 set -euo pipefail
 
 input=$(cat)
 NEW_SESSION=$(echo "$input" | jq -r '.session_id // ""' 2>/dev/null)
 
-TEAMS_DIR="$HOME/.claude/teams"
-TASKS_DIR="$HOME/.claude/tasks"
+TEAMS_DIR="$CLAUDE_DIR/teams"
+TASKS_DIR="$CLAUDE_DIR/tasks"
 STATE_DIR="/tmp/claude-kb-state"
 
 [[ -d "$TEAMS_DIR" ]] || exit 0

@@ -1,6 +1,7 @@
 #!/bin/bash
 # Notification hook - checks for pending session resume on session start
 # Runs on session start to detect if previous session saved state
+source "$(dirname "$0")/lib/claude-env.sh"
 
 # Get project name
 if git rev-parse --show-toplevel &>/dev/null; then
@@ -10,24 +11,24 @@ else
 fi
 
 # Get terminal-specific ID (PTY from /proc walk, falls back to CLAUDE_SESSION env)
-source "$HOME/.claude/hooks/lib/get_terminal_id.sh"
+source "$CLAUDE_DIR/hooks/lib/get_terminal_id.sh"
 TERM_ID=$(_get_terminal_id)
 
 # Terminal-specific resume file first
 RESUME_FILE=""
 if [[ -n "$TERM_ID" ]]; then
-    RESUME_FILE="$HOME/.claude/sessions/resume-${PROJECT}-${TERM_ID}.txt"
+    RESUME_FILE="$CLAUDE_DIR/sessions/resume-${PROJECT}-${TERM_ID}.txt"
 fi
 
 # Fallback to project-wide (safe only if single session per project)
 if [[ ! -f "$RESUME_FILE" ]]; then
-    RESUME_FILE="$HOME/.claude/sessions/resume-${PROJECT}.txt"
+    RESUME_FILE="$CLAUDE_DIR/sessions/resume-${PROJECT}.txt"
 fi
 
 if [[ -f "$RESUME_FILE" ]]; then
     SESSION_ID=$(cat "$RESUME_FILE")
-    HANDOFF="$HOME/.claude/sessions/${SESSION_ID}/handoff.md"
-    TASKS="$HOME/.claude/sessions/${SESSION_ID}/tasks.json"
+    HANDOFF="$CLAUDE_DIR/sessions/${SESSION_ID}/handoff.md"
+    TASKS="$CLAUDE_DIR/sessions/${SESSION_ID}/tasks.json"
 
     if [[ -f "$HANDOFF" ]]; then
         KB_CHECKPOINT=$(grep -oE 'kb-[0-9]{8}-[0-9]{6}-[a-f0-9]{6}' "$HANDOFF" | head -1)
@@ -52,7 +53,7 @@ if [[ -f "$RESUME_FILE" ]]; then
         # Its TEAM_RECONNECTED output appears earlier in SessionStart output.
 
         # Check work context to determine what this session was actually doing
-        WORK_CONTEXT_FILE="$HOME/.claude/sessions/${SESSION_ID}/work_context.json"
+        WORK_CONTEXT_FILE="$CLAUDE_DIR/sessions/${SESSION_ID}/work_context.json"
         WORK_TYPE=""
         MY_PLAN=""
         PRIMARY_TASK=""
@@ -69,14 +70,14 @@ if [[ -f "$RESUME_FILE" ]]; then
         # Detect plan file migration needed
         PREV_PLAN_REL=$(grep -E "^plans/" "$HANDOFF" 2>/dev/null | head -1)
         if [[ -n "$PREV_PLAN_REL" ]]; then
-            PREV_PLAN_FULL="$HOME/.claude/$PREV_PLAN_REL"
+            PREV_PLAN_FULL="$CLAUDE_DIR/$PREV_PLAN_REL"
         else
             PREV_PLAN_FULL=$(grep -oE '/[^ ]*/.claude/plans/[a-z0-9][-a-z0-9_]+\.md' "$HANDOFF" 2>/dev/null | head -1)
         fi
 
         # Fallback: check if old session had current_plan (handoff may say "none" due to race)
         if [[ -z "$PREV_PLAN_FULL" || ! -f "$PREV_PLAN_FULL" ]]; then
-            OLD_CURRENT_PLAN="$HOME/.claude/sessions/${SESSION_ID}/current_plan"
+            OLD_CURRENT_PLAN="$CLAUDE_DIR/sessions/${SESSION_ID}/current_plan"
             if [[ -f "$OLD_CURRENT_PLAN" ]]; then
                 PREV_PLAN_FULL=$(cat "$OLD_CURRENT_PLAN")
             fi
@@ -156,7 +157,7 @@ fi
 # Inject code map for projects with lib/ directory
 LIB_DIR="$(git rev-parse --show-toplevel 2>/dev/null)/lib"
 if [[ -d "$LIB_DIR" ]]; then
-    CODEMAP=$(python3 "$HOME/.claude/hooks/lib/generate_codemap.py" "$LIB_DIR" 2>/dev/null | head -80)
+    CODEMAP=$(python3 "$CLAUDE_DIR/hooks/lib/generate_codemap.py" "$LIB_DIR" 2>/dev/null | head -80)
     if [[ -n "$CODEMAP" ]]; then
         echo ""
         echo "=== Code Map ==="

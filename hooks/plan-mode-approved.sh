@@ -1,6 +1,7 @@
 #!/bin/bash
 # PostToolUse hook for ExitPlanMode
 # When user approves ExitPlanMode, update Mode: PLANNING → Mode: IMPLEMENTATION
+source "$(dirname "$0")/lib/claude-env.sh"
 
 INPUT=$(cat)
 TOOL_NAME=$(printf '%s' "$INPUT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('tool_name',''))" 2>/dev/null)
@@ -19,8 +20,8 @@ except:
 
 [[ -z "$SLUG" ]] && exit 0
 
-# Plan file is always ~/.claude/plans/{slug}.md
-PLAN_FILE="$HOME/.claude/plans/${SLUG}.md"
+# Plan file is always $CLAUDE_DIR/plans/{slug}.md
+PLAN_FILE="$CLAUDE_DIR/plans/${SLUG}.md"
 [[ ! -f "$PLAN_FILE" ]] && exit 0
 
 # Get session info for current_plan pointer
@@ -28,12 +29,12 @@ STATE_DIR="/tmp/claude-kb-state"
 SESSION_FILE="$STATE_DIR/session-$PPID"
 if [[ -f "$SESSION_FILE" ]]; then
     SESSION_ID=$(cat "$SESSION_FILE")
-    SESSION_DIR="$HOME/.claude/sessions/$SESSION_ID"
+    SESSION_DIR="$CLAUDE_DIR/sessions/$SESSION_ID"
     mkdir -p "$SESSION_DIR"
     echo "$PLAN_FILE" > "$SESSION_DIR/current_plan"
 
     # Set work context: this session is now implementing this plan
-    source "$HOME/.claude/hooks/lib/work_context.sh"
+    source "$CLAUDE_DIR/hooks/lib/work_context.sh"
     set_my_plan "$PLAN_FILE"
 fi
 

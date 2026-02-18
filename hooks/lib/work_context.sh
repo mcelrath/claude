@@ -1,5 +1,6 @@
 #!/bin/bash
 # Library functions for managing session work context
+source "$(dirname "${BASH_SOURCE[0]}")/claude-env.sh"
 
 # Get session directory for current session
 get_session_dir() {
@@ -8,7 +9,7 @@ get_session_dir() {
 
     if [[ -f "$SESSION_FILE" ]]; then
         local SESSION_ID=$(cat "$SESSION_FILE")
-        echo "$HOME/.claude/sessions/$SESSION_ID"
+        echo "$CLAUDE_DIR/sessions/$SESSION_ID"
     else
         return 1
     fi

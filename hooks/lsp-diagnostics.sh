@@ -2,12 +2,10 @@
 # PostToolUse hook: Run LSP diagnostics after Edit/Write
 # Returns errors via additionalContext so Claude sees them immediately
 
-set -euo pipefail
-
 # Read hook input from stdin
 INPUT=$(cat)
-FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // .tool_input.filePath // empty')
-CWD=$(echo "$INPUT" | jq -r '.cwd // "."')
+FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // .tool_input.filePath // empty' 2>/dev/null) || true
+CWD=$(echo "$INPUT" | jq -r '.cwd // "."' 2>/dev/null) || true
 
 # Exit silently if no file path
 [[ -z "$FILE_PATH" ]] && exit 0

@@ -2,6 +2,7 @@
 # KB Context Injection Hook
 # Shows last work context and recent findings for current project
 # TTY-aware: prefers TTY-specific handoff over project-wide KB dump
+source "$(dirname "$0")/lib/claude-env.sh"
 
 KB_SCRIPT="$HOME/Projects/ai/kb/kb.py"
 KB_VENV="$HOME/Projects/ai/kb/.venv/bin/python"
@@ -26,12 +27,12 @@ export KB_EMBEDDING_DIM=4096
 TTY_ID=$(tty 2>/dev/null | tr '/' '-' | sed 's/^-//')
 TTY_RESUME_FILE=""
 if [[ -n "$TTY_ID" && "$TTY_ID" != "not a tty" ]]; then
-    TTY_RESUME_FILE="$HOME/.claude/sessions/resume-${PROJECT}-${TTY_ID}.txt"
+    TTY_RESUME_FILE="$CLAUDE_DIR/sessions/resume-${PROJECT}-${TTY_ID}.txt"
 fi
 
 if [[ -f "$TTY_RESUME_FILE" ]]; then
     SESSION_ID=$(cat "$TTY_RESUME_FILE")
-    HANDOFF="$HOME/.claude/sessions/${SESSION_ID}/handoff.md"
+    HANDOFF="$CLAUDE_DIR/sessions/${SESSION_ID}/handoff.md"
     if [[ -f "$HANDOFF" ]]; then
         # Extract KB IDs from THIS session's handoff (scoped to TTY's work)
         KB_IDS=$(grep -oE 'kb-[0-9]{8}-[0-9]{6}-[a-f0-9]{6}' "$HANDOFF" 2>/dev/null | sort -u | head -5)

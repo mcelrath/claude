@@ -2,6 +2,7 @@
 # PreToolUse hook for Edit/Write
 # BLOCKS unless kb_search was called this session
 # EXCEPTIONS: hooks directory, /tmp/, /dev/shm/
+source "$(dirname "$0")/lib/claude-env.sh"
 
 STATE_DIR="/tmp/claude-kb-state"
 
@@ -27,7 +28,7 @@ except:
 " 2>/dev/null)
 
         # Allow edits to hooks, /tmp, /dev/shm
-        if [[ "$FILE_PATH" == "$HOME/.claude/hooks/"* ]] || \
+        if [[ "$FILE_PATH" == "$CLAUDE_DIR/hooks/"* ]] || \
            [[ "$FILE_PATH" == "/tmp/"* ]] || \
            [[ "$FILE_PATH" == "/dev/shm/"* ]]; then
             exit 0

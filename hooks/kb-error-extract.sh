@@ -3,8 +3,6 @@
 # Extracts error signatures from failed commands and searches for solutions
 # Uses local LLM for error extraction (set KB_EMBEDDING_URL to override)
 
-set -e
-
 KB_SCRIPT="$HOME/Projects/ai/kb/kb.py"
 KB_VENV="$HOME/Projects/ai/kb/.venv/bin/python"
 KB_LLM_JUDGE="$HOME/.local/bin/kb-llm-judge"
@@ -91,13 +89,13 @@ try:
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
             if result.returncode == 0:
                 error_id = result.stdout.strip().split()[-1]
-                print(f'KB: Recorded error [{etype}] {sig[:60]}...', file=sys.stderr)
+                print(f'KB: Recorded error [{etype}] {sig[:60]}...')
 
                 # Search for existing solutions
                 search_cmd = [kb_venv, kb_script, 'search', sig[:100], '-n', '3']
                 search_result = subprocess.run(search_cmd, capture_output=True, text=True, timeout=15)
                 if search_result.returncode == 0 and 'SUCCESS' in search_result.stdout:
-                    print(f'KB: Found potential solutions - run kb error get {error_id}', file=sys.stderr)
+                    print(f'KB: Found potential solutions - run kb error get {error_id}')
         except Exception:
             pass
 
