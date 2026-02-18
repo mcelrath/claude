@@ -405,6 +405,9 @@ Default checks can be overridden by defining a check with the same ID in any hig
 ## Output Format
 
 ### APPROVED
+
+**IMPORTANT: Do all side effects (archiving, kb_add) BEFORE outputting the verdict.** The parent reads your output and proceeds immediately — any work after the verdict may not complete.
+
 ```
 APPROVED
 Reviewer: {reviewer_persona}

@@ -405,6 +405,22 @@ approved:
 All output includes the reviewer persona for attribution.
 
 ### APPROVED
+
+**IMPORTANT: Do all side effects BEFORE outputting the verdict.** The parent reads your output and proceeds immediately — any work after the verdict may not complete.
+
+**Step 1: Write marker file using Bash:**
+```bash
+PLAN_BASE=$(basename "{plan_file}" .md)
+touch "{dir}/${PLAN_BASE}.approved"
+```
+This marker enables the ExitPlanMode hook to allow plan mode exit.
+Example: For `~/.claude/plans/my-plan.md`, create `~/.claude/plans/my-plan.approved`
+
+You MUST create this marker file using Bash, even if you are running inside plan mode. The Bash tool is available to you.
+
+**Step 2: Do any kb_add calls.**
+
+**Step 3: Output the verdict LAST:**
 ```
 APPROVED
 Reviewer: {reviewer_persona}
@@ -414,16 +430,6 @@ Edits: M
   - ...
 [Optional: 1-2 sentence summary from persona's perspective on what was verified]
 ```
-
-**On APPROVED, write marker file using Bash:**
-```bash
-PLAN_BASE=$(basename "{plan_file}" .md)
-touch "{dir}/${PLAN_BASE}.approved"
-```
-This marker enables the ExitPlanMode hook to allow plan mode exit.
-Example: For `~/.claude/plans/my-plan.md`, create `~/.claude/plans/my-plan.approved`
-
-**IMPORTANT**: You MUST create this marker file using Bash, even if you are running inside plan mode. The Bash tool is available to you.
 
 ### REJECTED
 ```
