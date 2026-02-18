@@ -1,7 +1,6 @@
 ---
 name: makefile-reviewer
 description: Review Makefiles and CMakeLists.txt for correctness, best practices, and build system issues. Use when validating build configurations or troubleshooting compilation problems.
-tools: Bash, Glob, Grep, Read
 model: haiku
 ---
 

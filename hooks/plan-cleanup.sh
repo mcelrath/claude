@@ -31,16 +31,21 @@ for plan in $(find "$PLANS_DIR" -maxdepth 1 -name "*.md" ! -name "*-agent-*" -mt
     fi
 done
 
-rm -f "$ACTIVE_PLANS"
-
-# Archive orphan plans (not referenced by any active session)
+# Archive orphan plans (not referenced by any active session or handoff)
 # Safeguards:
 # - Skip if no session directories exist (avoid archiving everything)
 # - Don't archive plans modified in last 5 minutes (race condition protection)
+# - Check ACTIVE_PLANS (includes handoff references) before realpath comparison
 # - Use realpath for reliable path comparison
 session_dirs=("$SESSIONS_DIR"/*/)
 if [[ ${#session_dirs[@]} -gt 0 && -d "${session_dirs[0]}" ]]; then
     for plan in $(find "$PLANS_DIR" -maxdepth 1 -name "*.md" ! -name "*-agent-*" -mmin +5 2>/dev/null); do
+        # First check: is this plan in ACTIVE_PLANS (from current_plan + handoffs)?
+        # This catches all references without expensive realpath/session-age checks
+        if grep -qF "$plan" "$ACTIVE_PLANS" 2>/dev/null; then
+            continue
+        fi
+
         plan_realpath=$(python3 -c "import os,sys;print(os.path.realpath(sys.argv[1]))" "$plan" 2>/dev/null)
         plan_referenced=false
 
@@ -50,11 +55,8 @@ if [[ ${#session_dirs[@]} -gt 0 && -d "${session_dirs[0]}" ]]; then
                 current_plan_realpath=$(python3 -c "import os,sys;print(os.path.realpath(sys.argv[1]))" "$current_plan_path" 2>/dev/null)
 
                 if [[ "$plan_realpath" == "$current_plan_realpath" ]]; then
-                    # Check if session is recent (modified in last 24h)
-                    if [[ $(find "$session_dir" -maxdepth 0 -mtime -1 2>/dev/null) ]]; then
-                        plan_referenced=true
-                        break
-                    fi
+                    plan_referenced=true
+                    break
                 fi
             fi
         done
@@ -64,6 +66,8 @@ if [[ ${#session_dirs[@]} -gt 0 && -d "${session_dirs[0]}" ]]; then
         fi
     done
 fi
+
+rm -f "$ACTIVE_PLANS"
 
 # Move agent output files to subdirectory immediately (keeps main dir clean)
 AGENT_DIR="$PLANS_DIR/agent-output"

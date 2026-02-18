@@ -1,9 +1,7 @@
 ---
 name: gpu-bios-analyzer
 description: Analyze GPU ROM files
-tools: Bash, Read, Grep
-model: haiku
-color: red
+model: inherit
 ---
 
 # GPU BIOS Analyzer Agent

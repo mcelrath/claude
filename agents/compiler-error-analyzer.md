@@ -1,9 +1,7 @@
 ---
 name: compiler-error-analyzer
 description: Analyze complex C++ build errors using local LLM with 262K context window. Use for template instantiation errors, CK/FMHA kernel failures, static assertion violations, and cases requiring source file context.
-tools: Bash, Read, Grep
 model: haiku
-color: red
 ---
 
 You analyze C++ build errors using the local LLM at tardis:9510 with a 262K token context window.

@@ -540,6 +540,7 @@
     "lua-lsp@claude-plugins-official": true
   },
   "autoUpdatesChannel": "latest",
+  "skipDangerousModePermissionPrompt": true,
   "feedbackSurveyState": {
     "lastShownTime": 1753969747772
   },
@@ -550,6 +551,5 @@
     "/home/mcelrath/Physics/",
     "/home/mcelrath/Projects/",
     ".claude/plans"
-  ],
-  "model": "sonnet"
+  ]
 }

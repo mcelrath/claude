@@ -1,8 +1,7 @@
 ---
 name: kb-research
 description: Iterative deep search across KB, tex drafts, and codebase. Use BEFORE Edit/Write operations. Runs 5 rounds (seed queries, follow-up, cross-refs, tex/code grep, contradiction check) in 12 turns.
-tools: Glob, Grep, Read, mcp__knowledge-base__kb_search, mcp__knowledge-base__kb_get
-model: haiku
+model: inherit
 ---
 
 # kb-research Agent

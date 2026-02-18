@@ -69,6 +69,12 @@ if grep -q 'Mode: IMPLEMENTATION' "$FILE_PATH" 2>/dev/null; then
     exit 0
 fi
 
+# Skip review reminder if expert-review already approved this plan
+# (Claude edits the plan to add approval status, which re-triggers this hook)
+if grep -q 'expert-review: APPROVED' "$FILE_PATH" 2>/dev/null; then
+    exit 0
+fi
+
 PLAN_NAME=$(basename "$FILE_PATH")
 
 cat << EOF

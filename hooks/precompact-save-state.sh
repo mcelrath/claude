@@ -202,6 +202,33 @@ if [[ -n "$PLAN_FILE" ]]; then
     fi
 fi
 
+# Extract work context if available
+WORK_CONTEXT_SECTION=""
+WORK_CONTEXT_FILE="$OUT_DIR/work_context.json"
+if [[ -f "$WORK_CONTEXT_FILE" ]]; then
+    WORK_TYPE=$(python3 -c "import json; ctx=json.load(open('$WORK_CONTEXT_FILE')); print(ctx.get('work_type', ''))" 2>/dev/null)
+    PRIMARY_TASK=$(python3 -c "import json; ctx=json.load(open('$WORK_CONTEXT_FILE')); print(ctx.get('primary_task', ''))" 2>/dev/null)
+    MY_PLAN=$(python3 -c "import json; ctx=json.load(open('$WORK_CONTEXT_FILE')); print(ctx.get('my_plan') or '')" 2>/dev/null)
+    PLANS_REF=$(python3 -c "import json; ctx=json.load(open('$WORK_CONTEXT_FILE')); print(', '.join(ctx.get('plans_referenced', [])))" 2>/dev/null)
+
+    WORK_CONTEXT_SECTION="## Work Context
+- Type: ${WORK_TYPE}
+- Primary Task: ${PRIMARY_TASK}"
+
+    if [[ -n "$MY_PLAN" ]]; then
+        WORK_CONTEXT_SECTION="$WORK_CONTEXT_SECTION
+- My Plan: ${MY_PLAN}"
+    fi
+
+    if [[ -n "$PLANS_REF" ]]; then
+        WORK_CONTEXT_SECTION="$WORK_CONTEXT_SECTION
+- Plans Referenced (not implementing): ${PLANS_REF}"
+    fi
+
+    WORK_CONTEXT_SECTION="$WORK_CONTEXT_SECTION
+"
+fi
+
 # Build LLM request for session summary
 if command -v jq &>/dev/null; then
     # Include last queries and KB added in context for better summary
@@ -268,6 +295,8 @@ ${PLAN_FILE:-none}
 ${PLAN_APPROVAL:+
 ## Plan Approval
 $PLAN_APPROVAL}
+
+${WORK_CONTEXT_SECTION}
 
 ${TEAM_STATE}
 
