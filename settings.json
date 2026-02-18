@@ -1,7 +1,6 @@
 {
   "env": {
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
-    "KB_EMBEDDING_URL": "http://ash:8080/embedding",
     "DISABLE_AUTOUPDATER": "0"
   },
   "permissions": {
@@ -321,11 +320,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/home/mcelrath/.claude/hooks/remind-patterns.sh"
+            "command": "$HOME/.claude/hooks/remind-patterns.sh"
           },
           {
             "type": "command",
-            "command": "/home/mcelrath/.claude/hooks/auto-resume.sh"
+            "command": "$HOME/.claude/hooks/auto-resume.sh"
           }
         ]
       }
@@ -335,7 +334,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/home/mcelrath/.claude/hooks/context-monitor.sh",
+            "command": "$HOME/.claude/hooks/context-monitor.sh",
             "timeout": 5000
           }
         ]
@@ -345,7 +344,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/home/mcelrath/.claude/hooks/expert-review-reminder.sh",
+            "command": "$HOME/.claude/hooks/expert-review-reminder.sh",
             "timeout": 2000
           }
         ]
@@ -355,12 +354,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/home/mcelrath/.claude/hooks/block-print-spam.sh",
+            "command": "$HOME/.claude/hooks/block-print-spam.sh",
             "timeout": 5000
           },
           {
             "type": "command",
-            "command": "/home/mcelrath/.claude/hooks/canonical-results-check.sh",
+            "command": "$HOME/.claude/hooks/canonical-results-check.sh",
             "timeout": 2000
           }
         ]
@@ -370,7 +369,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/home/mcelrath/.claude/hooks/dedupe-file-reads.sh",
+            "command": "$HOME/.claude/hooks/dedupe-file-reads.sh",
             "timeout": 1000
           }
         ]
@@ -380,12 +379,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/home/mcelrath/.claude/hooks/kb-search-gate.sh",
+            "command": "$HOME/.claude/hooks/kb-search-gate.sh",
             "timeout": 2000
           },
           {
             "type": "command",
-            "command": "/home/mcelrath/.claude/hooks/check-existing-code.sh",
+            "command": "$HOME/.claude/hooks/check-existing-code.sh",
             "timeout": 5000
           }
         ]
@@ -395,7 +394,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/home/mcelrath/.claude/hooks/block-markdown-files.sh",
+            "command": "$HOME/.claude/hooks/block-markdown-files.sh",
             "timeout": 2000
           }
         ]
@@ -405,12 +404,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/home/mcelrath/.claude/hooks/block-presentation-cells.sh",
+            "command": "$HOME/.claude/hooks/block-presentation-cells.sh",
             "timeout": 5000
           },
           {
             "type": "command",
-            "command": "/home/mcelrath/.claude/hooks/canonical-results-check.sh",
+            "command": "$HOME/.claude/hooks/canonical-results-check.sh",
             "timeout": 2000
           }
         ]
@@ -421,39 +420,39 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/home/mcelrath/.claude/hooks/cleanup-stale-sessions.sh"
+            "command": "$HOME/.claude/hooks/cleanup-stale-sessions.sh"
           },
           {
             "type": "command",
-            "command": "/home/mcelrath/.claude/hooks/team-cleanup.sh"
+            "command": "$HOME/.claude/hooks/team-cleanup.sh"
           },
           {
             "type": "command",
-            "command": "/home/mcelrath/.claude/hooks/plan-cleanup.sh"
+            "command": "$HOME/.claude/hooks/plan-cleanup.sh"
           },
           {
             "type": "command",
-            "command": "/home/mcelrath/.claude/hooks/kb-search-reset.sh"
+            "command": "$HOME/.claude/hooks/kb-search-reset.sh"
           },
           {
             "type": "command",
-            "command": "/home/mcelrath/.claude/hooks/history-isolation.sh"
+            "command": "$HOME/.claude/hooks/history-isolation.sh"
           },
           {
             "type": "command",
-            "command": "/home/mcelrath/.claude/hooks/build-status.sh"
+            "command": "$HOME/.claude/hooks/build-status.sh"
           },
           {
             "type": "command",
-            "command": "/home/mcelrath/.claude/hooks/lsp-setup.sh"
+            "command": "$HOME/.claude/hooks/lsp-setup.sh"
           },
           {
             "type": "command",
-            "command": "/home/mcelrath/.claude/hooks/kb-context.sh"
+            "command": "$HOME/.claude/hooks/kb-context.sh"
           },
           {
             "type": "command",
-            "command": "/home/mcelrath/.claude/hooks/session-start-resume.sh"
+            "command": "$HOME/.claude/hooks/session-start-resume.sh"
           }
         ]
       }
@@ -464,7 +463,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/home/mcelrath/.claude/hooks/kb-search-track.sh",
+            "command": "$HOME/.claude/hooks/kb-search-track.sh",
             "timeout": 2000
           }
         ]
@@ -474,7 +473,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/home/mcelrath/.claude/hooks/kb-search-track.sh",
+            "command": "$HOME/.claude/hooks/kb-search-track.sh",
             "timeout": 2000
           }
         ]
@@ -484,7 +483,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/home/mcelrath/.claude/hooks/plan-write-review.sh",
+            "command": "$HOME/.claude/hooks/plan-write-review.sh",
             "timeout": 3000
           }
         ]
@@ -494,7 +493,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/home/mcelrath/.claude/hooks/kb-error-extract.sh",
+            "command": "$HOME/.claude/hooks/kb-error-extract.sh",
             "timeout": 45000
           }
         ]
@@ -504,7 +503,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/home/mcelrath/.claude/hooks/plan-mode-approved.sh",
+            "command": "$HOME/.claude/hooks/plan-mode-approved.sh",
             "timeout": 2000
           }
         ]
@@ -515,12 +514,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/home/mcelrath/.claude/hooks/kb-precompact.sh",
+            "command": "$HOME/.claude/hooks/kb-precompact.sh",
             "timeout": 60000
           },
           {
             "type": "command",
-            "command": "/home/mcelrath/.claude/hooks/precompact-save-state.sh",
+            "command": "$HOME/.claude/hooks/precompact-save-state.sh",
             "timeout": 30000
           }
         ]
@@ -529,7 +528,7 @@
   },
   "statusLine": {
     "type": "command",
-    "command": "/home/mcelrath/.claude/bin/claude-statusline",
+    "command": "$HOME/.claude/bin/claude-statusline",
     "padding": 0
   },
   "enabledPlugins": {
@@ -546,10 +545,8 @@
   },
   "additionalDirectories": [
     "/tmp",
-    "/home/mcelrath/.claude/",
     "~/.claude/",
-    "/home/mcelrath/Physics/",
-    "/home/mcelrath/Projects/",
     ".claude/plans"
-  ]
+  ],
+  "effortLevel": "medium"
 }

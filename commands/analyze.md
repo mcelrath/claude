@@ -6,7 +6,7 @@ argument-hint: [project-path]
 
 # Build Error Analysis
 
-Analyzing build errors using local LLM at tardis:9510 (262K context window).
+Analyzing build errors using local LLM (262K context window).
 
 ## Current Build Status
 ```

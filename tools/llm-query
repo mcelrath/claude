@@ -7,7 +7,7 @@
 set -euo pipefail
 
 # Configuration with defaults
-ENDPOINT="${LLM_ENDPOINT:-http://tardis:9510/v1/chat/completions}"
+ENDPOINT="${LLM_ENDPOINT:-http://localhost:9510/v1/chat/completions}"
 MODEL="${LLM_MODEL:-sha256-a70437c41b3b0b768c48737e15f8160c90f13dc963f5226aabb3a160f708d1ce}"
 MAX_TOKENS="${LLM_MAX_TOKENS:-2000}"
 TEMPERATURE="${LLM_TEMPERATURE:-0.3}"
@@ -38,7 +38,7 @@ Options:
   -h, --help            Show this help
 
 Environment Variables:
-  LLM_ENDPOINT          API endpoint (default: http://tardis:9510/v1/chat/completions)
+  LLM_ENDPOINT          API endpoint (default: http://localhost:9510/v1/chat/completions)
   LLM_MODEL             Model ID
   LLM_MAX_TOKENS        Default max tokens
   LLM_TEMPERATURE       Default temperature

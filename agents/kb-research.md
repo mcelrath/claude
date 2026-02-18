@@ -44,7 +44,7 @@ Note file paths for parent to read.
 
 ## ROUND 4: Tex + Code search
 Grep("{{key_term}}", glob="*.tex", head_limit=10)
-Grep("{{key_term}}", glob="*.py", path="/home/mcelrath/Physics/claude/lib", head_limit=10)
+Grep("{{key_term}}", glob="*.py", path="${PROJECT_DIR}/lib", head_limit=10)
 
 ## ROUND 5: Contradiction check
 Compare findings. Note superseded entries and conflicts.

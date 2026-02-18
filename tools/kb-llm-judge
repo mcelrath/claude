@@ -1,11 +1,11 @@
 #!/bin/bash
 # kb-llm-judge: Fast LLM judgment for KB hooks
-# Uses llama.cpp server at tardis:9510 with grammar-constrained JSON output
+# Uses llama.cpp server with grammar-constrained JSON output (set KB_LLM_URL to override)
 #
 # Usage: kb-llm-judge <system_prompt> <user_content>
 # Output: JSON to stdout
 
-LLM_URL="${KB_LLM_URL:-http://tardis:9510/v1/chat/completions}"
+LLM_URL="${KB_LLM_URL:-http://localhost:9510/v1/chat/completions}"
 TIMEOUT="${KB_LLM_TIMEOUT:-30}"
 MAX_TOKENS="${KB_LLM_MAX_TOKENS:-4096}"
 

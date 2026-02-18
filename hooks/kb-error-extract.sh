@@ -1,7 +1,7 @@
 #!/bin/bash
 # KB Error Extract Hook
 # Extracts error signatures from failed commands and searches for solutions
-# Uses local LLM at tardis:9510 for error extraction
+# Uses local LLM for error extraction (set KB_EMBEDDING_URL to override)
 
 set -e
 
@@ -44,7 +44,7 @@ else
 fi
 
 # Set KB environment
-export KB_EMBEDDING_URL="http://ash:8080/embedding"
+export KB_EMBEDDING_URL="${KB_EMBEDDING_URL:-http://localhost:8080/embedding}"
 export KB_EMBEDDING_DIM=4096
 
 # Ask LLM to extract error signatures

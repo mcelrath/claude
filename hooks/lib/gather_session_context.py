@@ -14,7 +14,8 @@ def get_recent_sessions(projects_dir: Path, limit: int = 5) -> list[dict]:
             continue
         try:
             stat = jsonl.stat()
-            project = jsonl.parent.name.replace("-home-mcelrath-", "").replace("-", "/")
+            home_user = str(Path.home()).replace("/", "-").lstrip("-")
+            project = jsonl.parent.name.replace(f"-{home_user}-", "").replace("-", "/")
             sessions.append({
                 "id": jsonl.stem[:8],
                 "full_id": jsonl.stem,

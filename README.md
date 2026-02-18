@@ -1,146 +1,148 @@
 # Claude Code Configuration
 
-Personal Claude Code configuration with custom agents, review workflows, and automation hooks.
+A batteries-included `~/.claude` configuration with custom agents, review workflows, automation hooks, and strict coding discipline enforcement.
+
+## What This Does
+
+This config turns Claude Code into a more rigorous development partner:
+
+- **Two-stage review gates** prevent sloppy code from shipping (plan review + implementation review)
+- **25 automation hooks** enforce workflow compliance (no reimplementing existing code, no accidental `git add -A`, KB search before implementation, etc.)
+- **8 custom agents** for specialized tasks (architecture, sprint reviews, build error analysis)
+- **84 reviewer personas** across 22 domains that Claude adopts for code review
+- **Anti-pattern detection** blocks common Claude failure modes (speculation, "should I proceed?", print-spam)
 
 ## Quick Start
 
 ```bash
-# Clone and symlink
-git clone https://github.com/YOUR_USERNAME/claude ~/.claude-config
-ln -sfn ~/.claude-config ~/.claude
+# Back up existing config if you have one
+[ -d ~/.claude ] && mv ~/.claude ~/.claude.bak
 
-# Or if ~/.claude already exists with data you want to keep:
-mv ~/.claude ~/.claude.bak
-ln -sfn ~/Projects/ai/claude ~/.claude
+# Clone directly as ~/.claude
+git clone https://github.com/YOUR_USERNAME/claude-code-config ~/.claude
 ```
 
-## Directory Structure
+Claude Code reads `~/.claude/` automatically on startup.
+
+### Optional: Local Overrides
+
+Create `~/.claude/settings.local.json` (gitignored) for machine-specific settings:
+
+```json
+{
+  "permissions": {
+    "allow": [
+      "Bash(pacman:*)",
+      "Bash(your-local-commands:*)"
+    ]
+  },
+  "env": {
+    "KB_EMBEDDING_URL": "http://your-server:8080/embedding"
+  }
+}
+```
+
+## What's Included
 
 ```
 ~/.claude/
-├── CLAUDE.md           # Master rules and instructions (589 lines)
-├── reviewers.yaml      # Expert reviewer personas (84 reviewers, 22 domains)
-├── settings.json       # Tool permissions (shareable)
-├── settings.local.json # Machine-specific overrides (gitignored)
-├── agents/             # Custom agent definitions (8 agents)
-├── commands/           # Slash commands (8 commands)
-├── hooks/              # Automation hooks (25 hooks)
-└── .gitignore          # Excludes credentials, sessions, history
+├── CLAUDE.md            # Master rules (agent dispatch, anti-patterns, KB workflow)
+├── reviewers.yaml       # 84 expert reviewer personas across 22 domains
+├── settings.json        # Tool permissions, hooks, features
+├── agents/              # 8 custom agent definitions
+│   ├── expert-review.md           # Plan review (APPROVED/REJECTED/INCOMPLETE)
+│   ├── implementation-review.md   # Post-implementation verification
+│   ├── software-architect.md      # Architecture guidance
+│   ├── sprint-code-reviewer.md    # Sprint completion validation
+│   ├── compiler-error-analyzer.md # Build error analysis (needs local LLM)
+│   ├── kb-research.md             # Iterative KB search (5 rounds)
+│   ├── gpu-bios-analyzer.md       # GPU ROM analysis
+│   └── makefile-reviewer.md       # Build system review
+├── commands/            # Slash commands (/review, /sprint, /analyze, etc.)
+├── hooks/               # 25 automation hooks
+├── bin/                 # Helper scripts (statusline)
+├── tools/               # Local LLM integration tools
+├── plugins/             # LSP plugin config
+└── docs/                # Agent prompt templates and reference
 ```
 
 ## Key Features
 
-### 1. Mandatory Review Gates
+### Review Gates
 
-Two-stage review workflow enforced by agents:
+Every plan goes through `expert-review` before implementation. Every implementation goes through `implementation-review` before completion. Both run in background to prevent memory exhaustion and must return APPROVED.
 
-| Stage | Agent | Trigger |
-|-------|-------|---------|
-| Before implementing | `expert-review` | Plan approval |
-| After implementing | `implementation-review` | Code complete |
+### Hooks
 
-Both agents run in background (prevents memory exhaustion) and must return APPROVED.
+Selected highlights from the 25 hooks:
 
-### 2. Named Reviewer Personas (`reviewers.yaml`)
+| Hook | What it does |
+|------|-------------|
+| `check-existing-code.sh` | Blocks reimplementing code that already exists |
+| `kb-search-gate.sh` | Requires KB search before writing new code |
+| `block-markdown-files.sh` | Prevents accidental doc file creation |
+| `block-print-spam.sh` | Catches explanatory print() in scripts |
+| `remind-patterns.sh` | Reminds anti-patterns on every prompt |
+| `session-start-resume.sh` | Restores session state across restarts |
+| `plan-write-review.sh` | Re-runs expert-review when plans change |
 
-84 expert reviewers across 22 technical domains. Agents auto-select appropriate panels:
+### Reviewer Personas
 
-**Technical Domains:**
-- Clifford algebras (Lounesto, Penrose, Porteous)
-- Polylogarithms (Zagier, Lewin, Bloch)
-- QFT/Gauge theory (Peskin, Coleman, Weinberg)
-- Condensed matter (Anderson, Kitaev, Bardeen)
-- And 18 more...
+`reviewers.yaml` defines 84 expert personas. Claude auto-selects 2-3 relevant reviewers based on context. Trigger phrases: "critically review", "sanity check", "verify this".
 
-**Composite Panels:**
-```yaml
-technical_review: [Peskin, Anderson, Connes]
-popular_writing: [Sagan, Feynman, Munroe, Orwell]
-skeptic_panel: [Mencken, Russell, 't Hooft]
-```
+Pre-built panels:
+- `technical_review`: Peskin + Anderson + Connes
+- `popular_writing`: Sagan + Feynman + Munroe + Orwell
+- `skeptic_panel`: Mencken + Russell + 't Hooft
 
-**Auto-trigger phrases:** "critically review", "sanity check", "verify this"
+### Anti-Patterns Blocked
 
-### 3. Automation Hooks
+The CLAUDE.md and hooks work together to prevent:
+- Speculation ("I believe", "this likely")
+- Asking permission ("Should I proceed?", "What would you like...")
+- Reimplementing existing code without searching first
+- `git add -A` or `git push --force`
+- Mocks, stubs, or fake data
+- Notebooks with markdown cells or comments
 
-25 hooks enforce workflow compliance:
-
-| Hook | Purpose |
-|------|---------|
-| `session-start-resume.sh` | Restore previous session state |
-| `check-existing-code.sh` | Block reimplementing existing code |
-| `kb-search-gate.sh` | Require KB search before new work |
-| `block-markdown-files.sh` | Prevent unintended file creation |
-| `block-presentation-cells.sh` | Keep notebooks computation-only |
-| `plan-write-review.sh` | Re-run expert-review after plan edits |
-
-### 4. Custom Agents
-
-| Agent | Purpose |
-|-------|---------|
-| `expert-review` | Plan review with state machine (APPROVED/REJECTED/INCOMPLETE/ERROR) |
-| `implementation-review` | Post-implementation code/test verification |
-| `software-architect` | Architecture and design guidance |
-| `sprint-code-reviewer` | Sprint completion validation |
-| `compiler-error-analyzer` | Build error analysis |
-
-### 5. Slash Commands
+### Slash Commands
 
 | Command | Purpose |
 |---------|---------|
 | `/review` | Trigger appropriate review agent |
 | `/sprint` | Sprint planning and task management |
 | `/analyze` | Deep code/log analysis |
-| `/save-state` | Manual session state save |
+| `/merge` | Merge sprint branch into master |
 
-## CLAUDE.md Highlights
+## Optional Dependencies
 
-Key rules enforced:
+Some features require external services. Everything works without them, but these hooks will silently skip:
 
-```markdown
-# Anti-Patterns (blocked by hooks)
-- Creating markdown files without request
-- Notebooks with markdown cells or comments
-- print() statements that explain instead of compute
-- Reimplementing existing code without checking
-- "Should I proceed?" (just do it)
-- "What would you like..." (use AskUserQuestion tool)
+| Feature | What it needs | Environment variable |
+|---------|--------------|---------------------|
+| Knowledge Base | MCP server (`knowledge-base`) | Configured in MCP settings |
+| Build error analysis | Local LLM (llama.cpp) | `LLM_ENDPOINT` (default: `localhost:9510`) |
+| KB embeddings | Embedding server | `KB_EMBEDDING_URL` (default: `localhost:8080`) |
 
-# Rules
-- kb_search before implementation (enforced by hook)
-- No mocks, stubs, or fake data
-- No `git add -A` or `git push --force`
-- Options for user → AskUserQuestion tool
-```
+## Customization
 
-## Knowledge Base Integration
+### Adding Your Own Rules
 
-Uses MCP server for persistent knowledge:
+Edit `CLAUDE.md` to add project-specific rules. The existing structure supports:
+- Per-project CLAUDE.md files (in your project repos)
+- Domain-specific reviewer panels
+- Custom hook triggers
 
-```python
-kb_search(query, project)      # Find prior results
-kb_add(content, type, project) # Record discoveries
-kb_correct(id, content, reason) # Fix outdated findings
-```
+### Removing Physics-Specific Content
 
-KB searches should use Haiku agent for efficiency:
-```python
-Task(subagent_type="general-purpose", model="haiku",
-     prompt="Search KB for [TOPIC]. Try 3+ phrasings...")
-```
+This config was developed for a physics research project. To remove domain-specific content:
+1. Edit `reviewers.yaml` to remove/replace physics reviewers
+2. Remove physics references from `CLAUDE.md` (Jupyter/SageMath/Maple sections)
+3. Remove `commands/review-physics.md`
 
-## Jupyter Notebooks
+### Adding Hooks
 
-Notebooks are for **computation only**:
-- No markdown cells
-- No comments
-- No print() with labels/descriptions
-- Explanations go in response text
-
-```python
-setup_notebook("experiment", server_url="http://localhost:8888")
-modify_notebook_cells("experiment", "add_code", "result = compute()")
-```
+Hooks go in `hooks/` and are referenced in `settings.json`. Each hook is a shell script that receives context via environment variables and stdin. See existing hooks for the pattern.
 
 ## Settings
 
@@ -149,31 +151,19 @@ modify_notebook_cells("experiment", "add_code", "result = compute()")
 - Feature flags (skills, tasks, LSP)
 
 `settings.local.json` (gitignored) contains machine-specific:
-- Host-specific commands (pacman, pactl)
-- Local paths and credentials
+- Host-specific commands
+- Local paths and endpoint URLs
 
 ## What's Gitignored
 
 ```
-sessions/          # Active session state
-cache/             # Performance caches
-history.jsonl      # Conversation history
-*.credentials      # Secrets
-settings.local.json # Machine-specific
-projects/          # Per-project session data
+sessions/           # Active session state
+cache/              # Performance caches
+history.jsonl       # Conversation history
+*.credentials       # Secrets
+settings.local.json # Machine-specific overrides
+projects/           # Per-project session data
 ```
-
-## Integration with Physics Project
-
-The `~/Physics/claude/CLAUDE.md` extends this config with domain-specific rules:
-- τ²(M) condensate physics
-- Polylog gap equations
-- Mode sum normalization
-- Gauge coupling constraints (no PDG comparisons)
-
-## Contributing
-
-This is a personal configuration. Feel free to fork and adapt for your own use.
 
 ## License
 

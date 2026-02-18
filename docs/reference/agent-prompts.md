@@ -116,7 +116,7 @@ For any finding that mentions a file path:
 
 ## ROUND 4: Tex + Code search
 Grep("{{key_term}}", glob="*.tex", head_limit=10)
-Grep("{{key_term}}", glob="*.py", path="/home/mcelrath/Physics/claude/lib", head_limit=10)
+Grep("{{key_term}}", glob="*.py", path="${PROJECT_DIR}/lib", head_limit=10)
 
 ## ROUND 5: Contradiction check
 Compare findings. If two findings disagree, note the conflict and which is newer.
@@ -269,7 +269,7 @@ When an agent needs to run computation, prefer writing a Python script over Jupy
 # Write script
 Write("/path/to/exploration/my_investigation.py", content)
 # Run it
-Bash("cd /home/mcelrath/Physics/claude && python3 exploration/my_investigation.py")
+Bash("cd ${PROJECT_DIR} && python3 exploration/my_investigation.py")
 ```
 
 **When Jupyter IS appropriate for agents:**
@@ -308,7 +308,7 @@ This saves your turns for reasoning and computation.
 ## COMPUTATION METHOD
 Write Python SCRIPTS (not Jupyter) for numerical work:
   Write("exploration/{name}.py", code)
-  Bash("cd /home/mcelrath/Physics/claude && python3 exploration/{name}.py")
+  Bash("cd ${PROJECT_DIR} && python3 exploration/{name}.py")
 
 ## EXPERT PANEL REQUIREMENT
 Select 2-3 domain experts from: {domain1} ({expert_names}), {domain2} ({expert_names}).

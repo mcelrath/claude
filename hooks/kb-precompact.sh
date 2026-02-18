@@ -1,7 +1,7 @@
 #!/bin/bash
 # KB Pre-Compact Hook
 # Extracts findings and context from conversation before /compact
-# Uses local LLM at tardis:9510
+# Uses local LLM (set KB_LLM_URL to override default localhost:9510)
 
 LOG_FILE="$HOME/.cache/kb/precompact.log"
 mkdir -p "$(dirname "$LOG_FILE")"
@@ -37,9 +37,9 @@ if [[ $CONV_LEN -gt 80000 ]]; then
 fi
 
 # Set KB environment
-export KB_EMBEDDING_URL="http://ash:8080/embedding"
+export KB_EMBEDDING_URL="${KB_EMBEDDING_URL:-http://localhost:8080/embedding}"
 export KB_EMBEDDING_DIM=4096
-export KB_LLM_URL="http://tardis:9510/completion"
+export KB_LLM_URL="${KB_LLM_URL:-http://localhost:9510/completion}"
 
 KB_VENV="$HOME/Projects/ai/kb/.venv/bin/python"
 KB_SCRIPT="$HOME/Projects/ai/kb/kb.py"
@@ -56,7 +56,7 @@ from urllib.error import URLError
 PROJECT = sys.argv[1]
 CONVERSATION = sys.argv[2]
 
-LLM_URL = os.environ.get("KB_LLM_URL", "http://tardis:9510/completion")
+LLM_URL = os.environ.get("KB_LLM_URL", "http://localhost:9510/completion")
 KB_VENV = os.environ.get("HOME") + "/Projects/ai/kb/.venv/bin/python"
 KB_SCRIPT = os.environ.get("HOME") + "/Projects/ai/kb/kb.py"
 

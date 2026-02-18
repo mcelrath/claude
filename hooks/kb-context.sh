@@ -19,7 +19,7 @@ if [[ -z "$PROJECT" ]]; then
     exit 0
 fi
 
-export KB_EMBEDDING_URL="http://ash:8080/embedding"
+export KB_EMBEDDING_URL="${KB_EMBEDDING_URL:-http://localhost:8080/embedding}"
 export KB_EMBEDDING_DIM=4096
 
 # Check for TTY-specific handoff first (avoids showing wrong session's KB findings)
