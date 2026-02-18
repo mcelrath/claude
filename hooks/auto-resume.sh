@@ -45,6 +45,20 @@ if [[ ! -f "$HANDOFF" ]]; then
     exit 0
 fi
 
+# Check if plan content was already output by session-start-resume.sh
+PLAN_ALREADY_OUTPUT=false
+CURRENT_PLAN=""
+OLD_SESSION_DIR="$CLAUDE_DIR/sessions/${SESSION_ID}"
+if [[ -f "$OLD_SESSION_DIR/current_plan" ]]; then
+    CURRENT_PLAN=$(cat "$OLD_SESSION_DIR/current_plan")
+fi
+
+# Check work context
+WORK_TYPE=""
+if [[ -f "$OLD_SESSION_DIR/work_context.json" ]]; then
+    WORK_TYPE=$(python3 -c "import json; print(json.load(open('$OLD_SESSION_DIR/work_context.json')).get('work_type',''))" 2>/dev/null)
+fi
+
 # Output resume instructions that Claude will see and act on
 cat << EOF
 AUTO-RESUME TRIGGERED
@@ -53,12 +67,14 @@ Resume file found: $RESUME_FILE
 Session: $SESSION_ID
 
 INSTRUCTIONS:
-1. Read $HANDOFF
-2. Parse the State JSON for context
-3. kb_search("$PROJECT") for recent findings
-4. TaskList to check task state
-5. Continue from where handoff indicates
-6. After resuming, run: rm $RESUME_FILE
+1. Read $HANDOFF for context
+2. The plan content was already shown by SessionStart hook — DO NOT re-summarize it
+3. If a plan was shown above, CONTINUE WORKING ON IT immediately:
+   - PLANNING mode: continue developing the plan, run expert-review when ready
+   - IMPLEMENTATION mode: start implementing, do not call ExitPlanMode
+4. If no plan was shown, kb_search("$PROJECT") for context and continue the last task
+5. After resuming, run: rm $RESUME_FILE
+6. Do NOT ask "What would you like to work on?" — just continue.
 
 BEGIN RESUME
 EOF

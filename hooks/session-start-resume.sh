@@ -112,8 +112,16 @@ if [[ -f "$RESUME_FILE" ]]; then
                         echo "  Plan Status: Expert review APPROVED but Mode still PLANNING (hook failed)"
                         echo "  ACTION: Update Mode → IMPLEMENTATION in plan file, then begin implementation"
                     else
-                        echo "  Plan Status: Still in planning mode"
-                        echo "  ACTION: Continue planning or run expert-review if ready"
+                        echo ""
+                        echo "PLAN IN PROGRESS — CONTINUE PLANNING"
+                        echo "Plan: $PLAN_TO_MIGRATE"
+                        echo "The plan was not yet approved. Continue where you left off."
+                        echo "When the plan is ready, run expert-review then ExitPlanMode."
+                        echo ""
+                        echo "--- PLAN CONTENT ---"
+                        cat "$PLAN_TO_MIGRATE"
+                        echo "--- END PLAN ---"
+                        echo ""
                     fi
                     ;;
 
@@ -139,11 +147,29 @@ if [[ -f "$RESUME_FILE" ]]; then
                     ;;
 
                 *)
-                    # No work context or unknown type - default to safe behavior
+                    # No work context or unknown type
                     if [[ "$PLAN_MODE" == "IMPLEMENTATION" ]]; then
-                        echo "  Warning: Plan shows IMPLEMENTATION but no work_context found"
-                        echo "  DO NOT start implementing from this hook output alone"
-                        echo "  Wait for user message or plan migration message"
+                        echo ""
+                        echo "PLAN APPROVED — BEGIN IMPLEMENTATION"
+                        echo "Plan: $PLAN_TO_MIGRATE"
+                        echo "DO NOT call ExitPlanMode. The plan is already approved."
+                        echo "Read the plan below and start implementing immediately."
+                        echo ""
+                        echo "--- PLAN CONTENT ---"
+                        cat "$PLAN_TO_MIGRATE"
+                        echo "--- END PLAN ---"
+                        echo ""
+                    else
+                        echo ""
+                        echo "PLAN IN PROGRESS — CONTINUE PLANNING"
+                        echo "Plan: $PLAN_TO_MIGRATE"
+                        echo "The plan was not yet approved. Continue where you left off."
+                        echo "When the plan is ready, run expert-review then ExitPlanMode."
+                        echo ""
+                        echo "--- PLAN CONTENT ---"
+                        cat "$PLAN_TO_MIGRATE"
+                        echo "--- END PLAN ---"
+                        echo ""
                     fi
                     ;;
             esac
