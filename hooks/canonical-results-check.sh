@@ -21,7 +21,7 @@ esac
 
 [[ -z "$CODE" ]] && exit 0
 
-TSV="$HOME/Physics/claude/canonical_results.tsv"
+TSV="${CANONICAL_RESULTS_TSV:-$HOME/Physics/claude/canonical_results.tsv}"
 [[ ! -f "$TSV" ]] && exit 0
 
 KEYWORDS=""

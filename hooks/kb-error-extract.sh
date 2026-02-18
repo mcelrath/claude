@@ -3,9 +3,12 @@
 # Extracts error signatures from failed commands and searches for solutions
 # Uses local LLM for error extraction (set KB_EMBEDDING_URL to override)
 
-KB_SCRIPT="$HOME/Projects/ai/kb/kb.py"
-KB_VENV="$HOME/Projects/ai/kb/.venv/bin/python"
-KB_LLM_JUDGE="$HOME/.local/bin/kb-llm-judge"
+KB_SCRIPT="${KB_SCRIPT:-$HOME/Projects/ai/kb/kb.py}"
+KB_VENV="${KB_VENV:-$HOME/Projects/ai/kb/.venv/bin/python}"
+KB_LLM_JUDGE="${KB_LLM_JUDGE:-$HOME/.local/bin/kb-llm-judge}"
+
+# Gracefully exit if KB tools not installed
+[[ ! -f "$KB_SCRIPT" || ! -f "$KB_VENV" ]] && exit 0
 
 # Read hook input from stdin
 INPUT=$(cat)

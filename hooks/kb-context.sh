@@ -4,8 +4,11 @@
 # TTY-aware: prefers TTY-specific handoff over project-wide KB dump
 source "$(dirname "$0")/lib/claude-env.sh"
 
-KB_SCRIPT="$HOME/Projects/ai/kb/kb.py"
-KB_VENV="$HOME/Projects/ai/kb/.venv/bin/python"
+KB_SCRIPT="${KB_SCRIPT:-$HOME/Projects/ai/kb/kb.py}"
+KB_VENV="${KB_VENV:-$HOME/Projects/ai/kb/.venv/bin/python}"
+
+# Gracefully exit if KB tools not installed
+[[ ! -f "$KB_SCRIPT" || ! -f "$KB_VENV" ]] && exit 0
 CONTEXT_FILE="$HOME/.cache/kb/last_work_context.txt"
 
 # Get project name from git root or current directory

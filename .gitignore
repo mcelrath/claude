@@ -50,6 +50,7 @@ projects/
 # Plugin marketplace data (auto-generated, contains machine-specific paths)
 plugins/marketplaces/
 plugins/known_marketplaces.json
+plugins/installed_plugins.json
 
 # OS and editor files
 .DS_Store

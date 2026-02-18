@@ -41,8 +41,14 @@ export KB_EMBEDDING_URL="${KB_EMBEDDING_URL:-http://localhost:8080/embedding}"
 export KB_EMBEDDING_DIM=4096
 export KB_LLM_URL="${KB_LLM_URL:-http://localhost:9510/completion}"
 
-KB_VENV="$HOME/Projects/ai/kb/.venv/bin/python"
-KB_SCRIPT="$HOME/Projects/ai/kb/kb.py"
+KB_VENV="${KB_VENV:-$HOME/Projects/ai/kb/.venv/bin/python}"
+KB_SCRIPT="${KB_SCRIPT:-$HOME/Projects/ai/kb/kb.py}"
+
+# Gracefully exit if KB tools not installed
+if [[ ! -f "$KB_SCRIPT" || ! -f "$KB_VENV" ]]; then
+    log "KB tools not installed, skipping"
+    exit 0
+fi
 
 # Use Python for the LLM call and KB insertion
 "$KB_VENV" - "$PROJECT" "$CONVERSATION" << 'PYTHON_SCRIPT'
@@ -57,8 +63,8 @@ PROJECT = sys.argv[1]
 CONVERSATION = sys.argv[2]
 
 LLM_URL = os.environ.get("KB_LLM_URL", "http://localhost:9510/completion")
-KB_VENV = os.environ.get("HOME") + "/Projects/ai/kb/.venv/bin/python"
-KB_SCRIPT = os.environ.get("HOME") + "/Projects/ai/kb/kb.py"
+KB_VENV = os.environ.get("KB_VENV", os.environ.get("HOME") + "/Projects/ai/kb/.venv/bin/python")
+KB_SCRIPT = os.environ.get("KB_SCRIPT", os.environ.get("HOME") + "/Projects/ai/kb/kb.py")
 
 def llm_complete(prompt: str, max_tokens: int = 2000) -> str | None:
     """Call local LLM for completion using chat API."""

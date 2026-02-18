@@ -121,8 +121,11 @@ Some features require external services. Everything works without them, but thes
 | Feature | What it needs | Environment variable |
 |---------|--------------|---------------------|
 | Knowledge Base | MCP server (`knowledge-base`) | Configured in MCP settings |
+| KB hooks | KB CLI script + venv | `KB_SCRIPT`, `KB_VENV` (hooks skip if missing) |
 | Build error analysis | Local LLM (llama.cpp) | `LLM_ENDPOINT` (default: `localhost:9510`) |
 | KB embeddings | Embedding server | `KB_EMBEDDING_URL` (default: `localhost:8080`) |
+| Error extraction | LLM judge tool | `KB_LLM_JUDGE` (hook skips if missing) |
+| Canonical results | Project-specific TSV | `CANONICAL_RESULTS_TSV` (hook skips if missing) |
 
 ## Customization
 
