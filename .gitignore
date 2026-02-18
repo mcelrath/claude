@@ -47,8 +47,9 @@ __pycache__/
 # Project-specific data (may contain paths/private info)
 projects/
 
-# Plugin marketplace data (auto-generated)
+# Plugin marketplace data (auto-generated, contains machine-specific paths)
 plugins/marketplaces/
+plugins/known_marketplaces.json
 
 # OS and editor files
 .DS_Store
