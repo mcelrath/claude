@@ -99,10 +99,14 @@ if [[ -f "$RESUME_FILE" ]]; then
                     # This session is implementing a plan - normal resume
                     if [[ "$PLAN_MODE" == "IMPLEMENTATION" ]]; then
                         echo ""
-                        echo "  ⚠️  Plan already APPROVED in previous session (Mode: IMPLEMENTATION)"
-                        echo "  DO NOT call ExitPlanMode again - that causes double-approval"
-                        echo "  DO NOT start implementing from this hook output alone"
-                        echo "  Claude Code will send the plan as a user message — wait for it"
+                        echo "PLAN APPROVED — BEGIN IMPLEMENTATION"
+                        echo "Plan: $PLAN_TO_MIGRATE"
+                        echo "DO NOT call ExitPlanMode. The plan is already approved."
+                        echo "Read the plan below and start implementing immediately."
+                        echo ""
+                        echo "--- PLAN CONTENT ---"
+                        cat "$PLAN_TO_MIGRATE"
+                        echo "--- END PLAN ---"
                         echo ""
                     elif grep -q 'expert-review: APPROVED' "$PLAN_TO_MIGRATE" 2>/dev/null; then
                         echo "  Plan Status: Expert review APPROVED but Mode still PLANNING (hook failed)"
@@ -151,16 +155,5 @@ if [[ -f "$RESUME_FILE" ]]; then
             echo "  ACTION: Summarize work done, verify completion"
             echo ""
         fi
-    fi
-fi
-
-# Inject code map for projects with lib/ directory
-LIB_DIR="$(git rev-parse --show-toplevel 2>/dev/null)/lib"
-if [[ -d "$LIB_DIR" ]]; then
-    CODEMAP=$(python3 "$CLAUDE_DIR/hooks/lib/generate_codemap.py" "$LIB_DIR" 2>/dev/null | head -80)
-    if [[ -n "$CODEMAP" ]]; then
-        echo ""
-        echo "=== Code Map ==="
-        echo "$CODEMAP"
     fi
 fi

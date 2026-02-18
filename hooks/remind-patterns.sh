@@ -40,7 +40,11 @@ fi
 
 if [[ -n "$RECENT_PLAN" ]]; then
     PLAN_NAME=$(basename "$RECENT_PLAN")
-    echo "PLAN: $PLAN_NAME | expert-review→ExitPlanMode"
+    if grep -q 'Mode: IMPLEMENTATION' "$RECENT_PLAN" 2>/dev/null; then
+        echo "PLAN: $PLAN_NAME | APPROVED — implementing (do NOT call ExitPlanMode)"
+    else
+        echo "PLAN: $PLAN_NAME | expert-review→ExitPlanMode"
+    fi
 fi
 
 if [[ -n "$RECENT_PLAN" ]]; then

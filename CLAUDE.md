@@ -164,7 +164,7 @@ Before ExitPlanMode, append `## Approval Status` with `expert-review: APPROVED`,
 On resume: check `Mode:` — if `IMPLEMENTATION`, execute plan (don't call ExitPlanMode again).
 PostToolUse hook `plan-mode-approved.sh` updates `Mode: PLANNING` → `Mode: IMPLEMENTATION` automatically when user approves ExitPlanMode.
 
-**CRITICAL:** If session resumes with `Mode: IMPLEMENTATION`, the plan was ALREADY approved. Do NOT call ExitPlanMode - this causes double-approval and confuses the user. Do NOT start implementing from hook output alone — after `/clear`, Claude Code sends the plan as a user message. Wait for that message before acting.
+**CRITICAL:** If session resumes with `Mode: IMPLEMENTATION`, the plan was ALREADY approved. Do NOT call ExitPlanMode — this causes double-approval and confuses the user. The `session-start-resume.sh` hook sends the full plan content in its output with "PLAN APPROVED — BEGIN IMPLEMENTATION". Read the plan and start implementing immediately.
 
 ## Lean Plan Format
 
