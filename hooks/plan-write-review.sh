@@ -90,7 +90,7 @@ cat > $CLAUDE_DIR/sessions/\$SESSION_ID/context.yaml << 'YAML'
 reviewer_persona: "Senior physicist specializing in Clifford algebras"
 project_root: $PWD_PATH
 YAML
-Task(subagent_type="expert-review", model="opus", prompt="Review: session://\$SESSION_ID")
+Task(subagent_type="expert-review", model="sonnet", prompt="Review: session://\$SESSION_ID")
 
 DO NOT show the plan to the user until expert-review returns APPROVED.
 If REJECTED or INCOMPLETE, fix the issues first.
