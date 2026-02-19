@@ -159,7 +159,7 @@ KB_ADDED=$(echo "$CONTEXT_JSON" | python3 -c "
 import sys,json
 d=json.load(sys.stdin)
 for e in d.get('kb_added', [])[-3:]:
-    print(f\"- [{e.get('finding_type','?')}] {e.get('content','')[:200]}\")
+    print(f\"- [{e.get('finding_type','?')}] {e.get('content','')[:500]}\")
 " 2>/dev/null)
 FILES_READ=$(echo "$CONTEXT_JSON" | python3 -c "import sys,json; d=json.load(sys.stdin); [print(f) for f in d.get('files_read',[])[:15]]" 2>/dev/null)
 FILES_EDITED=$(echo "$CONTEXT_JSON" | python3 -c "import sys,json; d=json.load(sys.stdin); [print(f) for f in d.get('files_edited',[])]" 2>/dev/null)
@@ -168,8 +168,18 @@ import sys,json
 d=json.load(sys.stdin)
 queries = d.get('last_queries', [])
 for i, q in enumerate(queries[-3:], 1):
-    print(f'{i}. {q[:150]}')
+    print(f'{i}. {q[:500]}')
 " 2>/dev/null)
+LAST_QUERY_RAW=$(echo "$CONTEXT_JSON" | python3 -c "
+import sys,json
+d=json.load(sys.stdin)
+queries = d.get('last_queries', [])
+print(queries[-1][:300] if queries else '')
+" 2>/dev/null)
+
+# Git status: recent commits and uncommitted changes
+GIT_LOG=$(git log --oneline -5 2>/dev/null)
+GIT_UNCOMMITTED=$(git status --short 2>/dev/null | grep -v '^?' | head -10)
 
 # Extract expert review state
 REVIEW_SUMMARY=$(echo "$CONTEXT_JSON" | python3 -c "
@@ -181,9 +191,9 @@ if not launches and not verdicts:
     print('No expert review this session')
 else:
     if verdicts:
-        print(f'Last verdict: {verdicts[-1]} ({len(verdicts)} total)')
+        print(f'Last verdict: {verdicts[-1]} ({len(verdicts)} verdicts this session)')
     for r in launches[-3:]:
-        print(f\"  - {r.get('type','?')}: {r.get('description','')[:80]}\")
+        print(f\"  - {r.get('type','?')}: {r.get('description','')[:150]}\")
 " 2>/dev/null)
 
 # Get plan file: ONLY from current_plan (set when plan is created/edited)
@@ -252,9 +262,9 @@ print(json.dumps(out))
         model: "GLM-4.7-Flash-Q4_K_M.gguf",
         messages: [
           {role: "system", content: "Summarize session for handoff. Output ONLY valid JSON."},
-          {role: "user", content: "Session data:\n\($ctx)\nPlan: \($plan)\n\nOutput JSON: {\"summary\": \"1-2 sentence description of what was being worked on\", \"current_task\": \"specific task in progress\", \"next_steps\": [\"2-3 items\"], \"blockers\": []}"}
+          {role: "user", content: "Session data:\n\($ctx)\nPlan: \($plan)\n\nOutput JSON: {\"summary\": \"2-3 sentences: what was worked on, key finding or decision made, what changed from start to end of session\", \"current_task\": \"the specific task in progress at session end — name the file, function, or theorem, not generic phrases like 'working on X'\", \"next_steps\": [\"2-3 CONCRETE items: name specific file/function/test to work on, not generic advice\"], \"blockers\": [\"any unresolved issues or open questions\"]}"}
         ],
-        max_tokens: 300,
+        max_tokens: 600,
         temperature: 0.3
       }')
 else
@@ -277,6 +287,26 @@ print(content)
 # Default if LLM fails
 if [[ -z "$SUMMARY" || "$SUMMARY" == "{}" ]]; then
     SUMMARY='{"current_task": "unknown", "key_decisions": [], "next_steps": ["Check TaskList", "kb_search for context"], "blockers": []}'
+fi
+
+# Generate session-specific resume instructions
+if [[ -n "$PLAN_FILE" && "$PLAN_APPROVAL" == *"IMPLEMENTATION"* ]]; then
+    RESUME_INSTRUCTIONS="1. Read handoff and plan below — plan is APPROVED, begin/continue implementation
+2. Plan: $PLAN_FILE — check which phases are done, continue from the first incomplete phase
+3. Do NOT ask what to work on — resume immediately"
+elif [[ -n "$PLAN_FILE" ]]; then
+    RESUME_INSTRUCTIONS="1. Read handoff and plan: $PLAN_FILE
+2. Plan NOT yet approved — continue planning, run expert-review, then ExitPlanMode
+3. kb_list(project=\"$PROJECT_NAME\") for session findings"
+elif [[ -n "$LAST_QUERY_RAW" ]]; then
+    RESUME_INSTRUCTIONS="1. Read handoff for context
+2. Last user request: $LAST_QUERY_RAW
+3. kb_list(project=\"$PROJECT_NAME\") — KB findings are source of truth
+4. Continue from last user query — do NOT ask what to work on"
+else
+    RESUME_INSTRUCTIONS="1. Read handoff for context
+2. kb_list(project=\"$PROJECT_NAME\") — KB findings are source of truth
+3. Continue from last user query — do NOT ask what to work on"
 fi
 
 # Write handoff
@@ -309,6 +339,13 @@ ${REVIEW_SUMMARY:-No expert review this session}
 $SUMMARY
 \`\`\`
 
+## Git Status
+Recent commits:
+${GIT_LOG:-[no git history]}
+
+Uncommitted changes:
+${GIT_UNCOMMITTED:-[none]}
+
 ## Files Edited
 ${FILES_EDITED:-[none]}
 
@@ -325,11 +362,7 @@ ${KB_IDS:-[none]}
 ${KB_SUPERSEDED:-[none]}
 
 ## Resume
-1. Review LLM summary above for context
-2. kb_list(project="$PROJECT_NAME") - KB findings are the source of truth
-3. Review tasks.json for CONTEXT only - DO NOT auto-create tasks (often stale)
-4. Summarize actual work done based on KB findings
-5. Continue from last user query
+${RESUME_INSTRUCTIONS}
 EOF
 
 # Atomic commit
