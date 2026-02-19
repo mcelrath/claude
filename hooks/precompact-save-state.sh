@@ -240,53 +240,12 @@ if [[ -f "$WORK_CONTEXT_FILE" ]]; then
 "
 fi
 
-# Build LLM request for session summary
-if command -v jq &>/dev/null; then
-    # Include last queries and KB added in context for better summary
-    LLM_CONTEXT=$(echo "$CONTEXT_JSON" | python3 -c "
-import sys,json
-d=json.load(sys.stdin)
-out = {
-    'last_queries': d.get('last_queries',[]),
-    'kb_added': d.get('kb_added',[]),
-    'files_edited': d.get('files_edited',[]),
-    'review_verdicts': d.get('review_verdicts',[]),
-    'review_count': len(d.get('review_launches',[]))
-}
-print(json.dumps(out))
-" 2>/dev/null)
-    REQUEST=$(jq -n \
-      --arg ctx "$LLM_CONTEXT" \
-      --arg plan "${PLAN_FILE:-none}" \
-      '{
-        model: "GLM-4.7-Flash-Q4_K_M.gguf",
-        messages: [
-          {role: "system", content: "Summarize session for handoff. Output ONLY valid JSON."},
-          {role: "user", content: "Session data:\n\($ctx)\nPlan: \($plan)\n\nOutput JSON: {\"summary\": \"2-3 sentences: what was worked on, key finding or decision made, what changed from start to end of session\", \"current_task\": \"the specific task in progress at session end — name the file, function, or theorem, not generic phrases like 'working on X'\", \"next_steps\": [\"2-3 CONCRETE items: name specific file/function/test to work on, not generic advice\"], \"blockers\": [\"any unresolved issues or open questions\"]}"}
-        ],
-        max_tokens: 600,
-        temperature: 0.3
-      }')
-else
-    REQUEST='{"model":"GLM-4.7-Flash-Q4_K_M.gguf","messages":[{"role":"system","content":"Summarize session."},{"role":"user","content":"Output: {\"summary\":\"unknown\",\"current_task\":\"unknown\",\"next_steps\":[],\"blockers\":[]}"}],"max_tokens":300}'
-fi
+# Generate session summary via local LLM, using actual conversation text (not compressed JSON)
+SUMMARY=$(python3 "$CLAUDE_DIR/hooks/lib/summarize_session.py" "$JSONL" "${PLAN_FILE:-none}" "$LLM_URL")
 
-# Call local LLM to generate summary
-# Note: GLM model may put JSON in reasoning_content instead of content
-SUMMARY=$(curl -s --max-time 30 "$LLM_URL" \
-    -H "Content-Type: application/json" \
-    -d "$REQUEST" 2>/dev/null | \
-    python3 -c "
-import sys,json
-r=json.load(sys.stdin)
-msg=r.get('choices',[{}])[0].get('message',{})
-content=msg.get('content','') or msg.get('reasoning_content','{}')
-print(content)
-" 2>/dev/null)
-
-# Default if LLM fails
-if [[ -z "$SUMMARY" || "$SUMMARY" == "{}" ]]; then
-    SUMMARY='{"current_task": "unknown", "key_decisions": [], "next_steps": ["Check TaskList", "kb_search for context"], "blockers": []}'
+# Validate SUMMARY is parseable JSON
+if ! echo "$SUMMARY" | python3 -c "import sys,json; json.load(sys.stdin)" 2>/dev/null; then
+    SUMMARY='{"summary":"LLM unavailable","current_task":"unknown","next_steps":["kb_list for context","read handoff files_edited section"],"blockers":[]}'
 fi
 
 # Generate session-specific resume instructions
