@@ -19,7 +19,7 @@ fi
 
 # Check for any heredoc (python, bash, etc) - match ANY delimiter
 # Skip git commit commands (heredocs are the recommended way to pass commit messages)
-if echo "$COMMAND" | grep -qE "^git\s+(-[A-Za-z]+\s+\S+\s+)*commit" 2>/dev/null; then
+if echo "$COMMAND" | grep -qE "git\s+(-[A-Za-z]+\s+\S+\s+)*commit" 2>/dev/null; then
     exit 0
 fi
 if echo "$COMMAND" | grep -qE "<<\s*['\"]?[A-Za-z_][A-Za-z0-9_]*['\"]?" 2>/dev/null; then
