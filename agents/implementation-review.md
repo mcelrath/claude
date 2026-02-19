@@ -59,9 +59,14 @@ ASKING → VERIFY (user provides guidance)
    a. `{dir}/checks.yaml` (session-specific)
    b. `~/.claude/checks/global-impl-checks.yaml` (if exists)
    c. `{project_root}/checks/*.yaml` (domain-specific, if exist)
-   d. CLAUDE.md in project_root (parse "Implementation Checks" table)
-   e. `~/.claude/CLAUDE.md` (global "Implementation Checks" table, if exists)
-   f. Default checks (always applied last, see below)
+   d. `{project_root}/.claude/rules/*.md` (project rules — parse all anti-pattern tables)
+   e. CLAUDE.md in project_root (parse "Implementation Checks" table)
+   f. `~/.claude/CLAUDE.md` (global "Implementation Checks" table, if exists)
+   g. Default checks (always applied last, see below)
+
+   **Rules files** (`.claude/rules/*.md`): Same parsing as expert-review — read each file,
+   parse all recognized anti-pattern table formats. See expert-review.md "Parsing Rules Tables"
+   for format details.
 6. Read `{dir}/state.yaml` or create default
 7. → GATHER
 
@@ -514,3 +519,12 @@ Look for table with header `| Check | Reason |` under section containing "Implem
 ```
 
 Becomes pattern checks on changed_files with `fix: null` (→ ASKING).
+
+## Parsing Rules Tables
+
+Same as expert-review: parse `.claude/rules/*.md` files for anti-pattern tables in any
+recognized format (`| Code Pattern |`, `| Text Pattern |`, `| If you write... |`, `| Old |`).
+See expert-review.md "Parsing Rules Tables" section for full format specification.
+
+For implementation-review, these checks apply to the **diff** and **changed files** targets
+(not just plan text like expert-review).

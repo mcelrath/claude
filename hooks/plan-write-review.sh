@@ -78,6 +78,24 @@ fi
 
 PLAN_NAME=$(basename "$FILE_PATH")
 
+# Build optional copy commands for project rules and CLAUDE.md
+PROJECT_ROOT="$PWD_PATH"
+EXTRA_COPIES=""
+
+# Check for project rules directory
+RULES_DIR=""
+if [[ -d "$PROJECT_ROOT/.claude/rules" ]]; then
+    RULES_DIR="$PROJECT_ROOT/.claude/rules"
+elif [[ -d "$PROJECT_ROOT/.claude2/rules" ]]; then
+    RULES_DIR="$PROJECT_ROOT/.claude2/rules"
+fi
+[[ -n "$RULES_DIR" ]] && EXTRA_COPIES="${EXTRA_COPIES}
+cp -r \"$RULES_DIR\" $CLAUDE_DIR/sessions/\$SESSION_ID/rules/"
+
+# Check for project CLAUDE.md
+[[ -f "$PROJECT_ROOT/CLAUDE.md" ]] && EXTRA_COPIES="${EXTRA_COPIES}
+cp \"$PROJECT_ROOT/CLAUDE.md\" $CLAUDE_DIR/sessions/\$SESSION_ID/project-claude.md"
+
 cat << EOF
 PLAN FILE WRITTEN: $PLAN_NAME
 
@@ -85,7 +103,7 @@ STOP! Before presenting this plan to the user, you MUST run expert-review:
 
 SESSION_ID=\$(date +%Y%m%d-%H%M%S)-\$(head -c 4 /dev/urandom | xxd -p)
 mkdir -p $CLAUDE_DIR/sessions/\$SESSION_ID
-cp "$FILE_PATH" $CLAUDE_DIR/sessions/\$SESSION_ID/plan.md
+cp "$FILE_PATH" $CLAUDE_DIR/sessions/\$SESSION_ID/plan.md${EXTRA_COPIES}
 cat > $CLAUDE_DIR/sessions/\$SESSION_ID/context.yaml << 'YAML'
 reviewer_persona: "Senior physicist specializing in Clifford algebras"
 project_root: $PWD_PATH

@@ -56,9 +56,15 @@ ASKING → CHECKING (user responds with fix or approval)
    a. `{dir}/checks.yaml` (session-specific)
    b. `~/.claude/checks/global-checks.yaml` (if exists)
    c. `{project_root}/checks/*.yaml` (domain-specific, if exist)
-   d. CLAUDE.md in project_root (parse Anti-Patterns Table)
-   e. `~/.claude/CLAUDE.md` (global Anti-Patterns Table)
+   d. `{dir}/rules/*.md` (project rules copied by hook — parse all anti-pattern tables)
+   e. `{dir}/project-claude.md` (project CLAUDE.md copied by hook — parse Anti-Patterns Table)
+   f. CLAUDE.md in project_root (parse Anti-Patterns Table, fallback if e not present)
+   g. `~/.claude/CLAUDE.md` (global Anti-Patterns Table)
    → ERROR if no checks found from any source
+
+   **Rules files** (`{dir}/rules/*.md`): Read each `.md` file and parse ALL markdown tables
+   that contain pattern-like columns (see "Parsing Rules Tables" below). These provide
+   domain-specific anti-patterns that the plan must not violate.
 7. Read `{dir}/state.yaml`, or create default:
    ```yaml
    edits: 0
@@ -460,7 +466,7 @@ Reason: {specific error message}
 
 ### Parsing CLAUDE.md Tables
 
-Parse tables with SPECIFIC column format `| If you write... | STOP because... |`:
+Parse tables with column format `| If you write... | STOP because... |`:
 
 1. Scan file for table header row matching: `| If you write... | STOP because... |`
    (Case-insensitive, whitespace-flexible)
@@ -470,8 +476,46 @@ Parse tables with SPECIFIC column format `| If you write... | STOP because... |`
    - Column 2: reason (strip whitespace)
 4. Generate sequential IDs: `anti_pattern_1`, `anti_pattern_2`, ...
 
-**Note**: Other tables (like "Session Anti-Patterns" with different columns) are ignored.
-Only the specific `If you write... | STOP because...` format is parsed.
+### Parsing Rules Tables (from `{dir}/rules/*.md`)
+
+Rules files may contain anti-pattern tables in various formats. Parse ANY markdown table
+where the first column contains code patterns (indicated by backticks or keywords like
+"Pattern", "Code Pattern", "Text Pattern", "If you write"):
+
+**Recognized header formats** (case-insensitive, first column):
+- `| If you write... |` — standard CLAUDE.md format
+- `| Code Pattern |` — code-level anti-patterns
+- `| Text Pattern |` — prose-level anti-patterns
+- `| Old |` — deprecated function mappings (pattern = Old, reason = "Use {New} instead")
+
+**Parsing rules:**
+1. Scan for table header row containing a recognized pattern column
+2. Skip separator row
+3. For each data row:
+   - Column 1: pattern (strip backticks and whitespace)
+   - Column 2: reason/problem (strip whitespace)
+   - Column 3 (if present): fix hint (appended to reason)
+4. Generate IDs: `{filename_stem}_{n}` (e.g., `physics_antipatterns_1`)
+5. All rules-derived checks have `fix: null` (→ ASKING) and `match_rule: literal`
+
+**Section context**: When a table appears under a markdown heading (e.g., `## Loop Diagram Triggers`),
+prefix the reason with the section name for context: "Loop Diagram Triggers: {reason}"
+
+**Example**: From `physics-antipatterns.md`:
+```markdown
+## Loop Diagram / Feynman Diagram Triggers
+| Code Pattern | Problem | Fix |
+|---|---|---|
+| `G(p+q)` | Two propagators = loop diagram | See §GATEKEEPER.7 |
+```
+Becomes:
+```yaml
+- id: physics_antipatterns_12
+  pattern: "G(p+q)"
+  match_rule: literal
+  fix: null
+  reason: "Loop Diagram Triggers: Two propagators = loop diagram. See §GATEKEEPER.7"
+```
 
 ### Finding Project Root
 
