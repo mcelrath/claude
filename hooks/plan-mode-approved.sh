@@ -9,11 +9,15 @@ TOOL_NAME=$(printf '%s' "$INPUT" | python3 -c "import sys,json; print(json.load(
 [[ "$TOOL_NAME" != "ExitPlanMode" ]] && exit 0
 
 # ExitPlanMode has no slug/plan parameters — find the plan via current_plan pointer
+# Match plan-write-review.sh session ID lookup: input field first, then PPID fallback
 STATE_DIR="/tmp/claude-kb-state"
-SESSION_FILE="$STATE_DIR/session-$PPID"
-[[ ! -f "$SESSION_FILE" ]] && exit 0
+SESSION_ID=$(printf '%s' "$INPUT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('session_id',''))" 2>/dev/null)
+if [[ -z "$SESSION_ID" ]]; then
+    SESSION_FILE="$STATE_DIR/session-$PPID"
+    [[ -f "$SESSION_FILE" ]] && SESSION_ID=$(cat "$SESSION_FILE")
+fi
+[[ -z "$SESSION_ID" ]] && exit 0
 
-SESSION_ID=$(cat "$SESSION_FILE")
 SESSION_DIR="$CLAUDE_DIR/sessions/$SESSION_ID"
 CURRENT_PLAN_FILE="$SESSION_DIR/current_plan"
 [[ ! -f "$CURRENT_PLAN_FILE" ]] && exit 0
