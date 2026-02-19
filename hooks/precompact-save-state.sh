@@ -152,7 +152,7 @@ else
 fi
 
 # Extract all session data from context
-KB_IDS=$(echo "$CONTEXT_JSON" | python3 -c "import sys,json; d=json.load(sys.stdin); print(' '.join(d.get('kb_ids',[])[:20]))" 2>/dev/null)
+KB_IDS=$(echo "$CONTEXT_JSON" | python3 -c "import sys,json; d=json.load(sys.stdin); print(' '.join(d.get('kb_ids',[])[-20:]))" 2>/dev/null)
 KB_COUNT=$(echo "$CONTEXT_JSON" | python3 -c "import sys,json; d=json.load(sys.stdin); print(len(d.get('kb_ids',[])))" 2>/dev/null)
 KB_SUPERSEDED=$(echo "$CONTEXT_JSON" | python3 -c "import sys,json; d=json.load(sys.stdin); print(' '.join(d.get('kb_superseded',[])))" 2>/dev/null)
 KB_ADDED=$(echo "$CONTEXT_JSON" | python3 -c "
@@ -355,7 +355,7 @@ ${FILES_READ:-[none]}
 ## KB Added This Session
 ${KB_ADDED:-[none]}
 
-## KB Queried (${KB_COUNT:-0} total, showing first 20)
+## KB Queried (${KB_COUNT:-0} total, showing last 20)
 ${KB_IDS:-[none]}
 
 ## KB Superseded
