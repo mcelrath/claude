@@ -32,13 +32,13 @@ If these answer the question, STOP and report "Already resolved: kb-XXXXX"
 Select 2-3 domain experts from: {domain1} ({expert_names}), {domain2} ({expert_names}).
 State panel and relevance to this question.
 
-## TURN BUDGET: {max_turns} turns (MANDATORY)
-You have {max_turns} tool calls before forced termination.
-- AFTER EVERY 5 tool calls: kb_add a checkpoint of findings so far
-- At turn {max_turns - 3}: STOP research. kb_add ALL findings immediately.
-- At turn {max_turns - 1}: Return your final answer. Do NOT start new work.
-- Each Read/Grep/Bash/kb_add = 1 turn. Count them.
-If you are terminated without kb_add, ALL YOUR WORK IS LOST.
+## STOPPING CONDITIONS
+Stop and return partial results immediately if:
+- Same error 3+ times consecutively
+- 10+ tool calls with no new findings
+- 5+ KB search phrasings with no new results
+- Read 8+ files without producing a concrete output
+Checkpoint: call kb_add every 10 tool uses, even mid-task.
 
 ## SCOPE CONSTRAINTS
 - Phase 1 (5 min): State approach, produce intermediate output, kb_add checkpoint
@@ -54,19 +54,23 @@ BEFORE RETURNING: kb_add(content=<findings>, finding_type="discovery",
 project="{project}", tags="{tags}", verified=<bool>)
 ```
 
-## Recommended max_turns by Task Type
+## Stopping Conditions (Include in ALL agent prompts)
 
-| Task Type | max_turns | Rationale |
-|-----------|-----------|-----------|
-| KB search / existence check | 8 | Simple lookup with retry buffer |
-| Code exploration | 25 | Multiple files + reasoning about structure |
-| Research / analysis | 40 | Computation + Haiku delegation + KB recording |
-| Implementation | 50 | Edit/test cycles need room for iteration |
-| Review agents | 40 | Read plan + check many files + produce verdict |
+Agents terminate naturally when their task is complete. To prevent infinite loops and ensure work is preserved:
 
-**Parent must always set `max_turns`**. Default (no limit) risks agents running indefinitely.
+```
+## STOPPING CONDITIONS
+Stop and return partial results immediately if:
+- Same error 3+ times consecutively
+- 10+ tool calls with no new findings
+- 5+ KB search phrasings with no new results
+- Read 8+ files without producing a concrete output
+Checkpoint: call kb_add every 10 tool uses, even mid-task.
+```
 
-**Asymmetry principle**: Too-low limit loses ALL work (agent terminated without kb_add). Too-high limit just leaves unused budget. Err on the generous side. With api_signatures.md and Haiku delegation, agents finish earlier within budget anyway.
+**Checkpoint principle**: Work survives any termination if kb_add is called every 10 tool uses. Design agents to checkpoint frequently rather than save everything at the end.
+
+**Stuck agent rule**: If an agent runs >10 min without output, check and kill it (rule already in CLAUDE.md).
 
 ## Expert Panel Domains
 
@@ -93,7 +97,7 @@ template below. Key principle: **each round's queries come from the PREVIOUS rou
 ### Iterative Search Template (5 rounds)
 
 ```
-Task(subagent_type="general-purpose", model="haiku", max_turns=12, prompt=f"""
+Task(subagent_type="general-purpose", model="haiku", prompt=f"""
 TOPIC: {topic}
 
 ## ROUND 1: Seed queries (provided by parent)
@@ -141,22 +145,22 @@ Return JSON: {{
 """)
 ```
 
-### Why 12 turns for search (not 5-8)
+### Search round budget
 
-| Round | Turns | What happens |
-|-------|-------|-------------|
+| Round | Tool calls | What happens |
+|-------|------------|-------------|
 | 1 | 3 | Seed queries (provided by parent) |
 | 2 | 3-4 | Follow-up queries from Round 1 results |
 | 3 | 2-3 | Chase cross-references (kb_get) |
 | 4 | 2 | Tex + code grep |
 | 5 | 1-2 | Contradiction check + output |
 
-A 5-turn search only does Round 1. A 12-turn search does all 5 rounds and finds 3-5x more.
+All 5 rounds use ~12 tool calls and find 3-5x more than a single-round search.
 
 ### Web Search Depth Template
 
 ```
-Task(subagent_type="general-purpose", model="haiku", max_turns=12, prompt=f"""
+Task(subagent_type="general-purpose", model="haiku", prompt=f"""
 TOPIC: {topic}
 
 ## ROUND 1: Broad search
@@ -207,7 +211,7 @@ For quick lookups (NOT research), these single-round templates are fine:
 'What type is {symbol} in {file}? JSON: {type:str, defined_at:str}'
 ```
 
-**Decision**: Simple lookup → 5-8 turns, single-round template. Research → 12 turns, iterative template.
+**Decision**: Simple lookup → single-round template. Research → iterative 5-round template.
 
 ## Mandatory Agent Rules (Include in ALL agent prompts)
 
@@ -229,7 +233,7 @@ Common wrong guesses that waste turns:
 For ANY literature search, KB exploration, or web search, delegate to a Haiku sub-agent:
 
 ```python
-Task(subagent_type="general-purpose", model="haiku", max_turns=8, prompt=f"""
+Task(subagent_type="general-purpose", model="haiku", prompt=f"""
 Search for: {topic}
 
 1. kb_search("{query1}"), kb_search("{query2}"), kb_search("{query3}")
@@ -301,7 +305,7 @@ NEVER guess function names. If unsure, Read the module file first.
 
 ## HAIKU DELEGATION
 For literature/KB/web searches, spawn a Haiku sub-agent:
-  Task(subagent_type="general-purpose", model="haiku", max_turns=8,
+  Task(subagent_type="general-purpose", model="haiku",
        prompt="Search KB and web for {topic}. Return JSON: {findings, conclusion}")
 This saves your turns for reasoning and computation.
 
@@ -313,10 +317,12 @@ Write Python SCRIPTS (not Jupyter) for numerical work:
 ## EXPERT PANEL REQUIREMENT
 Select 2-3 domain experts from: {domain1} ({expert_names}), {domain2} ({expert_names}).
 
-## TURN BUDGET: {max_turns} turns (MANDATORY)
-- AFTER EVERY 5 tool calls: kb_add a checkpoint
-- At turn {max_turns - 3}: STOP. kb_add ALL findings immediately.
-- If terminated without kb_add, ALL WORK IS LOST.
+## STOPPING CONDITIONS
+Stop and return partial results immediately if:
+- Same error 3+ times consecutively
+- 10+ tool calls with no new findings
+- Read 8+ files without a concrete output
+Checkpoint: call kb_add every 10 tool uses.
 
 ## DELIVERABLE
 {expected_output_format}. ≤300 words. Conclusion first.

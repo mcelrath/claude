@@ -8,7 +8,7 @@ model: inherit
 
 **Purpose**: Iterative deep search across KB + tex drafts + codebase
 **Model**: haiku
-**Max turns**: 12
+**Protocol**: 5 rounds (~12 tool calls); terminates naturally after Round 5
 
 ## When to Use
 
@@ -20,7 +20,7 @@ The agent's internal kb_search calls satisfy the gate for you.
 ## Invocation
 
 ```python
-Task(subagent_type="kb-research", model="haiku", max_turns=12, prompt=f"""
+Task(subagent_type="kb-research", model="haiku", prompt=f"""
 TOPIC: {topic}
 PROJECT: {project}
 

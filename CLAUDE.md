@@ -39,9 +39,9 @@ On trigger: spawn Haiku to read `~/.claude/reviewers.yaml` and select 2-3 expert
 - **Review agents**: always `run_in_background=True` (prevents 34GB+ memory growth)
 - **All agents**: kb_add before returning; parent verifies KB entry exists
 - **Physics project agents only**: Include "Read docs/reference/api_signatures.md BEFORE importing from lib/" in prompt
-- **All agents**: Include "For literature/KB/web search, use kb-research agent (5 rounds, 12 turns)" in prompt
+- **All agents**: Include "For literature/KB/web search, use kb-research agent (5 rounds)" in prompt
 - **All agents**: Prefer scripts over Jupyter for computation (fewer turn-wasting API errors)
-- **Turn budget**: ALWAYS set `max_turns` on Task calls. Include TURN BUDGET section in prompt (see agent-prompts.md). Agents killed without kb_add lose ALL work.
+- **All agents**: Include STOPPING CONDITIONS section in prompt (see agent-prompts.md). kb_add every 10 tool uses.
 - **Output**: structured JSON with schema; caller formats for user. Mandatory suffix: `Return ONLY valid JSON. Schema: {[fields]}`
 - **Model selection**: Haiku for lookups/existence checks, Sonnet for implementation, Opus for lead only (max 1 per batch)
 - **KB search**: use kb-research agent (see `~/.claude/agents/kb-research.md`)
@@ -73,8 +73,7 @@ Rules: Max 3-4 teammates (Sonnet), Opus lead only. Assign file ownership (no con
 | **Agent reads >10 files without KB entry** | Scope too broad. Kill and answer yourself. |
 | **Numerical Jupyter for structural theory** | Wrong tool. Use reasoning or symbolic algebra. |
 | **Mixed compute+theory prompt** | SPLIT into separate agents or answer theory yourself. |
-| **Agent spawned without max_turns** | FORBIDDEN. Always set max_turns (see agent-prompts.md). |
-| **Agent prompt without TURN BUDGET section** | Add it. Agents terminated without kb_add lose ALL work. |
+| **Agent prompt without STOPPING CONDITIONS section** | Add it. Include kb_add checkpoint every 10 tool uses. |
 
 ## Plan Session Isolation
 
@@ -279,7 +278,7 @@ NEVER: "What would you like...", "Would you like me to...", numbered options, op
 | "Let me take a simpler approach" / "Given the complexity" | Problem has grown beyond initial plan. STOP. Enter plan mode with EnterPlanMode, reassess the problem, create new plan. |
 | Adding notebook cell to fix syntax error in previous cell | Use `modify_notebook_cells` with `operation="edit_code"` and `position_index=N` to fix the broken cell in place. |
 | Plan has `Mode: IMPLEMENTATION`, calling ExitPlanMode | Plan already approved. Don't re-ask. Wait for plan migration message before implementing. |
-| Agent misuse (3+ Opus, >10min stuck, 10+ files w/o KB, mixed compute+theory) | See Scope and Timeout Rules section. Split compute from theory, kill stuck agents. |
+| Agent misuse (3+ Opus, >10min stuck, 10+ files w/o KB, mixed compute+theory) | See Scope and Timeout Rules. Split compute from theory, kill stuck agents. |
 | Dispatching agents to implement X from a long conversation | Agents have NO conversation history. Every prompt must explicitly state: "The naive implementation would be Y — DO NOT do that. The required approach is Z because [reason from our discussion]." Missing this = agents implement the obvious wrong thing. |
 | Agent returns result, accepting without checking key constraint | Before summarizing agent output to user, explicitly verify: does this satisfy the non-obvious constraint stated in the prompt? If not, it's wrong even if it compiles/runs. |
 
@@ -302,7 +301,7 @@ Arch. pacman/yay. Python 3.13. rg/fd. git --no-gpg-sign.
 **Base case**: Spawning kb-research does NOT require pre-search.
 The agent's internal kb_search calls satisfy the gate for you.
 
-**Template**: `Task(subagent_type="kb-research", model="haiku", max_turns=12, prompt="TOPIC: {x}")`
+**Template**: `Task(subagent_type="kb-research", model="haiku", prompt="TOPIC: {x}")`
 Full template: See `~/.claude/agents/kb-research.md`
 
 Tags: proven|heuristic|open-problem, core-result|technique|detail
