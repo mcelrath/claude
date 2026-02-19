@@ -38,7 +38,7 @@ VERIFY → ARCHIVE (all checks pass) [MANDATORY next step]
        → ASKING (check fails, needs human judgment)
 
 ARCHIVE → APPROVED (plan archived, path reported)
-        → INCOMPLETE (archive failed)
+        → APPROVED + WARNING (archive failed but checks passed)
 
 FIXING → VERIFY (after fix applied)
        → INCOMPLETE (fixes >= 5)
@@ -244,15 +244,15 @@ else
 fi
 ```
 
-**FAILURE TO ARCHIVE = INCOMPLETE**, not APPROVED. If archiving fails, report:
+**Archive failure does NOT block the verdict.** If all checks passed but archiving fails, still return APPROVED with a warning:
 ```
-INCOMPLETE
-Reason: Plan archiving failed
-Plan path: {attempted path}
-Error: {error message}
+APPROVED
+...
+WARNING: Plan archiving failed (path: {attempted path}, error: {error message})
+Parent agent should archive manually.
 ```
 
-Only after successful archive → APPROVED
+The parent agent is responsible for archiving if the review agent cannot.
 
 ### Check Types
 

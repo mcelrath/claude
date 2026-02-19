@@ -86,6 +86,17 @@ if [[ -f "$RESUME_FILE" ]]; then
         # Use MY_PLAN from work context if available, otherwise use PREV_PLAN_FULL
         PLAN_TO_MIGRATE="${MY_PLAN:-$PREV_PLAN_FULL}"
 
+        # Helper: extract critical constraints from a plan file
+        _extract_plan_constraints() {
+            local PLAN="$1"
+            # FORBIDDEN/REQUIRED/MUST/NEVER/WARNING lines
+            grep -iE '^\s*(FORBIDDEN|REQUIRED|MUST( use| NOT)?|NEVER|DO NOT|WARNING):?\s' "$PLAN" 2>/dev/null
+            # §GATEKEEPER references
+            grep -oE '§GATEKEEPER\.[0-9A-Z_]+[^|]*' "$PLAN" 2>/dev/null
+            # "Use X, not Y" or "Use X instead of Y" patterns
+            grep -iE '^\s*(Use|Always use) .+ (not|instead of) ' "$PLAN" 2>/dev/null
+        }
+
         # Check plan approval status and give appropriate instructions based on work type
         PLAN_MODE=""
         if [[ -n "$PLAN_TO_MIGRATE" && -f "$PLAN_TO_MIGRATE" ]]; then
@@ -104,6 +115,14 @@ if [[ -f "$RESUME_FILE" ]]; then
                         echo "DO NOT call ExitPlanMode. The plan is already approved."
                         echo "Read the plan below and start implementing immediately."
                         echo ""
+                        # Extract critical constraints from plan (FORBIDDEN/REQUIRED/MUST/NEVER lines)
+                        CONSTRAINTS=$(_extract_plan_constraints "$PLAN_TO_MIGRATE" | sort -u | head -15)
+                        if [[ -n "$CONSTRAINTS" ]]; then
+                            echo "=== CRITICAL CONSTRAINTS FROM PLAN ==="
+                            echo "$CONSTRAINTS"
+                            echo "=== END CONSTRAINTS ==="
+                            echo ""
+                        fi
                         echo "--- PLAN CONTENT ---"
                         cat "$PLAN_TO_MIGRATE"
                         echo "--- END PLAN ---"
@@ -155,6 +174,13 @@ if [[ -f "$RESUME_FILE" ]]; then
                         echo "DO NOT call ExitPlanMode. The plan is already approved."
                         echo "Read the plan below and start implementing immediately."
                         echo ""
+                        CONSTRAINTS=$(_extract_plan_constraints "$PLAN_TO_MIGRATE" | sort -u | head -15)
+                        if [[ -n "$CONSTRAINTS" ]]; then
+                            echo "=== CRITICAL CONSTRAINTS FROM PLAN ==="
+                            echo "$CONSTRAINTS"
+                            echo "=== END CONSTRAINTS ==="
+                            echo ""
+                        fi
                         echo "--- PLAN CONTENT ---"
                         cat "$PLAN_TO_MIGRATE"
                         echo "--- END PLAN ---"
