@@ -34,6 +34,15 @@ except:
             exit 0
         fi
 
+        # Skip gate if implementing an approved plan (post /clear resume)
+        SESSION_DIR="$CLAUDE_DIR/sessions/$SESSION_ID"
+        if [[ -f "$SESSION_DIR/current_plan" ]]; then
+            PLAN_FILE=$(cat "$SESSION_DIR/current_plan")
+            if [[ -f "$PLAN_FILE" ]] && grep -q 'Mode: IMPLEMENTATION' "$PLAN_FILE" 2>/dev/null; then
+                exit 0
+            fi
+        fi
+
         # Check if search was done
         SEARCHED_FILE="$STATE_DIR/${SESSION_ID}-searched"
         if [[ ! -f "$SEARCHED_FILE" ]]; then
