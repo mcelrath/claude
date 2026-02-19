@@ -148,9 +148,10 @@ When presenting a plan for approval, include:
 1. Task(subagent_type="expert-review", run_in_background=True, ...)
 2. task_id = result from Task call
 3. output = TaskOutput(task_id, block=True, timeout=120000)
-4. Parse verdict from output (APPROVED / REJECTED / INCOMPLETE)
-5. If REJECTED or INCOMPLETE: revise plan, go to step 1
-6. If APPROVED: append ## Approval Status and call ExitPlanMode
+4. TaskStop(task_id)  ← ALWAYS call after reading output (prevents screen flash on /clear)
+5. Parse verdict from output (APPROVED / REJECTED / INCOMPLETE)
+6. If REJECTED or INCOMPLETE: revise plan, go to step 1
+7. If APPROVED: append ## Approval Status and call ExitPlanMode
 ```
 Do NOT call ExitPlanMode until TaskOutput returns APPROVED.
 
