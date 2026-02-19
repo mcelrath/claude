@@ -16,7 +16,14 @@ FALLBACK = '{"summary":"LLM unavailable","current_task":"unknown","next_steps":[
 
 SYSTEM_PROMPT = "Summarize this Claude Code session for handoff. Output ONLY valid JSON."
 
-USER_SUFFIX = '\n\nOutput JSON:\n{"summary": "2-3 sentences naming specific math objects/functions/theorems/files worked on, key finding made, what changed", "current_task": "the specific file, function, or theorem being worked on at session end — not generic phrases", "next_steps": ["2-3 concrete items with specific file/function/theorem names"], "blockers": ["unresolved issues, or empty list"]}'
+USER_SUFFIX = '''\n\nOutput JSON with as much detail as needed — do not truncate findings or next steps:
+{
+  "summary": "paragraph: the arc of this session — what problem was being solved, what approach was taken, what was discovered or changed",
+  "findings": ["each significant discovery, decision, or result from this session — be specific, name math objects/theorems/functions"],
+  "current_task": "the specific file, function, theorem, or object being actively worked on at session end",
+  "next_steps": ["each concrete next action with specific file/function/theorem names — as many as needed"],
+  "blockers": ["each unresolved issue or open question, or empty list"]
+}'''
 
 SKIP_PREFIXES = (
     '<local-command', '<system', '<command-',
@@ -60,7 +67,7 @@ def call_local_llm(context: str, url: str, model: str) -> str | None:
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": context + USER_SUFFIX},
         ],
-        "max_tokens": 600,
+        "max_tokens": 1200,
         "temperature": 0.3,
     }).encode()
     try:
