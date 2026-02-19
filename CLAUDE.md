@@ -48,6 +48,8 @@ On trigger: spawn Haiku to read `~/.claude/reviewers.yaml` and select 2-3 expert
 
 **Agent prompts, templates, expert panels:** See `~/.claude/docs/reference/agent-prompts.md`
 
+**Before writing any agent prompt from a long conversation:** Identify the one sentence that distinguishes this task from the naive/obvious implementation and put it first in the prompt: `"CRITICAL: the naive implementation would be X — do NOT do that. Required: Y."` Agents have no conversation history. If you can't state the key constraint in one sentence, you don't understand the task well enough to delegate it.
+
 ### Agent Task Classification
 
 | Task Type | Signs | How to Handle |
@@ -277,6 +279,8 @@ NEVER: "What would you like...", "Would you like me to...", numbered options, op
 | Adding notebook cell to fix syntax error in previous cell | Use `modify_notebook_cells` with `operation="edit_code"` and `position_index=N` to fix the broken cell in place. |
 | Plan has `Mode: IMPLEMENTATION`, calling ExitPlanMode | Plan already approved. Don't re-ask. Wait for plan migration message before implementing. |
 | Agent misuse (3+ Opus, >10min stuck, 10+ files w/o KB, mixed compute+theory) | See Scope and Timeout Rules section. Split compute from theory, kill stuck agents. |
+| Dispatching agents to implement X from a long conversation | Agents have NO conversation history. Every prompt must explicitly state: "The naive implementation would be Y — DO NOT do that. The required approach is Z because [reason from our discussion]." Missing this = agents implement the obvious wrong thing. |
+| Agent returns result, accepting without checking key constraint | Before summarizing agent output to user, explicitly verify: does this satisfy the non-obvious constraint stated in the prompt? If not, it's wrong even if it compiles/runs. |
 
 # System
 
