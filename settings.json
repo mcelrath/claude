@@ -321,10 +321,6 @@
           {
             "type": "command",
             "command": "$HOME/.claude/hooks/remind-patterns.sh"
-          },
-          {
-            "type": "command",
-            "command": "$HOME/.claude/hooks/auto-resume.sh"
           }
         ]
       }
@@ -548,5 +544,6 @@
     "~/.claude/",
     ".claude/plans"
   ],
-  "effortLevel": "medium"
+  "effortLevel": "medium",
+  "model": "sonnet"
 }

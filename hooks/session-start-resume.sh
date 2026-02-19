@@ -207,5 +207,12 @@ if [[ -f "$RESUME_FILE" ]]; then
             echo "  ACTION: Summarize work done, verify completion"
             echo ""
         fi
+
+        # Common resume footer — instructions for Claude
+        echo "RESUME INSTRUCTIONS:"
+        echo "- Read $HANDOFF for full context"
+        echo "- If a plan was shown above, CONTINUE WORKING ON IT immediately"
+        echo "- After resuming, run: rm $RESUME_FILE"
+        echo "- Do NOT ask 'What would you like to work on?' — just continue."
     fi
 fi

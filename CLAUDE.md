@@ -32,15 +32,7 @@ Personas in `~/.claude/reviewers.yaml`. Key panels: `technical_review` (Peskin+A
 
 **Auto-select triggers** (case-insensitive): "critically review", "review this", "sanity check", "verify this", "is this correct", "does this make sense", "what do you think" (about correctness).
 
-On trigger, spawn Haiku to select panel:
-```python
-Task(subagent_type="general-purpose", model="haiku", prompt=f"""
-Read ~/.claude/reviewers.yaml, select 2-3 experts for: {summary}. PROJECT: {project}.
-ALWAYS include Claude for anti-pattern detection.
-Return ONLY JSON: {{"panel": [{{"name":str,"domain":str,"focus":[str]}}], "reason":str}}
-""")
-```
-Then adopt each reviewer's voice. Report as: `## Review Panel: [names]` with `### [Name] ([domain]):` subsections. Skip auto-select if user specifies reviewers by name.
+On trigger: spawn Haiku to read `~/.claude/reviewers.yaml` and select 2-3 experts (always include Claude for anti-pattern detection). Adopt each reviewer's voice. Report as `## Review Panel: [names]` with `### [Name] ([domain]):` subsections. Full spawn template: see `agent-prompts.md §Reviewers`. Skip auto-select if user specifies reviewers by name.
 
 ### Subagent Rules (MANDATORY)
 
@@ -312,71 +304,18 @@ Tags: proven|heuristic|open-problem, core-result|technique|detail
 
 # Jupyter Notebooks (Computation Only)
 
-Jupyter is for **computation and experiments**, NOT explanation. All explanatory text belongs in your response to the user.
+Jupyter is for **computation only** — no markdown cells, no comments of any kind, no print() labels. The notebook is a calculator; you explain results in your response.
 
-**What goes in notebooks:**
-- Numeric calculations, symbolic algebra
-- Hypothesis testing, parameter exploration
-- Visualizations, plots
-- Import statements and function calls
+**Rules:**
+- No markdown cells, no `# comments`, no docstrings, no print labels
+- Before importing from lib/: `Read` the module to verify signatures (rg-before-new-code applies)
+- Check server: `query_notebook("test", "check_server", server_url="http://localhost:8888")` — fall back to script if not running
+- Reusable cells (called 2+ times or worth testing) → extract to `lib/`
+- SageMath requires SageMath kernel; Maple use `maple_proxy` kernel with `%maple` prefix and semicolons
 
-**What does NOT go in notebooks:**
-- Markdown cells explaining what you're doing
-- Comments of ANY kind (not `# Setup`, not `# TODO`, not `# Step 1`, nothing)
-- print() statements with labels, descriptions, or status messages
-- Headers, separators, or formatting
-- Docstrings (if you need a docstring, extract to lib/)
+**When to use:** numeric checks, hypothesis exploration, SageMath/Maple algebra, plots. Use scripts for reusable computation and CI tests. Create notebooks in project's `notebooks/` directory.
 
-**Mental model**: The notebook is your calculator. You press buttons, it shows numbers. YOU explain what those numbers mean in your response. The notebook never explains anything.
-
-**Short heredocs (≤5 lines):** Still allowed for quick one-off calculations. Jupyter is preferred when iterating or exploring.
-
-**Before importing from lib/**: `Read` the module to verify function signatures. The rg-before-new-code rule applies to notebook cells.
-
-**Check server first:** `query_notebook("test", "check_server", server_url="http://localhost:8888")`
-If server not running, fall back to writing a script file.
-
-**Token optimization:** For large notebooks, use lightweight queries:
-- `query_notebook("nb", "list_cells")` — compact metadata only (~2KB vs 100KB)
-- `query_notebook("nb", "view_source", include_outputs=False)` — source without outputs
-- `query_notebook("nb", "view_source", position_index=5)` — single cell only
-
-**Usage:**
-    setup_notebook("experiment_name", server_url="http://localhost:8888")
-    modify_notebook_cells("experiment_name", "add_code", "from lib.core.clifford import Cl44")
-    modify_notebook_cells("experiment_name", "add_code", "cl = Cl44(); print(cl.fock_space().dim)")
-
-**Notebook location:** Create in project's `notebooks/` directory (e.g., `~/Physics/claude/notebooks/`).
-
-**When to use Jupyter vs Scripts:**
-
-| Use Case | Tool |
-|----------|------|
-| Quick numeric check | Jupyter notebook (code cells only) |
-| Exploring a hypothesis | Jupyter notebook (code cells only) |
-| Symbolic algebra (SageMath) | Jupyter notebook (SageMath kernel required) |
-| Maple symbolic algebra | Jupyter notebook (maple_proxy kernel) |
-| Reusable computation | Script in `lib/` or `exploration/` |
-| Test that should run in CI | `lib/tests/test_*.py` |
-
-Note: SageMath syntax requires a SageMath kernel, not the default Python kernel.
-
-**Notebook → lib/ extraction:** If a notebook cell becomes reusable (called 2+ times, or worth testing), extract it to `lib/` as a proper function. Follow existing patterns (see `lib/__init__.py`).
-
-# Maple Symbolic Algebra
-
-Use `maple_proxy` kernel. Python default; Maple via `%maple` prefix.
-
-**Usage:**
-    setup_notebook("maple_work", server_url="http://localhost:8888")
-    modify_notebook_cells("maple_work", "add_code", "import numpy as np")
-    modify_notebook_cells("maple_work", "add_code", "%maple\nint(x^2, x);")
-
-**Maple syntax:** Semicolons required. First `%maple` has ~10s delay (Wine/Maple startup).
-
-**Output:** LaTeX markdown (`$$\frac{x^3}{3}$$`)
-
-**Kernel setup:** Create notebook file with maple_proxy kernel, or manually select in Jupyter UI.
+**Full usage examples, token optimization, kernel setup:** See `~/.claude/docs/reference/agent-prompts.md §Jupyter`.
 
 # Tool Output Truncation
 
