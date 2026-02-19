@@ -40,10 +40,7 @@ if [[ -f "$TTY_RESUME_FILE" ]]; then
         # Extract KB IDs from THIS session's handoff (scoped to TTY's work)
         KB_IDS=$(grep -oE 'kb-[0-9]{8}-[0-9]{6}-[a-f0-9]{6}' "$HANDOFF" 2>/dev/null | sort -u | head -5)
         if [[ -n "$KB_IDS" ]]; then
-            echo "=== KB Findings (this TTY's session) ==="
-            for KB_ID in $KB_IDS; do
-                "$KB_VENV" "$KB_SCRIPT" get "$KB_ID" 2>/dev/null | head -3
-            done
+            echo "Session KB: $KB_IDS"
             exit 0  # Skip project-wide dump - TTY-specific context is sufficient
         fi
     fi
@@ -64,21 +61,14 @@ if [[ -f "$CONTEXT_FILE" ]]; then
     fi
 fi
 
-# Show recent findings for this project
+# Show recent finding IDs only (compact - use kb_get to fetch content)
 FINDINGS=$("$KB_VENV" "$KB_SCRIPT" list --project="$PROJECT" --limit=3 2>/dev/null) || true
 
 if [[ -n "$FINDINGS" && "$FINDINGS" != "No findings found." ]]; then
-    echo "=== Recent KB Findings ($PROJECT) ==="
-    echo "$FINDINGS" | head -15
-fi
-
-# Show any recent errors for this project
-ERRORS=$("$KB_VENV" "$KB_SCRIPT" error list --project="$PROJECT" --limit=2 2>/dev/null) || true
-
-if [[ -n "$ERRORS" && "$ERRORS" != "No errors recorded." ]]; then
-    echo ""
-    echo "=== Known Errors ($PROJECT) ==="
-    echo "$ERRORS" | head -10
+    KB_IDS=$(echo "$FINDINGS" | grep -oE 'kb-[0-9]{8}-[0-9]{6}-[a-f0-9]{6}' | head -5 | tr '\n' ' ')
+    if [[ -n "$KB_IDS" ]]; then
+        echo "Recent KB ($PROJECT): $KB_IDS"
+    fi
 fi
 
 exit 0

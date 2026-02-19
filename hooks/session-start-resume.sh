@@ -113,7 +113,7 @@ if [[ -f "$RESUME_FILE" ]]; then
                         echo "PLAN APPROVED — BEGIN IMPLEMENTATION"
                         echo "Plan: $PLAN_TO_MIGRATE"
                         echo "DO NOT call ExitPlanMode. The plan is already approved."
-                        echo "Read the plan below and start implementing immediately."
+                        echo "ACTION: Read the plan file above, find the first incomplete phase, implement it."
                         echo ""
                         # Extract critical constraints from plan (FORBIDDEN/REQUIRED/MUST/NEVER lines)
                         CONSTRAINTS=$(_extract_plan_constraints "$PLAN_TO_MIGRATE" | sort -u | head -15)
@@ -123,10 +123,6 @@ if [[ -f "$RESUME_FILE" ]]; then
                             echo "=== END CONSTRAINTS ==="
                             echo ""
                         fi
-                        echo "--- PLAN CONTENT ---"
-                        cat "$PLAN_TO_MIGRATE"
-                        echo "--- END PLAN ---"
-                        echo ""
                     elif grep -q 'expert-review: APPROVED' "$PLAN_TO_MIGRATE" 2>/dev/null; then
                         echo "  Plan Status: Expert review APPROVED but Mode still PLANNING (hook failed)"
                         echo "  ACTION: Update Mode → IMPLEMENTATION in plan file, then begin implementation"
@@ -172,7 +168,7 @@ if [[ -f "$RESUME_FILE" ]]; then
                         echo "PLAN APPROVED — BEGIN IMPLEMENTATION"
                         echo "Plan: $PLAN_TO_MIGRATE"
                         echo "DO NOT call ExitPlanMode. The plan is already approved."
-                        echo "Read the plan below and start implementing immediately."
+                        echo "ACTION: Read the plan file above, find the first incomplete phase, implement it."
                         echo ""
                         CONSTRAINTS=$(_extract_plan_constraints "$PLAN_TO_MIGRATE" | sort -u | head -15)
                         if [[ -n "$CONSTRAINTS" ]]; then
@@ -181,10 +177,6 @@ if [[ -f "$RESUME_FILE" ]]; then
                             echo "=== END CONSTRAINTS ==="
                             echo ""
                         fi
-                        echo "--- PLAN CONTENT ---"
-                        cat "$PLAN_TO_MIGRATE"
-                        echo "--- END PLAN ---"
-                        echo ""
                     else
                         echo ""
                         echo "PLAN IN PROGRESS — CONTINUE PLANNING"
