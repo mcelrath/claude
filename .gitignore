@@ -16,6 +16,7 @@ tasks/
 telemetry/
 todos/
 backups/
+plugins/
 
 # Credentials and secrets (NEVER commit)
 .credentials.json
@@ -47,12 +48,6 @@ __pycache__/
 
 # Project-specific data (may contain paths/private info)
 projects/
-
-# Plugin marketplace data (auto-generated, contains machine-specific paths)
-plugins/marketplaces/
-plugins/known_marketplaces.json
-plugins/installed_plugins.json
-plugins/blocklist.json
 
 # OS and editor files
 .DS_Store
