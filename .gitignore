@@ -15,6 +15,7 @@ statsig/
 tasks/
 telemetry/
 todos/
+backups/
 
 # Credentials and secrets (NEVER commit)
 .credentials.json
@@ -51,6 +52,7 @@ projects/
 plugins/marketplaces/
 plugins/known_marketplaces.json
 plugins/installed_plugins.json
+plugins/blocklist.json
 
 # OS and editor files
 .DS_Store
