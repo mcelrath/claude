@@ -37,6 +37,7 @@ On trigger: spawn Haiku to read `~/.claude/reviewers.yaml` and select 2-3 expert
 ### Subagent Rules (MANDATORY)
 
 - **Review agents**: always `run_in_background=True` (prevents 34GB+ memory growth)
+- **Never pass `max_turns`**: omit it entirely. Hard turn limits cut agents off mid-tool-call, preventing kb_add and final summaries. Use STOPPING CONDITIONS in the prompt instead.
 - **All agents**: kb_add before returning; parent verifies KB entry exists
 - **Physics project agents only**: Include "Read docs/reference/api_signatures.md BEFORE importing from lib/" in prompt
 - **All agents**: Include "For literature/KB/web search, use kb-research agent (5 rounds)" in prompt
@@ -278,6 +279,7 @@ NEVER: "What would you like...", "Would you like me to...", numbered options, op
 | "Let me take a simpler approach" / "Given the complexity" | Problem has grown beyond initial plan. STOP. Enter plan mode with EnterPlanMode, reassess the problem, create new plan. |
 | Adding notebook cell to fix syntax error in previous cell | Use `modify_notebook_cells` with `operation="edit_code"` and `position_index=N` to fix the broken cell in place. |
 | Plan has `Mode: IMPLEMENTATION`, calling ExitPlanMode | Plan already approved. Don't re-ask. Wait for plan migration message before implementing. |
+| `Task(..., max_turns=N, ...)` | Hard turn limits cut agents off mid-tool-call with no final turn to kb_add or summarize. Omit max_turns entirely. Use STOPPING CONDITIONS in the prompt. |
 | Agent misuse (3+ Opus, >10min stuck, 10+ files w/o KB, mixed compute+theory) | See Scope and Timeout Rules. Split compute from theory, kill stuck agents. |
 | Dispatching agents to implement X from a long conversation | Agents have NO conversation history. Every prompt must explicitly state: "The naive implementation would be Y — DO NOT do that. The required approach is Z because [reason from our discussion]." Missing this = agents implement the obvious wrong thing. |
 | Agent returns result, accepting without checking key constraint | Before summarizing agent output to user, explicitly verify: does this satisfy the non-obvious constraint stated in the prompt? If not, it's wrong even if it compiles/runs. |
