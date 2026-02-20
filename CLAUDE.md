@@ -282,6 +282,40 @@ NEVER: "What would you like...", "Would you like me to...", numbered options, op
 | Dispatching agents to implement X from a long conversation | Agents have NO conversation history. Every prompt must explicitly state: "The naive implementation would be Y — DO NOT do that. The required approach is Z because [reason from our discussion]." Missing this = agents implement the obvious wrong thing. |
 | Agent returns result, accepting without checking key constraint | Before summarizing agent output to user, explicitly verify: does this satisfy the non-obvious constraint stated in the prompt? If not, it's wrong even if it compiles/runs. |
 
+# Build Waiting Protocol
+
+**Never poll `build-manager status` in a loop** — busy-loop anti-pattern.
+
+**Short builds (< 10 min expected):**
+```bash
+build-manager start --sync . "ninja -C build -j32"   # Bash timeout=600000
+```
+Returns directly with success/failure. No waiting needed.
+
+**Long builds (≥ 10 min expected):**
+```bash
+# 1. Start async
+build-manager start . "ninja -C build -j32"
+
+# 2. Create team + spawn monitor (Haiku, run_in_background=True)
+TeamCreate(team_name="build-watch-<project>")
+Task(subagent_type="build-monitor", team_name="...",
+     prompt="Monitor build at /abs/path/to/project. I am [your-name].",
+     run_in_background=True)
+
+# 3. Stop. Agent wakes you when done via SendMessage.
+```
+
+The `build-monitor` agent loops `build-manager wait --max-wait 500` (Bash timeout=600000) across multiple turns until `BUILD_DONE`, then SendMessage. You receive it as a new conversation turn — no polling.
+
+**After receiving build completion message:** check status, proceed with next task. Call `TeamDelete` to clean up.
+
+| Pattern | Anti-pattern |
+|---------|-------------|
+| `--sync` + timeout=600000 for short builds | `build-manager status` in a loop |
+| Team + build-monitor for long builds | `build-manager wait` without team |
+| Stop and wait for agent message | Repeated TaskOutput polling |
+
 # System
 
 Arch. pacman/yay. Python 3.13. rg/fd. git --no-gpg-sign.

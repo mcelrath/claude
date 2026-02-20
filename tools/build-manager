@@ -477,7 +477,23 @@ cmd_wait() {
     # Clean up stale builds first
     cleanup_stale_builds
 
-    local project_dir="${1:-.}"
+    local project_dir="."
+    local max_wait=0  # 0 = unlimited; positive = seconds before returning BUILD_STILL_RUNNING
+
+    # Parse flags
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --max-wait|-w)
+                max_wait="$2"
+                shift 2
+                ;;
+            *)
+                project_dir="$1"
+                shift
+                ;;
+        esac
+    done
+
     project_dir=$(realpath "$project_dir")
     local project_key=$(get_project_key "$project_dir")
 
@@ -487,29 +503,50 @@ cmd_wait() {
     exec 201>"$wait_lock_file"
     if ! flock -n 201; then
         echo "Another wait is already running for: $project_dir"
-        echo "Exiting to avoid duplicate wait tasks."
+        echo "BUILD_STILL_RUNNING: duplicate wait, retry after delay"
         exit 0
     fi
     # Lock acquired - will be released when this process exits
 
     echo "Waiting for build to complete: $project_dir"
+    [[ $max_wait -gt 0 ]] && echo "Max wait: ${max_wait}s"
+
+    local start_time
+    start_time=$(date +%s)
+
+    # Look up final status from history and emit BUILD_DONE
+    _emit_done() {
+        local duration="$1"
+        local status
+        status=$(jq -r --arg pk "$project_key" \
+            '.history | reverse | .[] | select(.project == $pk) | .status' \
+            "$STATE_FILE" 2>/dev/null | head -1)
+        [[ -z "$status" || "$status" == "null" ]] && status="unknown"
+        echo "BUILD_DONE: status=$status duration=${duration}s"
+    }
 
     # Check if inotifywait is available
     if ! command -v inotifywait &>/dev/null; then
         echo "Warning: inotifywait not found, falling back to polling" >&2
-        # Fallback to polling
         local waited=0
         while true; do
-            local build_info=$(get_build_info "$project_key")
+            local build_info
+            build_info=$(get_build_info "$project_key")
             if [[ "$build_info" == "null" ]]; then
-                echo "Build completed (waited ${waited}s)"
+                _emit_done "$waited"
                 return 0
             fi
 
-            local pid=$(echo "$build_info" | jq -r '.pid')
+            local pid
+            pid=$(echo "$build_info" | jq -r '.pid')
             if ! is_process_alive "$pid"; then
                 update_state "$project_key" "null"
-                echo "Build completed (process no longer running, waited ${waited}s)"
+                _emit_done "$waited"
+                return 0
+            fi
+
+            if [[ $max_wait -gt 0 && $waited -ge $max_wait ]]; then
+                echo "BUILD_STILL_RUNNING: waited ${waited}s"
                 return 0
             fi
 
@@ -519,29 +556,47 @@ cmd_wait() {
     fi
 
     # Use inotify to efficiently wait for state file changes
-    local start_time=$(date +%s)
     while true; do
-        local build_info=$(get_build_info "$project_key")
+        local build_info
+        build_info=$(get_build_info "$project_key")
         if [[ "$build_info" == "null" ]]; then
-            local end_time=$(date +%s)
-            local duration=$((end_time - start_time))
-            echo "Build completed (waited ${duration}s)"
+            local now duration
+            now=$(date +%s)
+            duration=$((now - start_time))
+            _emit_done "$duration"
             return 0
         fi
 
         # Check if process is still alive
-        local pid=$(echo "$build_info" | jq -r '.pid')
+        local pid
+        pid=$(echo "$build_info" | jq -r '.pid')
         if ! is_process_alive "$pid"; then
             update_state "$project_key" "null"
-            local end_time=$(date +%s)
-            local duration=$((end_time - start_time))
-            echo "Build completed (process no longer running, waited ${duration}s)"
+            local now duration
+            now=$(date +%s)
+            duration=$((now - start_time))
+            _emit_done "$duration"
             return 0
         fi
 
-        # Wait for state file to be modified (build completed)
-        # Timeout after 60 seconds to check process status
-        inotifywait -e modify -e moved_to -t 60 "$STATE_FILE" 2>/dev/null || true
+        # Check max-wait ceiling
+        if [[ $max_wait -gt 0 ]]; then
+            local now elapsed
+            now=$(date +%s)
+            elapsed=$((now - start_time))
+            if [[ $elapsed -ge $max_wait ]]; then
+                echo "BUILD_STILL_RUNNING: waited ${elapsed}s"
+                return 0
+            fi
+            # Clamp inotifywait timeout to remaining window
+            local remaining=$((max_wait - elapsed))
+            local inotify_timeout=$(( remaining < 60 ? remaining : 60 ))
+            [[ $inotify_timeout -le 0 ]] && inotify_timeout=1
+            inotifywait -e modify -e moved_to -t "$inotify_timeout" "$STATE_FILE" 2>/dev/null || true
+        else
+            # Unlimited: 60s heartbeat
+            inotifywait -e modify -e moved_to -t 60 "$STATE_FILE" 2>/dev/null || true
+        fi
     done
 }
 
@@ -1004,7 +1059,12 @@ Commands:
 
   queue               Show builds waiting for the global lock
 
-  wait [dir]          Wait for build in directory to complete (default: current dir)
+  wait [--max-wait N] [dir]
+                      Wait for build in directory to complete (default: current dir)
+                      --max-wait N: return after N seconds if still running.
+                        Outputs BUILD_DONE: status=success|failed duration=Xs
+                        or     BUILD_STILL_RUNNING: waited Ns
+                        Both exit 0 — check output text, not exit code.
 
   kill [dir]          Kill build in directory (default: current dir)
 
@@ -1088,7 +1148,7 @@ case "${1:-help}" in
         ;;
     wait)
         shift
-        cmd_wait "${1:-.}"
+        cmd_wait "$@"
         ;;
     kill)
         shift
