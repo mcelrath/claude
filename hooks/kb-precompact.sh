@@ -39,7 +39,8 @@ fi
 # Set KB environment
 export KB_EMBEDDING_URL="${KB_EMBEDDING_URL:-http://localhost:8080/embedding}"
 export KB_EMBEDDING_DIM=4096
-export KB_LLM_URL="${KB_LLM_URL:-http://localhost:9510/completion}"
+source "$(dirname "$0")/lib/claude-env.sh" 2>/dev/null || true
+export KB_LLM_URL="${KB_LLM_URL:-http://${LLM_HOST:-tardis}:${LLM_PORT:-9510}/completion}"
 
 KB_VENV="${KB_VENV:-$HOME/Projects/ai/kb/.venv/bin/python}"
 KB_SCRIPT="${KB_SCRIPT:-$HOME/Projects/ai/kb/kb.py}"

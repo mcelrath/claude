@@ -7,7 +7,9 @@
 set -euo pipefail
 
 # Configuration with defaults
-ENDPOINT="${LLM_ENDPOINT:-http://localhost:9510/v1/chat/completions}"
+_SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+[[ -f "$_SCRIPT_DIR/hooks/lib/claude-env.sh" ]] && source "$_SCRIPT_DIR/hooks/lib/claude-env.sh"
+ENDPOINT="${LLM_ENDPOINT:-${LLM_URL:-http://${LLM_HOST:-tardis}:${LLM_PORT:-9510}/v1/chat/completions}}"
 MODEL="${LLM_MODEL:-sha256-a70437c41b3b0b768c48737e15f8160c90f13dc963f5226aabb3a160f708d1ce}"
 MAX_TOKENS="${LLM_MAX_TOKENS:-2000}"
 TEMPERATURE="${LLM_TEMPERATURE:-0.3}"

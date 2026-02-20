@@ -14,3 +14,10 @@ fi
 if [[ ! -d "$CLAUDE_DIR/hooks" ]]; then
     CLAUDE_DIR="$HOME/.claude"
 fi
+
+# Local LLM server (llama.cpp / vLLM)
+# Override with LLM_HOST env var if server is on a different machine
+LLM_HOST="${LLM_HOST:-tardis}"
+LLM_PORT="${LLM_PORT:-9510}"
+LLM_URL="${LLM_URL:-http://${LLM_HOST}:${LLM_PORT}/v1/chat/completions}"
+KB_LLM_URL="${KB_LLM_URL:-http://${LLM_HOST}:${LLM_PORT}/completion}"

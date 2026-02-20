@@ -5,7 +5,9 @@
 # Usage: kb-llm-judge <system_prompt> <user_content>
 # Output: JSON to stdout
 
-LLM_URL="${KB_LLM_URL:-http://localhost:9510/v1/chat/completions}"
+_SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+[[ -f "$_SCRIPT_DIR/hooks/lib/claude-env.sh" ]] && source "$_SCRIPT_DIR/hooks/lib/claude-env.sh"
+LLM_URL="${KB_LLM_URL:-http://${LLM_HOST:-tardis}:${LLM_PORT:-9510}/v1/chat/completions}"
 TIMEOUT="${KB_LLM_TIMEOUT:-30}"
 MAX_TOKENS="${KB_LLM_MAX_TOKENS:-4096}"
 

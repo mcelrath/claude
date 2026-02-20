@@ -3,7 +3,7 @@
 # Creates handoff.md for session resume after compact
 source "$(dirname "$0")/lib/claude-env.sh"
 
-LLM_URL="http://localhost:9510/v1/chat/completions"
+# LLM_URL now set by claude-env.sh (default: tardis:9510)
 
 # Ensure lib directory exists
 mkdir -p "$CLAUDE_DIR/hooks/lib"
