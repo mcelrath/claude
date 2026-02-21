@@ -45,7 +45,14 @@ except:
 " 2>/dev/null)
 
 CONTEXT=${CONTEXT:-0}
-LIMIT=1000000
+
+# Read context_window_size written by statusline (session-isolated)
+CONTEXT_FILE="/tmp/claude-kb-state/${SESSION_ID}-context"
+if [[ -n "$SESSION_ID" && -f "$CONTEXT_FILE" ]]; then
+    LIMIT=$(python3 -c "import json; print(json.load(open('$CONTEXT_FILE')).get('context_window_size', 200000))" 2>/dev/null)
+fi
+LIMIT=${LIMIT:-200000}
+
 PERCENT=$((CONTEXT * 100 / LIMIT))
 
 # Debug: log to file
@@ -64,7 +71,7 @@ if [[ $PERCENT -ge $BLOCK_THRESHOLD ]]; then
     # Run auto-checkpoint before blocking
     "$CLAUDE_DIR/hooks/precompact-save-state.sh" >/dev/null 2>&1
 
-    echo "BLOCKED: Context at ${PERCENT}% (${CONTEXT}/${LIMIT} tokens)." >&2
+    echo "BLOCKED: Context at ${PERCENT}% (${CONTEXT}/${LIMIT} tokens). Model window: ${LIMIT}." >&2
     echo "Auto-checkpoint saved. Run /clear to continue from checkpoint." >&2
     exit 2  # Block tool use
 

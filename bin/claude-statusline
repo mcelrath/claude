@@ -43,6 +43,14 @@ else
     percent=0
 fi
 
+# Write context info for hooks to read (session-isolated)
+session_id_early=$(echo "$input" | jq -r '.session_id // ""')
+if [[ -n "$session_id_early" && -d /tmp/claude-kb-state ]]; then
+    printf '{"context_window_size":%d,"input_tokens":%d,"percent":%d}' \
+        "$context_size" "$input_tokens" "$percent" \
+        > "/tmp/claude-kb-state/${session_id_early}-context"
+fi
+
 # Build context bar (20 chars wide) with cached/fresh distinction
 bar_width=20
 
@@ -185,7 +193,8 @@ fi
 line1_parts=()
 line1_parts+=("${MAGENTA}${BOLD}${model}${RESET}")
 line1_parts+=("${compact_warn}[${bar}${percent}%]")
-[[ -n "$short_cwd" ]] && line1_parts+=("${BLUE}${short_cwd}${RESET}")
+hostname_s=$(hostname -s 2>/dev/null || echo "?")
+[[ -n "$short_cwd" ]] && line1_parts+=("${BLUE}${hostname_s}:${short_cwd}${RESET}")
 [[ -n "$git_branch" ]] && line1_parts+=("${GREEN}⎇ ${git_branch}${RESET}")
 [[ -n "$task_status" ]] && line1_parts+=("$task_status")
 [[ -n "$cost_str" ]] && line1_parts+=("$cost_str")
