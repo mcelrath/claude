@@ -376,11 +376,6 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$HOME/.claude/hooks/kb-search-gate.sh",
-            "timeout": 2000
-          },
-          {
-            "type": "command",
             "command": "$HOME/.claude/hooks/check-existing-code.sh",
             "timeout": 5000
           }
@@ -545,6 +540,5 @@
     "~/.claude/",
     ".claude/plans"
   ],
-  "effortLevel": "medium",
-  "model": "sonnet"
+  "effortLevel": "medium"
 }
