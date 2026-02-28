@@ -322,6 +322,11 @@
           {
             "type": "command",
             "command": "$HOME/.claude/hooks/remind-patterns.sh"
+          },
+          {
+            "type": "command",
+            "command": "$HOME/.claude/hooks/detect-plan-implementation.sh",
+            "timeout": 2000
           }
         ]
       }

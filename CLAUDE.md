@@ -132,7 +132,9 @@ Hook `plan-write-review.sh` writes `current_plan` when a plan file is edited.
 
 "Substantive" means: adding new sections/examples, changing recommended approaches, modifying checklists/anti-pattern tables, incorporating reviewer feedback.
 
-Does NOT require re-review: typo fixes, renumbering sections, formatting changes.
+Does NOT require re-review: typo fixes, renumbering sections, formatting changes, appending `## Approval Status` section.
+
+**On session resume with `expert-review: APPROVED` in plan:** The review is DONE. Do NOT re-run expert-review. Do NOT re-incorporate review feedback that is already reflected in the plan. If `Mode: PLANNING` but `expert-review: APPROVED`, the hook failed to update Mode — treat it as IMPLEMENTATION and proceed.
 
 ## Plan Presentation Requirements
 
@@ -159,7 +161,7 @@ Before ExitPlanMode, append `## Approval Status` with `expert-review: APPROVED`,
 On resume: check `Mode:` — if `IMPLEMENTATION`, execute plan (don't call ExitPlanMode again).
 PostToolUse hook `plan-mode-approved.sh` updates `Mode: PLANNING` → `Mode: IMPLEMENTATION` automatically when user approves ExitPlanMode.
 
-**CRITICAL:** If session resumes with `Mode: IMPLEMENTATION`, the plan was ALREADY approved. Do NOT call ExitPlanMode — this causes double-approval and confuses the user. The `session-start-resume.sh` hook sends the full plan content in its output with "PLAN APPROVED — BEGIN IMPLEMENTATION". Read the plan and start implementing immediately.
+**CRITICAL:** If session resumes with `Mode: IMPLEMENTATION` OR with `expert-review: APPROVED`, the plan was ALREADY approved. Do NOT call ExitPlanMode — this causes double-approval and confuses the user. Do NOT re-run expert-review. The `session-start-resume.sh` hook sends the full plan content in its output with "PLAN APPROVED — BEGIN IMPLEMENTATION". Read the plan and start implementing immediately.
 
 ## Lean Plan Format
 
@@ -279,6 +281,8 @@ NEVER: "What would you like...", "Would you like me to...", numbered options, op
 | "Let me take a simpler approach" / "Given the complexity" | Problem has grown beyond initial plan. STOP. Enter plan mode with EnterPlanMode, reassess the problem, create new plan. |
 | Adding notebook cell to fix syntax error in previous cell | Use `modify_notebook_cells` with `operation="edit_code"` and `position_index=N` to fix the broken cell in place. |
 | Plan has `Mode: IMPLEMENTATION`, calling ExitPlanMode | Plan already approved. Don't re-ask. Wait for plan migration message before implementing. |
+| Plan has `expert-review: APPROVED` but `Mode: PLANNING` | Hook failed to update Mode. Treat as IMPLEMENTATION. Do NOT re-run expert-review. |
+| Re-running expert-review on session resume | If plan already has `expert-review: APPROVED`, review is DONE. Implement immediately. |
 | `Task(..., max_turns=N, ...)` | Hard turn limits cut agents off mid-tool-call with no final turn to kb_add or summarize. Omit max_turns entirely. Use STOPPING CONDITIONS in the prompt. |
 | Agent misuse (3+ Opus, >10min stuck, 10+ files w/o KB, mixed compute+theory) | See Scope and Timeout Rules. Split compute from theory, kill stuck agents. |
 | Dispatching agents to implement X from a long conversation | Agents have NO conversation history. Every prompt must explicitly state: "The naive implementation would be Y — DO NOT do that. The required approach is Z because [reason from our discussion]." Missing this = agents implement the obvious wrong thing. |
