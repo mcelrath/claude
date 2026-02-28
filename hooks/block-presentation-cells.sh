@@ -36,11 +36,7 @@ tool_input = data.get('tool_input', {})
 # Handle different tool input structures
 if tool_name == 'mcp__jupyter__modify_notebook_cells':
     operation = tool_input.get('operation', '')
-    # Block markdown operations
-    if operation in ('add_markdown', 'edit_markdown'):
-        print("BLOCK_MARKDOWN")
-        sys.exit(0)
-    # Only analyze code operations
+    # Only analyze code operations (markdown cells are allowed)
     if operation not in ('add_code', 'edit_code'):
         print("OK")
         sys.exit(0)
@@ -51,10 +47,7 @@ else:
     cell_type = tool_input.get('cell_type', 'code')
     source = tool_input.get('new_source', '')
 
-# Block markdown cells - notebooks are for computation only
-if cell_type == 'markdown':
-    print("BLOCK_MARKDOWN")
-    sys.exit(0)
+# Markdown cells are allowed (for math communication notebooks)
 
 if not source.strip():
     print("EMPTY")

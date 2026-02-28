@@ -21,4 +21,30 @@ if [[ -n "$session_id" ]]; then
     STATE_DIR="/tmp/claude-kb-state"
     mkdir -p "$STATE_DIR"
     echo "$session_id" > "$STATE_DIR/session-$PPID"
+
+    # Create session directory and carry forward current_plan from previous session
+    SESSION_DIR="$CLAUDE_DIR/sessions/$session_id"
+    mkdir -p "$SESSION_DIR"
+
+    # Find previous session on the same terminal and carry forward current_plan
+    source "$CLAUDE_DIR/hooks/lib/get_terminal_id.sh"
+    TERM_ID=$(_get_terminal_id)
+    if [[ -n "$TERM_ID" ]]; then
+        if git rev-parse --show-toplevel &>/dev/null; then
+            PROJECT=$(basename "$(git rev-parse --show-toplevel)")
+        else
+            PROJECT=$(basename "$PWD")
+        fi
+        RESUME_FILE="$CLAUDE_DIR/sessions/resume-${PROJECT}-${TERM_ID}.txt"
+        if [[ -f "$RESUME_FILE" ]]; then
+            OLD_SESSION_ID=$(cat "$RESUME_FILE")
+            OLD_PLAN="$CLAUDE_DIR/sessions/${OLD_SESSION_ID}/current_plan"
+            if [[ -f "$OLD_PLAN" ]]; then
+                PLAN_PATH=$(cat "$OLD_PLAN")
+                if [[ -f "$PLAN_PATH" ]]; then
+                    echo "$PLAN_PATH" > "$SESSION_DIR/current_plan"
+                fi
+            fi
+        fi
+    fi
 fi
