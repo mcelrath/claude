@@ -2,7 +2,11 @@
   "env": {
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
     "DISABLE_AUTOUPDATER": "1",
-    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "95"
+    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "95",
+    "CLAUDE_CODE_DISABLE_FEEDBACK_SURVEY": "1",
+    "DISABLE_BUG_COMMAND": "1",
+    "DISABLE_ERROR_REPORTING": "1",
+    "DISABLE_TELEMETRY": "1"
   },
   "permissions": {
     "allow": [
@@ -315,6 +319,7 @@
     ],
     "defaultMode": "default"
   },
+  "model": "opus",
   "hooks": {
     "UserPromptSubmit": [
       {
@@ -363,6 +368,11 @@
             "type": "command",
             "command": "$HOME/.claude/hooks/canonical-results-check.sh",
             "timeout": 2000
+          },
+          {
+            "type": "command",
+            "command": "$HOME/.claude/hooks/block-approximations.sh",
+            "timeout": 3000
           }
         ]
       },
@@ -383,6 +393,11 @@
             "type": "command",
             "command": "$HOME/.claude/hooks/check-existing-code.sh",
             "timeout": 5000
+          },
+          {
+            "type": "command",
+            "command": "$HOME/.claude/hooks/block-approximations.sh",
+            "timeout": 3000
           }
         ]
       },
@@ -408,6 +423,11 @@
             "type": "command",
             "command": "$HOME/.claude/hooks/canonical-results-check.sh",
             "timeout": 2000
+          },
+          {
+            "type": "command",
+            "command": "$HOME/.claude/hooks/block-approximations.sh",
+            "timeout": 3000
           }
         ]
       }
@@ -545,5 +565,5 @@
     "~/.claude/",
     ".claude/plans"
   ],
-  "effortLevel": "medium"
+  "effortLevel": "low"
 }
