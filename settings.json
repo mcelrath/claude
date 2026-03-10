@@ -5,6 +5,7 @@
     ".claude/plans"
   ],
   "autoUpdatesChannel": "latest",
+  "effortLevel": "low",
   "enabledPlugins": {
     "clangd-lsp@claude-plugins-official": true,
     "lua-lsp@claude-plugins-official": true,
@@ -87,15 +88,6 @@
             "type": "command"
           }
         ]
-      },
-      {
-        "hooks": [
-          {
-            "command": "bd prime --stealth",
-            "type": "command"
-          }
-        ],
-        "matcher": ""
       }
     ],
     "PreToolUse": [
@@ -129,6 +121,11 @@
             "command": "$HOME/.claude/hooks/canonical-results-check.sh",
             "timeout": 2000,
             "type": "command"
+          },
+          {
+            "command": "$HOME/.claude/hooks/block-approximations.sh",
+            "timeout": 3000,
+            "type": "command"
           }
         ],
         "matcher": "Bash"
@@ -148,6 +145,11 @@
           {
             "command": "$HOME/.claude/hooks/check-existing-code.sh",
             "timeout": 5000,
+            "type": "command"
+          },
+          {
+            "command": "$HOME/.claude/hooks/block-approximations.sh",
+            "timeout": 3000,
             "type": "command"
           }
         ],
@@ -173,6 +175,11 @@
           {
             "command": "$HOME/.claude/hooks/canonical-results-check.sh",
             "timeout": 2000,
+            "type": "command"
+          },
+          {
+            "command": "$HOME/.claude/hooks/block-approximations.sh",
+            "timeout": 3000,
             "type": "command"
           }
         ],
@@ -219,15 +226,6 @@
             "type": "command"
           }
         ]
-      },
-      {
-        "hooks": [
-          {
-            "command": "bd prime --stealth",
-            "type": "command"
-          }
-        ],
-        "matcher": ""
       }
     ],
     "UserPromptSubmit": [
@@ -246,6 +244,7 @@
       }
     ]
   },
+  "model": "opus",
   "permissions": {
     "allow": [
       "Skill",

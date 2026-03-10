@@ -145,6 +145,13 @@ When presenting a plan for approval, include:
 
 ## ExitPlanMode Workflow
 
+**CRITICAL: Write plans to the plan mode file, not separate files.**
+When you enter plan mode, Claude Code creates a plan file at `~/.claude/plans/<session-name>.md`.
+ExitPlanMode presents THAT file to the user — it does NOT read `current_plan` or any other file.
+You MUST write your plan directly into that file (using Write/Edit on it).
+Do NOT create a separate plan file (e.g. in `<project>/.claude/plans/`) and then call ExitPlanMode —
+the user will be shown the wrong plan. If you need a project-local copy, copy AFTER approval.
+
 **Expert-review loop** (runs in background to prevent memory growth):
 ```
 1. Task(subagent_type="expert-review", run_in_background=True, ...)
@@ -211,6 +218,34 @@ Each session has `~/.claude/sessions/{id}/work_context.json`:
 - Don't set `my_plan` unless THIS session is implementing it
 - Handoff will show work_type and resume won't incorrectly resume implementation
 
+## Concurrent Edit Detection (MANDATORY)
+
+**Problem**: Multiple Claude sessions editing the same files causes silent overwrites and wasted work.
+
+**Before every Edit/Write**: If you have previously read the file in this session, check whether it has changed since your last read:
+```bash
+git diff -- path/to/file.ext
+```
+If the diff shows changes YOU did not make → **STOP immediately** and tell the user:
+
+> **CONCURRENT EDIT DETECTED**: `path/to/file.ext` was modified by another session since I last read it. My planned edit may conflict. Please check which session should own this file.
+
+Do NOT silently overwrite. Do NOT re-read and merge. STOP and inform.
+
+**After every git commit**: Run `git status --short`. If you see modified/untracked files you didn't touch → warn the user:
+
+> **WARNING**: Files modified by another session detected: `<list>`. Not staging these.
+
+**During long implementations**: Periodically run `git status --short` (every 5-10 edits). If unexpected changes appear, STOP.
+
+**Symptoms that indicate another agent is active on your files**:
+- Edit tool fails because `old_string` no longer matches (file changed under you)
+- `git diff` shows changes in files you haven't edited yet
+- `git status` shows modifications to files outside your task scope
+- Build failures from incompatible changes you didn't make
+
+**On any of these symptoms**: STOP. Do not try to "fix" the conflict yourself. Inform the user which files are affected and what you were trying to do.
+
 ## Plan Migration on /clear
 
 On `PLAN_MIGRATION: <path>`: read previous plan, write to current session plan file, preserve `## Approval Status` exactly, continue (don't re-plan).
@@ -218,6 +253,8 @@ On `PLAN_MIGRATION: <path>`: read previous plan, write to current session plan f
 ---
 
 # Rules
+
+**Hook blocks are FINAL.** If a hook blocks your tool call (exit 2), STOP. Do not rephrase, restructure, split into smaller pieces, use a different tool, or find any other way to achieve the same blocked action. Tell the user what was blocked and why. The hook exists because the user wants that action prevented — working around it is a direct violation of user intent.
 
 kb-research agent before implementation. Enforced by hook.
 
@@ -287,6 +324,11 @@ NEVER: "What would you like...", "Would you like me to...", numbered options, op
 | Agent misuse (3+ Opus, >10min stuck, 10+ files w/o KB, mixed compute+theory) | See Scope and Timeout Rules. Split compute from theory, kill stuck agents. |
 | Dispatching agents to implement X from a long conversation | Agents have NO conversation history. Every prompt must explicitly state: "The naive implementation would be Y — DO NOT do that. The required approach is Z because [reason from our discussion]." Missing this = agents implement the obvious wrong thing. |
 | Agent returns result, accepting without checking key constraint | Before summarizing agent output to user, explicitly verify: does this satisfy the non-obvious constraint stated in the prompt? If not, it's wrong even if it compiles/runs. |
+| Writing plan to separate file then calling ExitPlanMode | ExitPlanMode reads ITS OWN file (`~/.claude/plans/<session-name>.md`), not `current_plan`. Write plan directly to the plan mode file. |
+| Hook blocks tool call, then rephrasing/splitting/using different tool to do same thing | Hook blocks are FINAL. STOP and tell the user what was blocked. Do not work around hooks — they express user intent. |
+| Edit fails with "old_string not found" unexpectedly | Another session may have modified the file. Run `git diff -- file` and STOP if changes aren't yours. See "Concurrent Edit Detection". |
+| `git status` shows files you didn't touch as modified | Another session is active. STOP, warn user, do not stage those files. |
+| Silently re-reading and continuing after unexpected file change | NEVER. If a file changed under you, STOP and inform the user. Do not auto-merge or silently adapt. |
 
 # Build Waiting Protocol
 
