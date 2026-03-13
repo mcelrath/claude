@@ -4,7 +4,8 @@
 source "$(dirname "$0")/lib/claude-env.sh"
 source "$(dirname "$0")/lib/provider-context.sh"
 
-WARN_THRESHOLD=85
+WARN_THRESHOLD=80
+WRAPUP_THRESHOLD=90
 BLOCK_THRESHOLD=95
 
 # Tools allowed through even at block threshold (essential for session continuity)
@@ -74,12 +75,23 @@ if [[ $PERCENT -ge $BLOCK_THRESHOLD ]]; then
     # Run auto-checkpoint before blocking
     "$CLAUDE_DIR/hooks/precompact-save-state.sh" >/dev/null 2>&1
 
-    echo "BLOCKED: Context at ${PERCENT}% (${CONTEXT}/${LIMIT} tokens). Model window: ${LIMIT}." >&2
-    echo "Auto-checkpoint saved. Run /clear to continue from checkpoint." >&2
+    echo "BLOCKED: Context at ${PERCENT}% (${CONTEXT}/${LIMIT} tokens). Window: ${LIMIT}." >&2
+    echo "State saved. Type /clear to continue — beads + KB will restore context." >&2
     exit 2  # Block tool use
 
+elif [[ $PERCENT -ge $WRAPUP_THRESHOLD ]]; then
+    # At 90%: save checkpoint proactively and instruct Claude to wrap up
+    # Only run checkpoint once per session (marker file)
+    CHECKPOINT_MARKER="/tmp/claude-kb-state/${SESSION_ID}-checkpoint-saved"
+    if [[ ! -f "$CHECKPOINT_MARKER" ]]; then
+        "$CLAUDE_DIR/hooks/precompact-save-state.sh" >/dev/null 2>&1
+        touch "$CHECKPOINT_MARKER"
+    fi
+    echo "CONTEXT ${PERCENT}%: WRAP UP current task. kb_add any findings. Next tool call at ${BLOCK_THRESHOLD}% will be blocked."
+    echo "State auto-saved. When blocked, type /clear to continue seamlessly."
+
 elif [[ $PERCENT -ge $WARN_THRESHOLD ]]; then
-    echo "CONTEXT: ${PERCENT}% used (${CONTEXT}/${LIMIT} tokens). Consider /save-state soon."
+    echo "CONTEXT: ${PERCENT}% (${CONTEXT}/${LIMIT}). Finish current task soon."
 fi
 
 exit 0
