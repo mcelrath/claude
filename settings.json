@@ -1,8 +1,250 @@
 {
+  "additionalDirectories": [
+    "/tmp",
+    "~/.claude/",
+    ".claude/plans"
+  ],
+  "autoUpdatesChannel": "latest",
+  "enabledPlugins": {
+    "clangd-lsp@claude-plugins-official": true,
+    "lua-lsp@claude-plugins-official": true,
+    "pyright-lsp@claude-plugins-official": false,
+    "rust-analyzer-lsp@claude-plugins-official": true,
+    "typescript-lsp@claude-plugins-official": true
+  },
   "env": {
+    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "95",
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
-    "DISABLE_AUTOUPDATER": "1",
-    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "95"
+    "DISABLE_AUTOUPDATER": "1"
+  },
+  "feedbackSurveyState": {
+    "lastShownTime": 1753969747772
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "command": "$HOME/.claude/hooks/kb-search-track.sh",
+            "timeout": 2000,
+            "type": "command"
+          }
+        ],
+        "matcher": "mcp__knowledge-base__kb_search"
+      },
+      {
+        "hooks": [
+          {
+            "command": "$HOME/.claude/hooks/kb-search-track.sh",
+            "timeout": 2000,
+            "type": "command"
+          }
+        ],
+        "matcher": "Task"
+      },
+      {
+        "hooks": [
+          {
+            "command": "$HOME/.claude/hooks/plan-write-review.sh",
+            "timeout": 3000,
+            "type": "command"
+          }
+        ],
+        "matcher": "Edit|Write"
+      },
+      {
+        "hooks": [
+          {
+            "command": "$HOME/.claude/hooks/kb-error-extract.sh",
+            "timeout": 45000,
+            "type": "command"
+          }
+        ],
+        "matcher": "Bash"
+      },
+      {
+        "hooks": [
+          {
+            "command": "$HOME/.claude/hooks/plan-mode-approved.sh",
+            "timeout": 2000,
+            "type": "command"
+          }
+        ],
+        "matcher": "ExitPlanMode"
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "command": "$HOME/.claude/hooks/kb-precompact.sh",
+            "timeout": 60000,
+            "type": "command"
+          },
+          {
+            "command": "$HOME/.claude/hooks/precompact-save-state.sh",
+            "timeout": 30000,
+            "type": "command"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "command": "bd prime --stealth",
+            "type": "command"
+          }
+        ],
+        "matcher": ""
+      }
+    ],
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "command": "$HOME/.claude/hooks/context-monitor.sh",
+            "timeout": 5000,
+            "type": "command"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "command": "$HOME/.claude/hooks/expert-review-reminder.sh",
+            "timeout": 2000,
+            "type": "command"
+          }
+        ],
+        "matcher": "ExitPlanMode"
+      },
+      {
+        "hooks": [
+          {
+            "command": "$HOME/.claude/hooks/block-print-spam.sh",
+            "timeout": 5000,
+            "type": "command"
+          },
+          {
+            "command": "$HOME/.claude/hooks/canonical-results-check.sh",
+            "timeout": 2000,
+            "type": "command"
+          }
+        ],
+        "matcher": "Bash"
+      },
+      {
+        "hooks": [
+          {
+            "command": "$HOME/.claude/hooks/dedupe-file-reads.sh",
+            "timeout": 1000,
+            "type": "command"
+          }
+        ],
+        "matcher": "Read"
+      },
+      {
+        "hooks": [
+          {
+            "command": "$HOME/.claude/hooks/check-existing-code.sh",
+            "timeout": 5000,
+            "type": "command"
+          }
+        ],
+        "matcher": "Edit|Write"
+      },
+      {
+        "hooks": [
+          {
+            "command": "$HOME/.claude/hooks/block-markdown-files.sh",
+            "timeout": 2000,
+            "type": "command"
+          }
+        ],
+        "matcher": "Write"
+      },
+      {
+        "hooks": [
+          {
+            "command": "$HOME/.claude/hooks/block-presentation-cells.sh",
+            "timeout": 5000,
+            "type": "command"
+          },
+          {
+            "command": "$HOME/.claude/hooks/canonical-results-check.sh",
+            "timeout": 2000,
+            "type": "command"
+          }
+        ],
+        "matcher": "NotebookEdit|mcp__jupyter__modify_notebook_cells"
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "command": "$HOME/.claude/hooks/cleanup-stale-sessions.sh",
+            "type": "command"
+          },
+          {
+            "command": "$HOME/.claude/hooks/team-cleanup.sh",
+            "type": "command"
+          },
+          {
+            "command": "$HOME/.claude/hooks/plan-cleanup.sh",
+            "type": "command"
+          },
+          {
+            "command": "$HOME/.claude/hooks/kb-search-reset.sh",
+            "type": "command"
+          },
+          {
+            "command": "$HOME/.claude/hooks/history-isolation.sh",
+            "type": "command"
+          },
+          {
+            "command": "$HOME/.claude/hooks/build-status.sh",
+            "type": "command"
+          },
+          {
+            "command": "$HOME/.claude/hooks/lsp-setup.sh",
+            "type": "command"
+          },
+          {
+            "command": "$HOME/.claude/hooks/kb-context.sh",
+            "type": "command"
+          },
+          {
+            "command": "$HOME/.claude/hooks/session-start-resume.sh",
+            "type": "command"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "command": "bd prime --stealth",
+            "type": "command"
+          }
+        ],
+        "matcher": ""
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "command": "$HOME/.claude/hooks/remind-patterns.sh",
+            "type": "command"
+          },
+          {
+            "command": "$HOME/.claude/hooks/detect-plan-implementation.sh",
+            "timeout": 2000,
+            "type": "command"
+          }
+        ]
+      }
+    ]
   },
   "permissions": {
     "allow": [
@@ -39,31 +281,31 @@
       "Bash(python -m unittest discover:*)",
       "Bash(python test_:*)",
       "Bash(python:*)",
-      "Bash(python <<:*)",
+      "Bash(python \u003c\u003c:*)",
       "Bash(python -c:*)",
       "Bash(python3:*)",
-      "Bash(python3 <<:*)",
-      "Bash(python3 << :*)",
+      "Bash(python3 \u003c\u003c:*)",
+      "Bash(python3 \u003c\u003c :*)",
       "Bash(python3.13:*)",
-      "Bash(python3.13 <<:*)",
-      "Bash(python << 'EOF':*)",
-      "Bash(python3 << 'EOF':*)",
-      "Bash(python3.13 << 'EOF':*)",
-      "Bash(.venv/bin/python << 'EOF':*)",
-      "Bash(.venv/bin/python3 << 'EOF':*)",
-      "Bash(python3 << 'PYEOF':*)",
-      "Bash(python3 << 'ENDOFFILE':*)",
-      "Bash(python << 'PYEOF':*)",
-      "Bash(python << 'ENDOFFILE':*)",
-      "Bash(python3 <<'EOF':*)",
-      "Bash(python <<'EOF':*)",
-      "Bash(python3.13 <<'EOF':*)",
-      "Bash(.venv/bin/python <<'EOF':*)",
-      "Bash(.venv/bin/python3 <<'EOF':*)",
+      "Bash(python3.13 \u003c\u003c:*)",
+      "Bash(python \u003c\u003c 'EOF':*)",
+      "Bash(python3 \u003c\u003c 'EOF':*)",
+      "Bash(python3.13 \u003c\u003c 'EOF':*)",
+      "Bash(.venv/bin/python \u003c\u003c 'EOF':*)",
+      "Bash(.venv/bin/python3 \u003c\u003c 'EOF':*)",
+      "Bash(python3 \u003c\u003c 'PYEOF':*)",
+      "Bash(python3 \u003c\u003c 'ENDOFFILE':*)",
+      "Bash(python \u003c\u003c 'PYEOF':*)",
+      "Bash(python \u003c\u003c 'ENDOFFILE':*)",
+      "Bash(python3 \u003c\u003c'EOF':*)",
+      "Bash(python \u003c\u003c'EOF':*)",
+      "Bash(python3.13 \u003c\u003c'EOF':*)",
+      "Bash(.venv/bin/python \u003c\u003c'EOF':*)",
+      "Bash(.venv/bin/python3 \u003c\u003c'EOF':*)",
       "Bash(python3 -:*)",
       "Bash(python -:*)",
       "Bash(cd:*)",
-      "Bash(cat >:*)",
+      "Bash(cat \u003e:*)",
       "Bash(python3 -m py_compile:*)",
       "Bash(python3.13 -m py_compile:*)",
       "Bash(PYTHONPATH=:*)",
@@ -172,9 +414,9 @@
       "Bash(source:*)",
       "Bash(nohup:*)",
       "Bash(.venv/bin/python:*)",
-      "Bash(.venv/bin/python <<:*)",
+      "Bash(.venv/bin/python \u003c\u003c:*)",
       "Bash(.venv/bin/python3:*)",
-      "Bash(.venv/bin/python3 <<:*)",
+      "Bash(.venv/bin/python3 \u003c\u003c:*)",
       "Bash(zig:*)",
       "Bash(zig build:*)",
       "Bash(kb:*)",
@@ -287,6 +529,7 @@
       "Write",
       "Read"
     ],
+    "defaultMode": "default",
     "deny": [
       "Bash(find:*)-exec rm",
       "Bash(find:*)-exec delete",
@@ -311,239 +554,13 @@
       "Bash(pkill:*)",
       "Bash(killall:*)",
       "Bash(sudo:*)",
-      "Bash(cat <<:*)"
-    ],
-    "defaultMode": "default"
-  },
-  "hooks": {
-    "UserPromptSubmit": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "$HOME/.claude/hooks/remind-patterns.sh"
-          },
-          {
-            "type": "command",
-            "command": "$HOME/.claude/hooks/detect-plan-implementation.sh",
-            "timeout": 2000
-          }
-        ]
-      }
-    ],
-    "PreToolUse": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "$HOME/.claude/hooks/context-monitor.sh",
-            "timeout": 5000
-          }
-        ]
-      },
-      {
-        "matcher": "ExitPlanMode",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "$HOME/.claude/hooks/expert-review-reminder.sh",
-            "timeout": 2000
-          }
-        ]
-      },
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "$HOME/.claude/hooks/block-print-spam.sh",
-            "timeout": 5000
-          },
-          {
-            "type": "command",
-            "command": "$HOME/.claude/hooks/canonical-results-check.sh",
-            "timeout": 2000
-          }
-        ]
-      },
-      {
-        "matcher": "Read",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "$HOME/.claude/hooks/dedupe-file-reads.sh",
-            "timeout": 1000
-          }
-        ]
-      },
-      {
-        "matcher": "Edit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "$HOME/.claude/hooks/check-existing-code.sh",
-            "timeout": 5000
-          }
-        ]
-      },
-      {
-        "matcher": "Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "$HOME/.claude/hooks/block-markdown-files.sh",
-            "timeout": 2000
-          }
-        ]
-      },
-      {
-        "matcher": "NotebookEdit|mcp__jupyter__modify_notebook_cells",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "$HOME/.claude/hooks/block-presentation-cells.sh",
-            "timeout": 5000
-          },
-          {
-            "type": "command",
-            "command": "$HOME/.claude/hooks/canonical-results-check.sh",
-            "timeout": 2000
-          }
-        ]
-      }
-    ],
-    "SessionStart": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "$HOME/.claude/hooks/cleanup-stale-sessions.sh"
-          },
-          {
-            "type": "command",
-            "command": "$HOME/.claude/hooks/team-cleanup.sh"
-          },
-          {
-            "type": "command",
-            "command": "$HOME/.claude/hooks/plan-cleanup.sh"
-          },
-          {
-            "type": "command",
-            "command": "$HOME/.claude/hooks/kb-search-reset.sh"
-          },
-          {
-            "type": "command",
-            "command": "$HOME/.claude/hooks/history-isolation.sh"
-          },
-          {
-            "type": "command",
-            "command": "$HOME/.claude/hooks/build-status.sh"
-          },
-          {
-            "type": "command",
-            "command": "$HOME/.claude/hooks/lsp-setup.sh"
-          },
-          {
-            "type": "command",
-            "command": "$HOME/.claude/hooks/kb-context.sh"
-          },
-          {
-            "type": "command",
-            "command": "$HOME/.claude/hooks/session-start-resume.sh"
-          }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "mcp__knowledge-base__kb_search",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "$HOME/.claude/hooks/kb-search-track.sh",
-            "timeout": 2000
-          }
-        ]
-      },
-      {
-        "matcher": "Task",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "$HOME/.claude/hooks/kb-search-track.sh",
-            "timeout": 2000
-          }
-        ]
-      },
-      {
-        "matcher": "Edit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "$HOME/.claude/hooks/plan-write-review.sh",
-            "timeout": 3000
-          }
-        ]
-      },
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "$HOME/.claude/hooks/kb-error-extract.sh",
-            "timeout": 45000
-          }
-        ]
-      },
-      {
-        "matcher": "ExitPlanMode",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "$HOME/.claude/hooks/plan-mode-approved.sh",
-            "timeout": 2000
-          }
-        ]
-      }
-    ],
-    "PreCompact": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "$HOME/.claude/hooks/kb-precompact.sh",
-            "timeout": 60000
-          },
-          {
-            "type": "command",
-            "command": "$HOME/.claude/hooks/precompact-save-state.sh",
-            "timeout": 30000
-          }
-        ]
-      }
+      "Bash(cat \u003c\u003c:*)"
     ]
   },
-  "statusLine": {
-    "type": "command",
-    "command": "$HOME/.claude/bin/claude-statusline",
-    "padding": 0
-  },
-  "enabledPlugins": {
-    "clangd-lsp@claude-plugins-official": true,
-    "typescript-lsp@claude-plugins-official": true,
-    "pyright-lsp@claude-plugins-official": false,
-    "rust-analyzer-lsp@claude-plugins-official": true,
-    "lua-lsp@claude-plugins-official": true
-  },
-  "autoUpdatesChannel": "latest",
   "skipDangerousModePermissionPrompt": true,
-  "feedbackSurveyState": {
-    "lastShownTime": 1753969747772
-  },
-  "additionalDirectories": [
-    "/tmp",
-    "~/.claude/",
-    ".claude/plans"
-  ],
-  "effortLevel": "medium"
+  "statusLine": {
+    "command": "$HOME/.claude/bin/claude-statusline",
+    "padding": 0,
+    "type": "command"
+  }
 }
