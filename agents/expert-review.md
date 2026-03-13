@@ -11,6 +11,19 @@ Task(subagent_type="expert-review", prompt="...", run_in_background=True)
 ```
 Foreground execution causes unbounded memory growth (34GB+ observed).
 
+## Beads Epic Delegation
+
+If the prompt contains `epic {ID}` (where ID matches pattern `{prefix}-{hex}`), this plan
+is tracked in beads. Delegate to the `analysis-lead` agent instead:
+
+```
+Task(subagent_type="analysis-lead", run_in_background=True,
+     prompt="Analyze: epic {ID}")
+```
+
+The analysis-lead agent handles structured per-reviewer analysis with beads tracking.
+Only continue with the legacy state machine below if the prompt is a file path or session://.
+
 ## Overview
 
 A generic state machine for reviewing plans against project-specific checks.

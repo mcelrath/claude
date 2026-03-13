@@ -210,7 +210,7 @@ popular_science_authors:
   physical_intuition:
     - name: Richard Feynman
       level: College
-      style: "Imagine you're an electron", irreverence
+      style: "Imagine you're an electron, irreverence"
       works: [Lectures on Physics, QED]
       quote: "Physics is like sex: sure, it may give practical results, but that's not why we do it"
     - name: Leonard Susskind
@@ -276,7 +276,7 @@ popular_science_authors:
   discovery_narrative:
     - name: Isaac Asimov
       level: High School+
-      style: "That's funny..." discovery moments
+      style: "That's funny... discovery moments"
       works: [Science essay collections]
       quote: "The most exciting phrase in science is not 'Eureka!' but 'That's funny...'"
     - name: Arthur C. Clarke
@@ -361,6 +361,51 @@ code_technical:
     domain: Software design
     use_for: Clean abstractions, substitution principle
 
+project_panels:
+
+  llama.cpp:
+    reviewers:
+      - name: "Georgi Gerganov"
+        role: "Creator of ggml/llama.cpp, minimalist C programmer"
+        focus: ["ggml op integration", "memory layout", "API simplicity"]
+        activation_terms: ["ggml_tensor", "ggml_backend", "ggml_gallocr", "GGUF"]
+      - name: "AMD RDNA3 Kernel Engineer"
+        role: "Senior AMD engineer, 8yr RDNA ISA, shipped ROCm HIP runtime"
+        focus: ["wavefront scheduling", "VGPR pressure", "LDS bank conflicts"]
+        activation_terms: ["hipLaunchKernelGGL", "__shfl_xor", "s_waitcnt", "v_mfma"]
+      - name: "Software Architect"
+        role: "Principal engineer, designed inference frameworks"
+        focus: ["API surface", "dependency graph", "build complexity"]
+        activation_terms: ["backend interface", "buffer allocation", "graph scheduling"]
+    adversarial_pairs:
+      - id: speed_vs_safety
+        attacker:
+          name: "Performance Engineer"
+          stance: "Too slow. Find copies, syncs, allocs."
+        defender:
+          name: "Reliability Engineer"
+          stance: "Will break. Find races, OOM, UB."
+      - id: simple_vs_complete
+        attacker:
+          name: "Georgi Gerganov"
+          stance: "Overengineered. What existing primitive does this?"
+        defender:
+          name: "Framework Designer"
+          stance: "Underspecified. batch=1? n_gpu=1? quantized?"
+
+  exterior_algebra:
+    inherit: "clifford_algebras"
+
+  composable-kernel:
+    reviewers:
+      - name: "AMD RDNA3 Kernel Engineer"
+        role: "Senior AMD engineer, RDNA ISA specialist"
+        focus: ["register pressure", "occupancy", "wavefront scheduling"]
+        activation_terms: ["VGPR", "SGPR", "ds_permute", "buffer_load"]
+      - name: "Performance Engineer"
+        role: "Performance analysis specialist"
+        focus: ["benchmarking methodology", "statistical significance"]
+
 composite_panels:
 
   by_chapter_type:
@@ -392,7 +437,7 @@ composite_panels:
       check_for: Wonder, humor, no jargon, diagrams
     curious_adult:
       panel: [Richard Feynman, Isaac Asimov]
-      check_for: "That's funny..." moments, intuition
+      check_for: "That's funny... moments, intuition"
     college:
       panel: [Sean Carroll, Brian Greene, Leonard Susskind]
       check_for: Enough math, clear motivation

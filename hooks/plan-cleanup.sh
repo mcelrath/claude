@@ -78,8 +78,10 @@ find "$PLANS_DIR" -maxdepth 1 -name "*-agent-*.md" -exec mv {} "$AGENT_DIR/" \; 
 # Remove agent output files older than 2 days (they're just review logs)
 find "$AGENT_DIR" -name "*-agent-*.md" -mtime +2 -delete 2>/dev/null
 
-# Remove stale marker files older than 7 days
-find "$PLANS_DIR" -maxdepth 1 -name "expert-review-*" -mtime +7 -delete 2>/dev/null
+# Remove stale marker files older than 3 days (beads replaces markers)
+find "$PLANS_DIR" -maxdepth 1 -name "*.approved" -mtime +3 -delete 2>/dev/null
+find "$PLANS_DIR" -maxdepth 1 -name "*.pending" -mtime +3 -delete 2>/dev/null
+find "$PLANS_DIR" -maxdepth 1 -name "expert-review-*" -mtime +3 -delete 2>/dev/null
 
 # Clean up old session directories (not just empty ones)
 # Sessions older than 2 days are stale - new sessions create new directories

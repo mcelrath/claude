@@ -3,6 +3,7 @@
 # Injects reminder about common failure patterns
 # Also detects plan mode and reminds about expert-review
 source "$(dirname "$0")/lib/claude-env.sh"
+source "$(dirname "$0")/lib/beads-plan.sh"
 
 # Compressed reminders (token-efficient)
 echo "RULES: rg-before-new-code | no-mocks | options→AskUserQuestion | verify-not-guess | check-pwd"
@@ -24,31 +25,44 @@ if [[ "$REQUIRES_REVIEW" != "true" ]]; then
 fi
 
 # Check for THIS session's plan (session isolation)
-# NO FALLBACK: If current_plan doesn't exist, this session has no plan
 SESSION_PLAN=""
 if [[ -n "$CLAUDE_SESSION_ID" && -f "$CLAUDE_DIR/sessions/$CLAUDE_SESSION_ID/current_plan" ]]; then
     SESSION_PLAN=$(cat "$CLAUDE_DIR/sessions/$CLAUDE_SESSION_ID/current_plan")
-    # Verify the file still exists
-    if [[ ! -f "$SESSION_PLAN" ]]; then
-        SESSION_PLAN=""
+fi
+
+[[ -z "$SESSION_PLAN" ]] && exit 0
+
+# === BEADS PATH ===
+if bd_is_beads_id "$SESSION_PLAN"; then
+    EPIC_ID=$(bd_strip_prefix "$SESSION_PLAN")
+    STATUS=$(bd_plan_status "$EPIC_ID")
+    EPIC_STATUS=$(bd show "$EPIC_ID" --json 2>/dev/null | python3 -c "
+import sys,json
+try:
+    d=json.load(sys.stdin)
+    if isinstance(d,list): d=d[0]
+    print(d.get('status',''))
+except:
+    print('')
+" 2>/dev/null)
+    if [[ "$EPIC_STATUS" == "closed" ]]; then
+        echo "PLAN: epic $EPIC_ID | APPROVED — implementing (do NOT call ExitPlanMode)"
+    else
+        echo "PLAN: epic $EPIC_ID | $STATUS — expert-review→ExitPlanMode"
     fi
+    exit 0
 fi
 
-if [[ -n "$SESSION_PLAN" && -f "$SESSION_PLAN" ]]; then
-    RECENT_PLAN="$SESSION_PLAN"
-fi
-
-if [[ -n "$RECENT_PLAN" ]]; then
-    PLAN_NAME=$(basename "$RECENT_PLAN")
-    if grep -q 'Mode: IMPLEMENTATION' "$RECENT_PLAN" 2>/dev/null; then
+# === LEGACY FILE PATH ===
+if [[ -f "$SESSION_PLAN" ]]; then
+    PLAN_NAME=$(basename "$SESSION_PLAN")
+    if grep -q 'Mode: IMPLEMENTATION' "$SESSION_PLAN" 2>/dev/null; then
         echo "PLAN: $PLAN_NAME | APPROVED — implementing (do NOT call ExitPlanMode)"
     else
         echo "PLAN: $PLAN_NAME | expert-review→ExitPlanMode"
     fi
-fi
 
-if [[ -n "$RECENT_PLAN" ]]; then
-    PLAN_DIR=$(dirname "$RECENT_PLAN")
+    PLAN_DIR=$(dirname "$SESSION_PLAN")
     if [[ -f "$PLAN_DIR/expert-review-pending" ]]; then
         echo "PENDING: expert-review"
     fi

@@ -1,9 +1,9 @@
 #!/bin/bash
 # PreCompact hook - extracts session state from JSONL using local LLM
 # Creates handoff.md for session resume after compact
+# Stores beads epic ID (not file content) when plan is beads-backed
 source "$(dirname "$0")/lib/claude-env.sh"
-
-# LLM_URL now set by claude-env.sh (default: tardis:9510)
+source "$(dirname "$0")/lib/beads-plan.sh"
 
 # Ensure lib directory exists
 mkdir -p "$CLAUDE_DIR/hooks/lib"
@@ -196,20 +196,31 @@ else:
         print(f\"  - {r.get('type','?')}: {r.get('description','')[:150]}\")
 " 2>/dev/null)
 
-# Get plan file: ONLY from current_plan (set when plan is created/edited)
-# Do NOT grep JSONL - it finds plan mentions that aren't the actual work
+# Get plan: from current_plan (may be beads ID or file path)
+PLAN_FILE=""
 if [[ -f "$OUT_DIR/current_plan" ]]; then
-    PLAN_FILE=$(cat "$OUT_DIR/current_plan" | sed 's|.*/plans/|plans/|')
-else
-    PLAN_FILE=""  # No plan = no plan (don't guess)
+    CURRENT_PLAN_VALUE=$(cat "$OUT_DIR/current_plan")
+
+    # === BEADS PATH: store as beads:{epic_id} marker ===
+    if bd_is_beads_id "$CURRENT_PLAN_VALUE"; then
+        PLAN_FILE="beads:$(bd_strip_prefix "$CURRENT_PLAN_VALUE")"
+    else
+        PLAN_FILE=$(echo "$CURRENT_PLAN_VALUE" | sed 's|.*/plans/|plans/|')
+    fi
 fi
 
-# Extract plan approval status if plan exists
+# Extract plan approval status
 PLAN_APPROVAL=""
 if [[ -n "$PLAN_FILE" ]]; then
-    FULL_PLAN="$CLAUDE_DIR/$PLAN_FILE"
-    if [[ -f "$FULL_PLAN" ]]; then
-        PLAN_APPROVAL=$(grep -A5 "## Approval Status" "$FULL_PLAN" 2>/dev/null | head -5)
+    if [[ "$PLAN_FILE" == beads:* ]]; then
+        # Beads: get status from bd
+        EPIC_ID="${PLAN_FILE#beads:}"
+        PLAN_APPROVAL=$(bd_plan_status "$EPIC_ID" 2>/dev/null)
+    else
+        FULL_PLAN="$CLAUDE_DIR/$PLAN_FILE"
+        if [[ -f "$FULL_PLAN" ]]; then
+            PLAN_APPROVAL=$(grep -A5 "## Approval Status" "$FULL_PLAN" 2>/dev/null | head -5)
+        fi
     fi
 fi
 
@@ -249,7 +260,27 @@ if ! echo "$SUMMARY" | python3 -c "import sys,json; json.load(sys.stdin)" 2>/dev
 fi
 
 # Generate session-specific resume instructions
-if [[ -n "$PLAN_FILE" && "$PLAN_APPROVAL" == *"IMPLEMENTATION"* ]]; then
+if [[ "$PLAN_FILE" == beads:* ]]; then
+    EPIC_ID="${PLAN_FILE#beads:}"
+    EPIC_STATUS=$(bd show "$EPIC_ID" --json 2>/dev/null | python3 -c "
+import sys,json
+try:
+    d=json.load(sys.stdin)
+    if isinstance(d,list): d=d[0]
+    print(d.get('status',''))
+except:
+    print('')
+" 2>/dev/null)
+    if [[ "$EPIC_STATUS" == "closed" ]]; then
+        RESUME_INSTRUCTIONS="1. Read handoff — plan epic $EPIC_ID is APPROVED, begin/continue implementation
+2. Run: bd show $EPIC_ID for plan details
+3. Do NOT ask what to work on — resume immediately"
+    else
+        RESUME_INSTRUCTIONS="1. Read handoff — plan epic $EPIC_ID in progress
+2. Run: bd show $EPIC_ID and bd children $EPIC_ID for review status
+3. Continue planning or complete reviews"
+    fi
+elif [[ -n "$PLAN_FILE" && "$PLAN_APPROVAL" == *"IMPLEMENTATION"* ]]; then
     RESUME_INSTRUCTIONS="1. Read handoff and plan below — plan is APPROVED, begin/continue implementation
 2. Plan: $PLAN_FILE — check which phases are done, continue from the first incomplete phase
 3. Do NOT ask what to work on — resume immediately"
@@ -333,7 +364,6 @@ TERM_ID=$(_get_terminal_id)
 if [[ -n "$TERM_ID" ]]; then
     echo "$SESSION_ID" > "$CLAUDE_DIR/sessions/resume-${PROJECT_NAME}-${TERM_ID}.txt"
 else
-    # Fallback to project-wide (may have conflicts with concurrent sessions)
     echo "$SESSION_ID" > "$CLAUDE_DIR/sessions/resume-${PROJECT_NAME}.txt"
 fi
 
