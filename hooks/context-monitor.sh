@@ -2,6 +2,7 @@
 # PreToolUse hook - monitors context usage from real API token counts
 # Warns at 85%, blocks at 95% (except for checkpoint-essential tools)
 source "$(dirname "$0")/lib/claude-env.sh"
+source "$(dirname "$0")/lib/provider-context.sh"
 
 WARN_THRESHOLD=85
 BLOCK_THRESHOLD=95
@@ -47,11 +48,13 @@ except:
 CONTEXT=${CONTEXT:-0}
 
 # Read context_window_size written by statusline (session-isolated)
+# Then resolve through provider API if Claude Code didn't report it
 CONTEXT_FILE="/tmp/claude-kb-state/${SESSION_ID}-context"
+CLAUDE_REPORTED=0
 if [[ -n "$SESSION_ID" && -f "$CONTEXT_FILE" ]]; then
-    LIMIT=$(python3 -c "import json; print(json.load(open('$CONTEXT_FILE')).get('context_window_size', 200000))" 2>/dev/null)
+    CLAUDE_REPORTED=$(python3 -c "import json; print(json.load(open('$CONTEXT_FILE')).get('context_window_size', 0))" 2>/dev/null)
 fi
-LIMIT=${LIMIT:-200000}
+LIMIT=$(get_provider_context_window "${CLAUDE_REPORTED:-0}")
 
 PERCENT=$((CONTEXT * 100 / LIMIT))
 

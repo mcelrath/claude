@@ -2,6 +2,11 @@
 # Custom status line for Claude Code
 # Shows: model, context bar, cwd, git branch, build status
 
+# Source provider context helper (for fallback when Claude Code doesn't report context size)
+SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+source "$SCRIPT_DIR/hooks/lib/claude-env.sh" 2>/dev/null
+source "$SCRIPT_DIR/hooks/lib/provider-context.sh" 2>/dev/null
+
 # ANSI colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -19,8 +24,11 @@ input=$(cat)
 
 # Parse JSON data - parse numbers separately, sum in bash
 model=$(echo "$input" | jq -r '.model.display_name // "?"')
-context_size=$(echo "$input" | jq '.context_window.context_window_size // 1000000')
-[[ -z "$context_size" || "$context_size" == "null" ]] && context_size=1000000
+context_size=$(echo "$input" | jq '.context_window.context_window_size // 0')
+[[ -z "$context_size" || "$context_size" == "null" ]] && context_size=0
+if [[ "$context_size" == "0" ]] && type get_provider_context_window &>/dev/null; then
+    context_size=$(get_provider_context_window 0)
+fi
 
 # Get individual token counts for visualization (parse separately, sum in bash)
 direct_tokens=$(echo "$input" | jq '.context_window.current_usage.input_tokens // 0')

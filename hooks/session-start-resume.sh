@@ -32,7 +32,59 @@ if [[ -f "$RESUME_FILE" ]]; then
     HANDOFF="$CLAUDE_DIR/sessions/${SESSION_ID}/handoff.md"
     TASKS="$CLAUDE_DIR/sessions/${SESSION_ID}/tasks.json"
 
-    if [[ -f "$HANDOFF" ]]; then
+    if [[ ! -f "$HANDOFF" ]]; then
+        # No handoff.md — likely /clear without prior autocompact
+        # Reconstruct state from beads + KB + old session dir
+        echo "RESUME: Previous session (no handoff — /clear before autocompact?)"
+        echo "  Session: $SESSION_ID"
+
+        OLD_SESSION_DIR="$CLAUDE_DIR/sessions/${SESSION_ID}"
+        OLD_PLAN=""
+        [[ -f "$OLD_SESSION_DIR/current_plan" ]] && OLD_PLAN=$(cat "$OLD_SESSION_DIR/current_plan")
+
+        if [[ -n "$OLD_PLAN" ]] && bd_is_beads_id "$OLD_PLAN"; then
+            EPIC_ID=$(bd_strip_prefix "$OLD_PLAN")
+            echo "  Plan: beads epic $EPIC_ID (live from DB)"
+            bd show "$EPIC_ID" 2>/dev/null
+            echo ""
+            bd children "$EPIC_ID" 2>/dev/null
+            echo ""
+        elif [[ -n "$OLD_PLAN" && -f "$OLD_PLAN" ]]; then
+            echo "  Plan: $OLD_PLAN"
+            if grep -q 'Mode: IMPLEMENTATION' "$OLD_PLAN" 2>/dev/null; then
+                echo "  Status: APPROVED — IMPLEMENTATION"
+            fi
+        fi
+
+        # Show recent KB findings for context recovery
+        KB_VENV="${KB_VENV:-$HOME/Projects/ai/kb/.venv/bin/python}"
+        KB_SCRIPT="${KB_SCRIPT:-$HOME/Projects/ai/kb/kb.py}"
+        if [[ -f "$KB_SCRIPT" && -f "$KB_VENV" ]]; then
+            KB_RECENT=$("$KB_VENV" "$KB_SCRIPT" list --project="$PROJECT" --limit=3 2>/dev/null | grep -oE 'kb-[0-9]{8}-[0-9]{6}-[a-f0-9]{6}' | head -5 | tr '\n' ' ')
+            [[ -n "$KB_RECENT" ]] && echo "  Recent KB: $KB_RECENT"
+        fi
+
+        # Show open beads epics for this project
+        OPEN_EPICS=$(bd list --type epic --status open --json 2>/dev/null | python3 -c "
+import sys, json
+try:
+    epics = json.load(sys.stdin)
+    for e in epics[:3]:
+        print(f\"  - {e['id']}: {e.get('title','')}\")
+except:
+    pass
+" 2>/dev/null)
+        [[ -n "$OPEN_EPICS" ]] && echo "  Open plan epics:" && echo "$OPEN_EPICS"
+
+        echo ""
+        echo "RESUME INSTRUCTIONS:"
+        echo "- No handoff available — state reconstructed from beads + KB"
+        echo "- If a plan epic was shown above, continue working on it"
+        echo "- Run kb_list(project=\"$PROJECT\") for recent findings"
+        echo "- After resuming, run: rm $RESUME_FILE"
+        echo "- Do NOT ask 'What would you like to work on?' — just continue."
+
+    elif [[ -f "$HANDOFF" ]]; then
         KB_CHECKPOINT=$(grep -oE 'kb-[0-9]{8}-[0-9]{6}-[a-f0-9]{6}' "$HANDOFF" | head -1)
         REVIEW_LINE=$(grep -A1 "## Expert Review" "$HANDOFF" 2>/dev/null | tail -1)
 
