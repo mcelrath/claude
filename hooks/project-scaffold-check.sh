@@ -7,8 +7,11 @@ git rev-parse --show-toplevel &>/dev/null || exit 0
 ACTIONS=""
 
 if [[ ! -d ".beads" ]]; then
-    bd init 2>/dev/null && bd setup claude 2>/dev/null
-    ACTIONS="${ACTIONS}Initialized beads. "
+    # Sanitize directory name for Dolt database (no dots, hyphens, or special chars)
+    PROJECT_DIR=$(basename "$(git rev-parse --show-toplevel)")
+    DB_NAME=$(echo "$PROJECT_DIR" | tr '.-' '_' | tr -cd 'a-zA-Z0-9_')
+    bd init --database="$DB_NAME" 2>/dev/null && bd setup claude 2>/dev/null
+    ACTIONS="${ACTIONS}Initialized beads (db=$DB_NAME). "
 fi
 
 MISSING=""

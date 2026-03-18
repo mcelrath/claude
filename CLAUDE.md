@@ -11,10 +11,12 @@ All plans live in beads epics. No `~/.claude/plans/` files. No ExitPlanMode. No 
 ```
 1. Plan:    bd create --type=epic --title="Plan: X" --design-file=<file>
             (plan text goes in epic's design field)
-2. Review:  Task(subagent_type="expert-review", run_in_background=True,
-              prompt="Review: epic=<epic-id> project_root=<path>")
-            (single agent adopts reviewer personas from reviewers.yaml sequentially)
-3. Verdict: Agent returns JSON with verdict: APPROVED/REJECTED/INCOMPLETE
+2. Review:  TeamCreate(team_name="review-<epic-id>")
+            Task(subagent_type="expert-review", team_name="review-<epic-id>",
+              name="review-lead", model="sonnet", run_in_background=True,
+              prompt="FULL REVIEW: epic=<epic-id> project_root=<path>")
+            (lead spawns parallel reviewer teammates from reviewers.yaml)
+3. Verdict: Lead returns JSON with verdict: APPROVED/REJECTED/INCOMPLETE
             APPROVED → proceed to implementation
             REJECTED → revise design, re-run review
 4. Claim:   bd update <epic-id> --status=in_progress
@@ -29,8 +31,8 @@ All plans live in beads epics. No `~/.claude/plans/` files. No ExitPlanMode. No 
 
 | When | Action |
 |------|--------|
-| Plan ready | `Task(subagent_type="expert-review", ...)` |
-| Plan substantively edited | Re-run expert-review |
+| Plan ready | Full review (team-based, see Tiered Review) |
+| Plan substantively edited | Re-run full review |
 | Implementation complete | Run implementation-review |
 | Expert review REJECTED | Revise epic design, re-run expert-review |
 
@@ -42,8 +44,8 @@ Not every decision needs a full review. Match review weight to action risk:
 
 | Tier | When | Invocation |
 |------|------|------------|
-| **Full** | Plans/epics, architectural decisions | `Task(subagent_type="expert-review", run_in_background=True, prompt="Review: epic=<id> project_root=<path>")` |
-| **Light** | Issue triage, priority changes, closing issues | `Task(subagent_type="expert-review", model="haiku", prompt="LIGHT REVIEW: <question>. Read {project_root}/reviewers.yaml, pick 1-2 relevant personas. Return APPROVED/REJECTED/UNCERTAIN.")` |
+| **Full** | Plans/epics, architectural decisions | `TeamCreate("review-<id>")` then `Task(subagent_type="expert-review", team_name="review-<id>", name="review-lead", model="sonnet", run_in_background=True, prompt="FULL REVIEW: epic=<id> project_root=<path>")` |
+| **Light** | Issue triage, priority changes, closing issues | `Task(subagent_type="expert-review", model="haiku", prompt="LIGHT REVIEW: epic=<id> project_root=<path>")` |
 | **None** | Creating issues, recording KB, reading/searching | Just do it |
 
 **Escalation chain** (bounded depth):
@@ -327,7 +329,7 @@ bd prime                    # Load full workflow context (auto-runs via hooks)
 ```
 bd create --type=epic --title="Plan: X" --design-file=plan.md   # Create plan epic
 bd show <epic-id>           # Read plan (design field)
-Task(subagent_type="expert-review", prompt="Review: epic=<id> project_root=<path>")  # Review
+TeamCreate("review-<id>") + Task(subagent_type="expert-review", ...)  # Full review
 bd update <epic-id> --status=in_progress                        # Start implementation
 bd close <epic-id>          # Complete
 ```

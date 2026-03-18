@@ -27,11 +27,12 @@ elif tn == 'Write':
 
 FILE_PATH=$(echo "$INPUT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('tool_input',{}).get('file_path',''))" 2>/dev/null)
 
-# Skip hook config files
+# Skip files where markers are expected/legitimate
+# (aligned with skip_patterns in incompleteness-gate.sh)
+[[ "$FILE_PATH" == *.md ]] && exit 0
 [[ "$FILE_PATH" == *"/hooks/"* ]] && exit 0
-[[ "$FILE_PATH" == *"/CLAUDE.md" ]] && exit 0
 [[ "$FILE_PATH" == *"/memory/"* ]] && exit 0
-[[ "$FILE_PATH" == *"/MEMORY.md" ]] && exit 0
+[[ "$FILE_PATH" == *.yaml ]] && exit 0
 
 # Session ID for state tracking
 SESSION_ID="${CLAUDE_SESSION_ID:-$(cat /tmp/claude-kb-state/session-$PPID 2>/dev/null || echo unknown)}"

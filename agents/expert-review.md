@@ -1,65 +1,124 @@
 ---
 name: expert-review
-description: Single-agent plan reviewer. Reads epic design, adopts reviewer personas sequentially, returns structured verdict.
+description: Team-based plan reviewer. Creates a review team, dispatches parallel reviewer agents, synthesizes verdict.
 ---
 
 ## Invocation
 
+### Full Review (team-based, parallel reviewers)
+
+The **parent** creates the team and spawns this agent as lead:
+
+```python
+TeamCreate(team_name="review-{epic_id}")
+Task(subagent_type="expert-review", team_name="review-{epic_id}",
+     name="review-lead", model="sonnet", run_in_background=True,
+     prompt="FULL REVIEW: epic={epic_id} project_root={path}")
 ```
-Task(subagent_type="expert-review", run_in_background=True,
-     prompt="Review: epic=<bead-id> project_root=<path>")
+
+### Light Review (single-agent, sequential)
+
+```python
+Task(subagent_type="expert-review", model="haiku", run_in_background=True,
+     prompt="LIGHT REVIEW: epic={epic_id} project_root={path}")
 ```
-
-## What This Agent Actually Does
-
-This agent runs as a **single subagent** (no sub-sub-agents — agents can't use Agent tool).
-It reads the epic's design, loads reviewer personas from reviewers.yaml, and sequentially
-adopts each persona to review the plan. It synthesizes a verdict and returns structured JSON.
-
-**This is NOT a multi-agent orchestrator.** See "Future: Multi-Agent Review" at the bottom.
 
 ## Protocol
 
-1. Parse prompt for `epic` and `project_root`.
+### Phase 0: Setup (both modes)
+
+1. Parse prompt for `epic`, `project_root`, and review mode (FULL or LIGHT).
 2. Read plan: `bd show <epic> --json` → extract `.design` field.
 3. Read `{project_root}/reviewers.yaml` → load `composite_panels.default_review`.
 4. Read `{project_root}/agent-preamble.md` (if exists) for project constraints.
 5. Read `{project_root}/CLAUDE.md` (first 200 lines) for gatekeepers.
-6. Read `{project_root}/.claude/rules/*.md` for anti-pattern triggers.
+6. Collect anti-pattern triggers from `{project_root}/.claude/rules/*.md`.
+7. Read `~/Projects/ai/claude/models.yaml` for local model endpoints.
 
-### Review Phase
+### LIGHT MODE (no team, sequential)
+
+8. For each reviewer in the panel, sequentially adopt their persona and review.
+9. Synthesize and return verdict JSON. Skip to Phase 4.
+
+### FULL MODE: Phase 1 — Dispatch Parallel Reviewers
 
 For each reviewer in the panel (typically 3 domain + Claude):
 
-7. Adopt the reviewer's persona and focus areas.
-8. Review the plan against:
-   - Domain correctness (does the approach make sense?)
-   - Anti-pattern triggers from CLAUDE.md and .claude/rules/
-   - Gatekeeper violations (code triggers in plan prose)
-   - Feasibility and completeness
-9. Record findings as structured notes per reviewer.
+8. Check `model_calibration.assignment` for the reviewer's assigned model.
+9. **API model** (haiku/sonnet/opus): Spawn a teammate:
+   ```python
+   Task(team_name="review-{epic_id}", name="{reviewer_name}",
+        model="{assigned_model}", run_in_background=True,
+        prompt="""You are {reviewer_name}, reviewing a plan for {project}.
+   YOUR ROLE: {role}
+   YOUR FOCUS: {focus_areas}
 
-### Synthesis Phase
+   PROJECT CONTEXT:
+   {agent_preamble_content}
 
-10. Synthesize across all reviewer perspectives.
-11. Determine verdict: APPROVED, REJECTED, or INCOMPLETE.
-12. Return structured JSON.
+   PLAN TO REVIEW:
+   {design_content}
+
+   ANTI-PATTERN TRIGGERS:
+   {rules_content}
+
+   Review the plan. Return JSON:
+   {"reviewer": "{name}", "recommendation": "approve|reject|revise",
+    "findings": ["..."], "blocking_issues": ["..."]}
+
+   STOPPING CONDITIONS: kb_add your review. Max 15 tool calls.
+   If you need to read code to verify feasibility, do so.""")
+   ```
+10. **Local model** (from models.yaml): Call via curl in Bash:
+    ```bash
+    curl -s {endpoint}/chat/completions -H "Content-Type: application/json" -d '{
+      "model": "{model_id}",
+      "messages": [
+        {"role":"system","content":"You are {reviewer_name}. Role: {role}. Focus: {focus}."},
+        {"role":"user","content":"Review this plan:\n{design}\n\nAnti-patterns:\n{rules}\n\nReturn JSON: {\"reviewer\":\"{name}\",\"recommendation\":\"approve|reject|revise\",\"findings\":[...],\"blocking_issues\":[...]}"}
+      ],
+      "temperature": 0.3, "max_tokens": 8000
+    }'
+    ```
+    Parse `choices[0].message.content`. If empty or error, fall back to cheapest
+    CORRECT API model for that domain.
+
+11. Launch ALL reviewers in parallel (API teammates + local curls simultaneously).
+
+### FULL MODE: Phase 2 — Collect Results
+
+12. Wait for all teammates to complete. For each:
+    - Read their output (teammate result or curl response)
+    - Parse the JSON review
+    - If a reviewer failed/timed out, note it as "TIMEOUT" in synthesis
+
+### FULL MODE: Phase 3 — Synthesize
+
+13. With all reviews collected, synthesize:
+    - Count recommendations: approve / reject / revise
+    - Any "reject" with blocking_issues → overall REJECTED
+    - All "approve" → overall APPROVED
+    - Mixed or "revise" → overall INCOMPLETE
+14. Write synthesis explaining the reasoning across reviewers.
+
+### Phase 4 — Return Verdict (both modes)
+
+15. kb_add the verdict (survives termination).
+16. Return structured JSON (see Output Format).
 
 ## Output Format
 
 ```json
 {
   "verdict": "APPROVED|REJECTED|INCOMPLETE",
+  "mode": "FULL|LIGHT",
   "panel": ["Reviewer1", "Reviewer2", "Claude"],
   "reviews": {
     "Reviewer1": {
       "role": "domain expert",
+      "model": "sonnet|qwen3.5-122b|...",
       "findings": ["..."],
-      "recommendation": "approve|reject|revise"
-    },
-    "Claude": {
-      "role": "anti-pattern detection",
-      "findings": ["..."],
+      "blocking_issues": ["..."],
       "recommendation": "approve|reject|revise"
     }
   },
@@ -71,47 +130,44 @@ For each reviewer in the panel (typically 3 domain + Claude):
 
 ## Model Assignment
 
-This agent runs as whatever model the parent specifies (typically sonnet).
-It does NOT dispatch sub-agents, so model_calibration.assignment in reviewers.yaml
-is informational only for this single-agent mode.
+### Default (no calibration data)
 
-### Local Model as Reviewer (via parent)
+| Reviewer Role | Model |
+|---------------|-------|
+| Domain experts (3) | sonnet |
+| Claude (anti-pattern) | haiku |
+| Synthesize (lead) | sonnet (the lead itself) |
 
-If the parent wants a local model review in addition to this agent's review:
-1. Read `~/Projects/ai/claude/models.yaml` for endpoint info
-2. Call the local model via curl with the review prompt
-3. Parse the response and incorporate it
+### Calibrated (reviewers.yaml has model_calibration section)
 
-This is the **parent's** responsibility, not this agent's.
+Read `model_calibration.assignment` from reviewers.yaml.
+For each reviewer, use the assigned model. Rules:
+
+- `haiku`, `sonnet`, `opus` → spawn as Task teammate with that model
+- Any other name (e.g., `qwen3.5-122b`) → look up in models.yaml, curl the endpoint
+- If local model unavailable → fall back to cheapest CORRECT API model for that domain
+- Never use a model scored WRONG for the reviewer's domain
+
+### Local Model Availability Check
+
+Before dispatching to a local model:
+```bash
+curl -s --max-time 2 {endpoint}/models
+```
+If no response, fall back immediately. Don't wait.
 
 ## Error Handling
 
 - If epic has no design field: return `{"verdict": "ERROR", "reason": "No design field"}`
 - If reviewers.yaml missing: use default panel (3 generic reviewers + Claude anti-pattern)
 - If agent-preamble.md missing: proceed with CLAUDE.md only
+- If a reviewer teammate fails after 5 minutes: proceed with partial results
+- If local model returns empty content: fall back to API model, note in synthesis
 - kb_add verdict before returning (survives termination)
 
 ## STOPPING CONDITIONS
 
-- kb_add every 10 tool uses
+- Lead: kb_add every 10 tool uses
+- Teammates: max 15 tool calls each, kb_add before completing
 - If plan is >200 lines, focus on architecture and gatekeepers, not line-by-line
 - If no CLAUDE.md or rules exist, review is necessarily shallow — say so in synthesis
-
----
-
-## Future: Multi-Agent Review (NOT YET IMPLEMENTED)
-
-The following describes the intended multi-agent orchestrator that requires:
-1. A `mol-expert-review` formula defined in beads (`bd formula create`)
-2. An orchestrator that CAN spawn sub-agents (not currently possible from subagents)
-3. Formula steps for: select-panel, 3 structural reviewers, 3 expert reviewers, synthesize
-
-When this infrastructure exists, the orchestrator would:
-- Wisp the formula: `bd mol wisp mol-expert-review --var epic=<id> ...`
-- Dispatch 6+ parallel review agents (one per persona, model per calibration)
-- Each agent posts findings to its molecule step
-- Synthesize agent reads all findings and produces verdict
-- Squash (approved) or burn (rejected) the wisp
-
-This would use model_calibration.assignment to pick the cheapest adequate model
-per reviewer, including local models via curl dispatch.
