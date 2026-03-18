@@ -1,9 +1,12 @@
 {
   "additionalDirectories": [
     "/tmp",
-    "~/.claude/",
-    ".claude/plans"
+    "~/.claude/"
   ],
+  "attribution": {
+    "commit": "",
+    "pr": ""
+  },
   "autoUpdatesChannel": "latest",
   "effortLevel": "low",
   "enabledPlugins": {
@@ -15,6 +18,9 @@
   },
   "env": {
     "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "100",
+    "CLAUDE_CODE_ATTRIBUTION_HEADER": "0",
+    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
+    "CLAUDE_CODE_ENABLE_TELEMETRY": "0",
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
     "DISABLE_AUTOUPDATER": "1"
   },
@@ -46,32 +52,12 @@
       {
         "hooks": [
           {
-            "command": "$HOME/.claude/hooks/plan-write-review.sh",
-            "timeout": 3000,
-            "type": "command"
-          }
-        ],
-        "matcher": "Edit|Write"
-      },
-      {
-        "hooks": [
-          {
             "command": "$HOME/.claude/hooks/kb-error-extract.sh",
             "timeout": 45000,
             "type": "command"
           }
         ],
         "matcher": "Bash"
-      },
-      {
-        "hooks": [
-          {
-            "command": "$HOME/.claude/hooks/plan-mode-approved.sh",
-            "timeout": 2000,
-            "type": "command"
-          }
-        ],
-        "matcher": "ExitPlanMode"
       }
     ],
     "PreCompact": [
@@ -88,6 +74,15 @@
             "type": "command"
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "command": "bd prime",
+            "type": "command"
+          }
+        ],
+        "matcher": ""
       }
     ],
     "PreToolUse": [
@@ -99,16 +94,6 @@
             "type": "command"
           }
         ]
-      },
-      {
-        "hooks": [
-          {
-            "command": "$HOME/.claude/hooks/expert-review-reminder.sh",
-            "timeout": 2000,
-            "type": "command"
-          }
-        ],
-        "matcher": "ExitPlanMode"
       },
       {
         "hooks": [
@@ -198,10 +183,6 @@
             "type": "command"
           },
           {
-            "command": "$HOME/.claude/hooks/plan-cleanup.sh",
-            "type": "command"
-          },
-          {
             "command": "$HOME/.claude/hooks/kb-search-reset.sh",
             "type": "command"
           },
@@ -226,6 +207,15 @@
             "type": "command"
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "command": "bd prime",
+            "type": "command"
+          }
+        ],
+        "matcher": ""
       }
     ],
     "UserPromptSubmit": [
@@ -233,11 +223,6 @@
         "hooks": [
           {
             "command": "$HOME/.claude/hooks/remind-patterns.sh",
-            "type": "command"
-          },
-          {
-            "command": "$HOME/.claude/hooks/detect-plan-implementation.sh",
-            "timeout": 2000,
             "type": "command"
           }
         ]
@@ -556,10 +541,13 @@
       "Bash(cat <<:*)"
     ]
   },
+  "prefersReducedMotion": true,
+  "promptSuggestionEnabled": false,
   "skipDangerousModePermissionPrompt": true,
   "statusLine": {
     "command": "$HOME/.claude/bin/claude-statusline",
     "padding": 0,
     "type": "command"
-  }
+  },
+  "terminalProgressBarEnabled": false
 }

@@ -1,11 +1,9 @@
 #!/bin/bash
-# PreCompact hook - extracts session state from JSONL using local LLM
-# Creates handoff.md for session resume after compact
-# Stores beads epic ID (not file content) when plan is beads-backed
+# PreCompact hook - extracts session state for resume after compact
+# Creates handoff.md with KB findings, git status, files edited
+# Plan state lives in beads — no plan files to track
 source "$(dirname "$0")/lib/claude-env.sh"
-source "$(dirname "$0")/lib/beads-plan.sh"
 
-# Ensure lib directory exists
 mkdir -p "$CLAUDE_DIR/hooks/lib"
 
 # Trap to create minimal handoff if script fails
@@ -14,20 +12,10 @@ create_minimal_handoff() {
         mkdir -p "$OUT_DIR"
         cat > "$OUT_DIR/handoff.md" << MINEOF
 # Session Handoff (Minimal)
-
-## Session
 - ID: $SESSION_ID
 - Project: ${PROJECT_NAME:-unknown}
-- Extracted: $(python3 -c "from datetime import datetime as d;print(d.now().astimezone().isoformat())" 2>/dev/null || date +%Y-%m-%dT%H:%M:%S)
+- Extracted: $(date +%Y-%m-%dT%H:%M:%S)
 - Status: Precompact failed, minimal fallback
-
-## Plan
-${PLAN_FILE:-unknown}
-
-## Resume
-1. Read current_plan file in this directory
-2. kb_search for recent findings
-3. TaskList for task state
 MINEOF
         source "$CLAUDE_DIR/hooks/lib/get_terminal_id.sh" 2>/dev/null
         _TERM_ID=$(_get_terminal_id 2>/dev/null)
@@ -41,15 +29,12 @@ MINEOF
 }
 trap create_minimal_handoff EXIT
 
-# Read hook input JSON (may contain session_id)
 HOOK_INPUT=$(cat)
 HOOK_SESSION_ID=$(echo "$HOOK_INPUT" | jq -r '.session_id // ""' 2>/dev/null)
 
-# Get project path (Claude's format: dashes replace slashes)
 PROJECT_PATH=$(pwd | sed 's|/|-|g; s|^-||')
 PROJECT_NAME=$(basename "$(git rev-parse --show-toplevel 2>/dev/null || pwd)")
 
-# Get CURRENT session ID: prefer hook input, then PPID mapping, then ls -t
 STATE_DIR="/tmp/claude-kb-state"
 if [[ -n "$HOOK_SESSION_ID" ]]; then
     CURRENT_SESSION_ID="$HOOK_SESSION_ID"
@@ -57,267 +42,106 @@ elif [[ -f "$STATE_DIR/session-$PPID" ]]; then
     CURRENT_SESSION_ID=$(cat "$STATE_DIR/session-$PPID")
 fi
 
-# Find session JSONL - search ALL projects if we have session ID
 FIND_HELPER="$CLAUDE_DIR/hooks/lib/find_session_jsonl.py"
-
 CONTEXT_HELPER="$CLAUDE_DIR/hooks/lib/gather_session_context.py"
 
 if [[ -z "$CURRENT_SESSION_ID" ]]; then
     echo "PRE-COMPACT: RECOVERY NEEDED - No session ID available"
-    echo ""
     echo "RECOVERY_CONTEXT_JSON:$(python3 "$CONTEXT_HELPER" 2>/dev/null)"
-    echo ""
-    echo "Claude: Use AskUserQuestion to ask which session/plan the user was working on."
-    echo "Show the sessions and plans from RECOVERY_CONTEXT_JSON in a table."
     exit 1
 fi
 
-# Search all projects for this session ID
 JSONL=$(python3 "$FIND_HELPER" find "$CURRENT_SESSION_ID" 2>/dev/null)
 if [[ -z "$JSONL" || ! -f "$JSONL" ]]; then
     echo "PRE-COMPACT: RECOVERY NEEDED - Session $CURRENT_SESSION_ID not found"
-    echo ""
     echo "RECOVERY_CONTEXT_JSON:$(python3 "$CONTEXT_HELPER" 2>/dev/null)"
-    echo ""
-    echo "Claude: Use AskUserQuestion to ask which session/plan the user was working on."
     exit 1
 fi
 
-echo "PRE-COMPACT: Found session $CURRENT_SESSION_ID in $(dirname "$JSONL" | xargs basename)"
-
-# SESSION_ID from JSONL filename (consistent source)
 SESSION_ID=$(basename "$JSONL" .jsonl)
 OUT_DIR="$CLAUDE_DIR/sessions/$SESSION_ID"
 mkdir -p "$OUT_DIR"
 
-# Use Python helper with error handling for task extraction
 CONTEXT_JSON=$(python3 "$CLAUDE_DIR/hooks/lib/extract_session_state.py" "$JSONL" 2>/dev/null)
 CONTEXT_JSON=${CONTEXT_JSON:-'{"messages":[],"tasks":[],"kb_ids":[]}'}
 
-# Detect active agent team (match by current session ID)
-TEAM_CONFIG=""
-TEAM_NAME=""
+# Detect active agent team
 TEAM_STATE=""
 for tc in "$CLAUDE_DIR/teams"/*/config.json; do
     [[ -f "$tc" ]] || continue
     tc_session=$(python3 -c "import json; print(json.load(open('$tc')).get('leadSessionId',''))" 2>/dev/null)
     if [[ "$tc_session" == "$SESSION_ID" || "$tc_session" == "$CURRENT_SESSION_ID" ]]; then
-        TEAM_CONFIG="$tc"
-        break
-    fi
-done
-if [[ -n "$TEAM_CONFIG" && -f "$TEAM_CONFIG" ]]; then
-    TEAM_STATE=$(python3 - "$TEAM_CONFIG" "$TASKS_DIR" << 'PYEOF'
+        TEAM_STATE=$(python3 - "$tc" << 'PYEOF'
 import json, sys, glob, os
-
-config_path = sys.argv[1]
-tasks_base = sys.argv[2] if len(sys.argv) > 2 else ""
-cfg = json.load(open(config_path))
-team_name = cfg.get('name', 'unknown')
-lines = []
-
-lines.append(f"## Agent Team: {team_name}")
-lines.append(f"Description: {cfg.get('description', 'none')}")
-lines.append("Members:")
+cfg = json.load(open(sys.argv[1]))
+lines = [f"## Agent Team: {cfg.get('name', 'unknown')}"]
 for m in cfg.get('members', []):
     lines.append(f"  - {m['name']} ({m.get('agentType','?')}, {m.get('model','?')})")
-
-task_dir = os.path.join(tasks_base, team_name) if tasks_base else ""
-if task_dir and os.path.isdir(task_dir):
-    tasks = []
-    for tf in sorted(glob.glob(os.path.join(task_dir, '*.json'))):
-        try:
-            tasks.append(json.load(open(tf)))
-        except Exception:
-            pass
-    if tasks:
-        lines.append(f"Tasks ({len(tasks)}):")
-        for t in tasks:
-            owner = t.get('owner', '')
-            owner_str = f" [{owner}]" if owner else ""
-            lines.append(f"  {t['id']}. [{t.get('status','?')}]{owner_str} {t.get('subject','?')}")
-
-lines.append("Note: team-cleanup.sh will reconnect this team on /clear.")
 print('\n'.join(lines))
 PYEOF
 )
-    TEAM_NAME=$(python3 -c "import json; print(json.load(open('$TEAM_CONFIG')).get('name','unknown'))" 2>/dev/null)
-fi
+        break
+    fi
+done
 
-# Extract tasks to file (for session resume)
-if command -v jq &>/dev/null; then
-    echo "$CONTEXT_JSON" | jq -c '.tasks // []' > "$OUT_DIR/tasks.json"
-else
-    echo '[]' > "$OUT_DIR/tasks.json"
-fi
-
-# Extract all session data from context
+# Extract session data
 KB_IDS=$(echo "$CONTEXT_JSON" | python3 -c "import sys,json; d=json.load(sys.stdin); print(' '.join(d.get('kb_ids',[])[-20:]))" 2>/dev/null)
 KB_COUNT=$(echo "$CONTEXT_JSON" | python3 -c "import sys,json; d=json.load(sys.stdin); print(len(d.get('kb_ids',[])))" 2>/dev/null)
-KB_SUPERSEDED=$(echo "$CONTEXT_JSON" | python3 -c "import sys,json; d=json.load(sys.stdin); print(' '.join(d.get('kb_superseded',[])))" 2>/dev/null)
 KB_ADDED=$(echo "$CONTEXT_JSON" | python3 -c "
 import sys,json
 d=json.load(sys.stdin)
 for e in d.get('kb_added', [])[-3:]:
     print(f\"- [{e.get('finding_type','?')}] {e.get('content','')[:500]}\")
 " 2>/dev/null)
-FILES_READ=$(echo "$CONTEXT_JSON" | python3 -c "import sys,json; d=json.load(sys.stdin); [print(f) for f in d.get('files_read',[])[:15]]" 2>/dev/null)
 FILES_EDITED=$(echo "$CONTEXT_JSON" | python3 -c "import sys,json; d=json.load(sys.stdin); [print(f) for f in d.get('files_edited',[])]" 2>/dev/null)
 LAST_QUERIES=$(echo "$CONTEXT_JSON" | python3 -c "
 import sys,json
 d=json.load(sys.stdin)
-queries = d.get('last_queries', [])
-for i, q in enumerate(queries[-3:], 1):
+for i, q in enumerate(d.get('last_queries', [])[-3:], 1):
     print(f'{i}. {q[:500]}')
 " 2>/dev/null)
-LAST_QUERY_RAW=$(echo "$CONTEXT_JSON" | python3 -c "
-import sys,json
-d=json.load(sys.stdin)
-queries = d.get('last_queries', [])
-print(queries[-1][:300] if queries else '')
-" 2>/dev/null)
-
-# Git status: recent commits and uncommitted changes
-GIT_LOG=$(git log --oneline -5 2>/dev/null)
-GIT_UNCOMMITTED=$(git status --short 2>/dev/null | grep -v '^?' | head -10)
-
-# Extract expert review state
 REVIEW_SUMMARY=$(echo "$CONTEXT_JSON" | python3 -c "
 import sys,json
 d=json.load(sys.stdin)
-launches = d.get('review_launches', [])
 verdicts = d.get('review_verdicts', [])
-if not launches and not verdicts:
-    print('No expert review this session')
+if verdicts:
+    print(f'Last verdict: {verdicts[-1]} ({len(verdicts)} verdicts this session)')
 else:
-    if verdicts:
-        print(f'Last verdict: {verdicts[-1]} ({len(verdicts)} verdicts this session)')
-    for r in launches[-3:]:
-        print(f\"  - {r.get('type','?')}: {r.get('description','')[:150]}\")
+    print('No expert review this session')
 " 2>/dev/null)
 
-# Get plan: from current_plan (may be beads ID or file path)
-PLAN_FILE=""
-if [[ -f "$OUT_DIR/current_plan" ]]; then
-    CURRENT_PLAN_VALUE=$(cat "$OUT_DIR/current_plan")
+GIT_LOG=$(git log --oneline -5 2>/dev/null)
+GIT_UNCOMMITTED=$(git status --short 2>/dev/null | grep -v '^?' | head -10)
 
-    # === BEADS PATH: store as beads:{epic_id} marker ===
-    if bd_is_beads_id "$CURRENT_PLAN_VALUE"; then
-        PLAN_FILE="beads:$(bd_strip_prefix "$CURRENT_PLAN_VALUE")"
-    else
-        PLAN_FILE=$(echo "$CURRENT_PLAN_VALUE" | sed 's|.*/plans/|plans/|')
-    fi
-fi
-
-# Extract plan approval status
-PLAN_APPROVAL=""
-if [[ -n "$PLAN_FILE" ]]; then
-    if [[ "$PLAN_FILE" == beads:* ]]; then
-        # Beads: get status from bd
-        EPIC_ID="${PLAN_FILE#beads:}"
-        PLAN_APPROVAL=$(bd_plan_status "$EPIC_ID" 2>/dev/null)
-    else
-        FULL_PLAN="$CLAUDE_DIR/$PLAN_FILE"
-        if [[ -f "$FULL_PLAN" ]]; then
-            PLAN_APPROVAL=$(grep -A5 "## Approval Status" "$FULL_PLAN" 2>/dev/null | head -5)
-        fi
-    fi
-fi
-
-# Extract work context if available
-WORK_CONTEXT_SECTION=""
-WORK_CONTEXT_FILE="$OUT_DIR/work_context.json"
-if [[ -f "$WORK_CONTEXT_FILE" ]]; then
-    WORK_TYPE=$(python3 -c "import json; ctx=json.load(open('$WORK_CONTEXT_FILE')); print(ctx.get('work_type', ''))" 2>/dev/null)
-    PRIMARY_TASK=$(python3 -c "import json; ctx=json.load(open('$WORK_CONTEXT_FILE')); print(ctx.get('primary_task', ''))" 2>/dev/null)
-    MY_PLAN=$(python3 -c "import json; ctx=json.load(open('$WORK_CONTEXT_FILE')); print(ctx.get('my_plan') or '')" 2>/dev/null)
-    PLANS_REF=$(python3 -c "import json; ctx=json.load(open('$WORK_CONTEXT_FILE')); print(', '.join(ctx.get('plans_referenced', [])))" 2>/dev/null)
-
-    WORK_CONTEXT_SECTION="## Work Context
-- Type: ${WORK_TYPE}
-- Primary Task: ${PRIMARY_TASK}"
-
-    if [[ -n "$MY_PLAN" ]]; then
-        WORK_CONTEXT_SECTION="$WORK_CONTEXT_SECTION
-- My Plan: ${MY_PLAN}"
-    fi
-
-    if [[ -n "$PLANS_REF" ]]; then
-        WORK_CONTEXT_SECTION="$WORK_CONTEXT_SECTION
-- Plans Referenced (not implementing): ${PLANS_REF}"
-    fi
-
-    WORK_CONTEXT_SECTION="$WORK_CONTEXT_SECTION
-"
-fi
-
-# Generate session summary via local LLM, using actual conversation text (not compressed JSON)
-SUMMARY=$(python3 "$CLAUDE_DIR/hooks/lib/summarize_session.py" "$JSONL" "${PLAN_FILE:-none}" "$LLM_URL")
-
-# Validate SUMMARY is parseable JSON
-if ! echo "$SUMMARY" | python3 -c "import sys,json; json.load(sys.stdin)" 2>/dev/null; then
-    SUMMARY='{"summary":"LLM unavailable","current_task":"unknown","next_steps":["kb_list for context","read handoff files_edited section"],"blockers":[]}'
-fi
-
-# Generate session-specific resume instructions
-if [[ "$PLAN_FILE" == beads:* ]]; then
-    EPIC_ID="${PLAN_FILE#beads:}"
-    EPIC_STATUS=$(bd show "$EPIC_ID" --json 2>/dev/null | python3 -c "
+# Beads state snapshot
+BEADS_IN_PROGRESS=$(bd list --status=in_progress --json 2>/dev/null | python3 -c "
 import sys,json
 try:
-    d=json.load(sys.stdin)
-    if isinstance(d,list): d=d[0]
-    print(d.get('status',''))
+    items = json.load(sys.stdin)
+    for i in items[:5]:
+        print(f\"- {i['id']}: {i.get('title','')}\")
 except:
-    print('')
+    pass
 " 2>/dev/null)
-    if [[ "$EPIC_STATUS" == "closed" ]]; then
-        RESUME_INSTRUCTIONS="1. Read handoff — plan epic $EPIC_ID is APPROVED, begin/continue implementation
-2. Run: bd show $EPIC_ID for plan details
-3. Do NOT ask what to work on — resume immediately"
-    else
-        RESUME_INSTRUCTIONS="1. Read handoff — plan epic $EPIC_ID in progress
-2. Run: bd show $EPIC_ID and bd children $EPIC_ID for review status
-3. Continue planning or complete reviews"
-    fi
-elif [[ -n "$PLAN_FILE" && "$PLAN_APPROVAL" == *"IMPLEMENTATION"* ]]; then
-    RESUME_INSTRUCTIONS="1. Read handoff and plan below — plan is APPROVED, begin/continue implementation
-2. Plan: $PLAN_FILE — check which phases are done, continue from the first incomplete phase
-3. Do NOT ask what to work on — resume immediately"
-elif [[ -n "$PLAN_FILE" ]]; then
-    RESUME_INSTRUCTIONS="1. Read handoff and plan: $PLAN_FILE
-2. Plan NOT yet approved — continue planning, run expert-review, then ExitPlanMode
-3. kb_list(project=\"$PROJECT_NAME\") for session findings"
-elif [[ -n "$LAST_QUERY_RAW" ]]; then
-    RESUME_INSTRUCTIONS="1. Read handoff for context
-2. Last user request: $LAST_QUERY_RAW
-3. kb_list(project=\"$PROJECT_NAME\") — KB findings are source of truth
-4. Continue from last user query — do NOT ask what to work on"
-else
-    RESUME_INSTRUCTIONS="1. Read handoff for context
-2. kb_list(project=\"$PROJECT_NAME\") — KB findings are source of truth
-3. Continue from last user query — do NOT ask what to work on"
+
+SUMMARY=$(python3 "$CLAUDE_DIR/hooks/lib/summarize_session.py" "$JSONL" "none" "$LLM_URL" 2>/dev/null)
+if ! echo "$SUMMARY" | python3 -c "import sys,json; json.load(sys.stdin)" 2>/dev/null; then
+    SUMMARY='{"summary":"LLM unavailable","current_task":"unknown","next_steps":["kb_list for context"],"blockers":[]}'
 fi
 
-# Write handoff
 cat > "$OUT_DIR/handoff.md.tmp" << EOF
 # Session Handoff
 
 ## Session
 - ID: $SESSION_ID
 - Project: $PROJECT_NAME
-- Extracted: $(python3 -c "from datetime import datetime as d;print(d.now().astimezone().isoformat())" 2>/dev/null || date +%Y-%m-%dT%H:%M:%S)
+- Extracted: $(date +%Y-%m-%dT%H:%M:%S)
 
 ## Last User Queries
 ${LAST_QUERIES:-[none captured]}
 
-## Plan
-${PLAN_FILE:-none}
-${PLAN_APPROVAL:+
-## Plan Approval
-$PLAN_APPROVAL}
-
-${WORK_CONTEXT_SECTION}
+## Beads In Progress
+${BEADS_IN_PROGRESS:-[none]}
 
 ${TEAM_STATE}
 
@@ -339,26 +163,22 @@ ${GIT_UNCOMMITTED:-[none]}
 ## Files Edited
 ${FILES_EDITED:-[none]}
 
-## Files Read
-${FILES_READ:-[none]}
-
 ## KB Added This Session
 ${KB_ADDED:-[none]}
 
 ## KB Queried (${KB_COUNT:-0} total, showing last 20)
 ${KB_IDS:-[none]}
 
-## KB Superseded
-${KB_SUPERSEDED:-[none]}
-
 ## Resume
-${RESUME_INSTRUCTIONS}
+1. Read this handoff for context
+2. Run: bd ready (find available work)
+3. Run: bd list --status=in_progress (active work)
+4. kb_list(project="$PROJECT_NAME") for session findings
+5. Continue from last user query — do NOT ask what to work on
 EOF
 
-# Atomic commit
 mv "$OUT_DIR/handoff.md.tmp" "$OUT_DIR/handoff.md"
 
-# Get terminal-specific ID (PTY from /proc walk, falls back to CLAUDE_SESSION env)
 source "$CLAUDE_DIR/hooks/lib/get_terminal_id.sh"
 TERM_ID=$(_get_terminal_id)
 if [[ -n "$TERM_ID" ]]; then
@@ -367,7 +187,6 @@ else
     echo "$SESSION_ID" > "$CLAUDE_DIR/sessions/resume-${PROJECT_NAME}.txt"
 fi
 
-echo "PRE-COMPACT: State saved (LLM-summarized)"
+echo "PRE-COMPACT: State saved"
 echo "  Handoff: $OUT_DIR/handoff.md"
-echo "  Tasks: $OUT_DIR/tasks.json"
 echo "  KB findings: $(echo $KB_IDS | wc -w)"
