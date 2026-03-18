@@ -17,9 +17,11 @@ MISSING=""
 
 if [[ -n "$MISSING" ]]; then
     ACTIONS="${ACTIONS}Missing: ${MISSING}"
+    PROJECT_ROOT=$(git rev-parse --show-toplevel)
     echo "WARNING: Project missing required files: ${MISSING}"
-    echo "  Create these before running expert-review or dispatching agents."
-    echo "  Templates: ~/Physics/claude/reviewers.yaml, ~/Physics/claude/agent-preamble.md"
+    echo "  Run project-setup agent to create them:"
+    echo "  Task(subagent_type=\"project-setup\", model=\"sonnet\", run_in_background=True,"
+    echo "       prompt=\"Setup project at: $PROJECT_ROOT\")"
 fi
 
 [[ -n "$ACTIONS" ]] && echo "SCAFFOLD: $ACTIONS"
