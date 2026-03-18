@@ -27,6 +27,10 @@ models:
     thinking: false
     strengths: [fast-lookup, existence-checks, anti-pattern-detection]
     weaknesses: [confabulates-domain-specifics, shallow-on-niche-topics]
+    calibration:
+      jupyterlab_extension: WRONG
+      llm_streaming: SHALLOW
+      typescript_patterns: SHALLOW
 
   sonnet:
     provider: anthropic
@@ -36,6 +40,10 @@ models:
     thinking: false
     strengths: [implementation, domain-review, code-generation]
     weaknesses: [expensive-for-simple-tasks]
+    calibration:
+      jupyterlab_extension: CORRECT
+      llm_streaming: CORRECT
+      typescript_patterns: SHALLOW
 
   opus:
     provider: anthropic
@@ -57,6 +65,10 @@ models:
     note: "Q4 quantized. Thinking cannot be suppressed. ~3K tokens for simple Q&A."
     strengths: [free, anti-pattern-detection, code-review-basics]
     weaknesses: [slow, thinking-overhead, confabulates-on-Lumino/niche-APIs]
+    calibration:
+      jupyterlab_extension: WRONG
+      llm_streaming: SHALLOW
+      typescript_patterns: SHALLOW
 
   # --- Local: Ollama (port 11434) — key models only ---
   qwen3.5-122b:
@@ -68,7 +80,16 @@ models:
     thinking: true
     note: "Largest local model. Very slow but potentially Sonnet-competitive on domain knowledge."
     strengths: [free, likely-deep-domain-knowledge]
-    weaknesses: [very-slow, thinking-overhead, untested]
+    weaknesses: [very-slow, thinking-overhead]
+    calibration:
+      jupyterlab_extension: WRONG
+      llm_streaming: SHALLOW
+      typescript_patterns: SHALLOW
+      physics_clifford: CORRECT
+      physics_zeta: CORRECT
+      physics_complex_structure: CORRECT
+      physics_lehmann: CORRECT
+      physics_centralizer: CORRECT
 
   qwen3.5-35b:
     provider: ollama
@@ -112,6 +133,26 @@ models:
     note: "Code-specialized. Very long context."
     strengths: [free, code-review, very-long-context]
     weaknesses: [thinking-overhead, may-lack-domain-knowledge]
+
+  nemotron-3-super:
+    provider: ollama
+    model_id: "nemotron-3-super:latest"
+    cost_tier: 0
+    speed: 15
+    context: 32768
+    thinking: true
+    note: "123.6B MoE (Q4_K_M). Best local model tested. 9/11 CORRECT across JupyterLab + physics domains. Only local model to pass INotebookTracker trap question."
+    strengths: [free, strong-domain-knowledge, physics, jupyterlab, spectral-theory, zeta-regularization]
+    weaknesses: [slow, thinking-overhead, large-model]
+    calibration:
+      jupyterlab_extension: CORRECT
+      llm_streaming: CORRECT
+      typescript_patterns: SHALLOW
+      physics_clifford: CORRECT
+      physics_zeta: CORRECT
+      physics_complex_structure: CORRECT
+      physics_lehmann: CORRECT
+      physics_centralizer: SHALLOW
 
 # Calibration notes:
 # - Run calibration probes on all available models per project
