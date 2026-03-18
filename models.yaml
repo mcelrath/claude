@@ -89,7 +89,7 @@ models:
       physics_zeta: CORRECT
       physics_complex_structure: CORRECT
       physics_lehmann: CORRECT
-      physics_centralizer: CORRECT
+      physics_centralizer: SHALLOW
 
   qwen3.5-35b:
     provider: ollama
