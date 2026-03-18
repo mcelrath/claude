@@ -16,6 +16,12 @@ Creates the two required scaffold files for a new project:
 1. `reviewers.yaml` — reviewer personas selected by self-evaluating training data depth
 2. `agent-preamble.md` — condensed project knowledge for subagents who can't see CLAUDE.md
 
+## Phase 0: Reference Check
+
+If `{project_root}` has sibling projects under the same parent directory, check if any already
+have `agent-preamble.md`. If found, read the best one (largest file) as a quality reference
+for density and structure expectations. Do NOT copy content — just calibrate your output quality.
+
 ## Phase 1: Project Survey (max 15 tool calls)
 
 Read these files if they exist (skip missing ones):
@@ -92,54 +98,37 @@ the correct answer when it's true.
 
 kb_add: "Reviewer self-evaluation for {project}: selected={names}, rejected={names} with reasons"
 
-## Phase 2b: Model Calibration Probes
+## Phase 2b: Prepare Calibration Probes (for parent to execute)
 
-After identifying domains and candidate personas, probe each model tier's coverage.
-
-### Protocol
+This agent runs as a subagent and cannot spawn Task() agents. Instead, prepare calibration
+materials for the parent to execute.
 
 For each primary domain identified in Phase 1, construct 2-3 **calibration questions** that
-require actual domain knowledge (not just reasoning). These should have known correct answers
-that you (Opus) can verify.
+require actual domain knowledge (not just reasoning), along with known correct answers.
 
 Examples:
-- Clifford algebras: "What is the dimension of Cl(p,q) and how does it decompose as a module over its even subalgebra?"
-- Zeta functions: "State the functional equation for the Riemann zeta function and name the gamma factor."
-- Gauge theory: "What is the Casimir operator for SU(3) in the fundamental representation?"
+- Clifford algebras: "What is the dimension of Cl(p,q) and how does it decompose as a module over its even subalgebra?" → Answer: 2^(p+q), even subalgebra has dim 2^(p+q-1)
+- Zeta functions: "State the functional equation for the Riemann zeta function and name the gamma factor." → Answer: ξ(s) = π^(-s/2) Γ(s/2) ζ(s) = ξ(1-s)
 
-Spawn 2 parallel agents:
+Include these in your Phase 5 report as a `calibration_probes:` section (YAML format):
 
+```yaml
+calibration_probes:
+  {domain_1}:
+    questions:
+      - q: "{question text}"
+        answer: "{known correct answer}"
+    # ...
 ```
-Task(model="haiku", prompt="Answer these domain questions concisely. No hedging.\n{questions}")
-Task(model="sonnet", prompt="Answer these domain questions concisely. No hedging.\n{questions}")
+
+The **parent** will then run the probes — see "Parent Calibration Protocol" below.
+
+Leave `model_calibration:` in reviewers.yaml as:
+```yaml
+model_calibration:
+  calibrated: pending
+  note: "Run parent calibration protocol to populate."
 ```
-
-You (running as Sonnet or Opus) answer the same questions yourself for comparison.
-
-### Scoring
-
-For each model × domain, rate:
-- **CORRECT**: Got the key facts right, could catch errors in this domain
-- **SHALLOW**: Knows the vocabulary but confuses details or gives textbook-only answers
-- **WRONG**: Confabulates or gives confidently incorrect answers
-- **ABSENT**: Refuses to answer or says "I'm not sure"
-
-SHALLOW and ABSENT are acceptable for some roles (code quality doesn't need deep physics).
-WRONG is disqualifying — a reviewer that confabulates domain knowledge is worse than no reviewer.
-
-### Model Assignment Rules
-
-| Probe Result | Assignment |
-|-------------|------------|
-| All models CORRECT | Use cheapest (Haiku) for that role |
-| Haiku SHALLOW, Sonnet CORRECT | Use Sonnet |
-| Haiku/Sonnet SHALLOW, Opus CORRECT | Use Opus — flag as expensive |
-| All models SHALLOW or WRONG | Flag domain for human review, don't assign AI reviewer |
-| Haiku WRONG on domain X | NEVER use Haiku for X, even for "simple" tasks in that domain |
-
-Store results in reviewers.yaml under `model_calibration:` section.
-
-kb_add: "Model calibration for {project}: haiku={domains_correct}, sonnet={domains_correct}, gaps={domains_all_wrong}"
 
 ## Phase 3: Write reviewers.yaml
 
@@ -168,6 +157,7 @@ composite_panels:
 
   default_review:
     description: Standard review panel for this project
+    # Exactly 3 domain reviewers + Claude. Not 5-7.
     reviewers:
       - name: {Expert 1}
         role: {domain} expert
@@ -241,6 +231,7 @@ Read this BEFORE starting your task. Subagents do NOT see CLAUDE.md.
 
 {Table of documented failure modes from CLAUDE.md, .claude/rules/, and KB corrections}
 {For new projects, include only what's in CLAUDE.md}
+{Grep CLAUDE.md and .claude/rules/ for markdown tables — extract ALL anti-patterns into this table}
 
 ## Epistemological Rules
 
@@ -263,6 +254,10 @@ Stop and return partial results if:
 
 Write to `{project_root}/agent-preamble.md`.
 
+**Content rules**:
+- No absolute paths to data files or local machine state. Only project-structural paths (lib/, src/, tests/).
+- Grep CLAUDE.md and .claude/rules/ for markdown tables — extract ALL anti-patterns into the preamble.
+
 For MATURE projects (KB has 50+ findings, CLAUDE.md has gatekeepers): the preamble should be
 thorough, 60-100 lines, covering all major constraints and proven results.
 
@@ -273,11 +268,12 @@ This is correct — it grows as the project matures and failure modes are discov
 
 1. Verify both files are valid (yaml parses, markdown is well-formed)
 2. kb_add: "Project setup complete for {project}: {N} reviewers selected, {M} constraints in preamble, coverage gaps: {list}"
-3. Report to caller:
+3. Report to caller (structured):
    - Files created
    - Selected reviewers with recall assessments
+   - `calibration_probes:` YAML block (for parent to execute)
    - Coverage gaps flagged for human review
-   - Suggested next steps (e.g., "run expert-review on first plan to test panel")
+   - Suggested next steps (e.g., "run calibration probes, then expert-review on first plan")
 
 ## Limits
 
@@ -285,3 +281,35 @@ This is correct — it grows as the project matures and failure modes are discov
 - Max 3 files read per domain survey category
 - If CLAUDE.md is >500 lines, read first 200 + grep for key sections
 - kb_add at end of Phase 1, Phase 2, and Phase 5
+
+---
+
+## Parent Calibration Protocol
+
+After project-setup agent returns, the **parent** (main session with Agent tool) runs probes.
+
+### Steps
+
+1. Parse `calibration_probes:` from agent report
+2. For each domain, spawn 2 parallel agents:
+   ```
+   Task(model="haiku", prompt="Answer concisely. No hedging.\n{questions}")
+   Task(model="sonnet", prompt="Answer concisely. No hedging.\n{questions}")
+   ```
+3. Score each model × domain against known answers:
+   - **CORRECT**: Key facts right, could catch errors
+   - **SHALLOW**: Knows vocabulary but confuses details
+   - **WRONG**: Confabulates confidently — DISQUALIFYING
+   - **ABSENT**: Refuses or hedges
+4. Apply assignment rules:
+
+   | Probe Result | Assignment |
+   |-------------|------------|
+   | All models CORRECT | Haiku (cheapest) |
+   | Haiku SHALLOW, Sonnet CORRECT | Sonnet |
+   | Haiku/Sonnet SHALLOW, Opus CORRECT | Opus (flag expensive) |
+   | All SHALLOW or WRONG | Flag for human review |
+   | Haiku WRONG on domain X | NEVER Haiku for X |
+
+5. Update `{project_root}/reviewers.yaml` `model_calibration:` section with results
+6. kb_add: "Model calibration for {project}: haiku={domains}, sonnet={domains}, gaps={list}"
