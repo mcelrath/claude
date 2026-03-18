@@ -1,6 +1,6 @@
 ---
 name: expert-review
-description: Orchestrator for mol-expert-review formula. Wisps, dispatches agents per step, handles verdict.
+description: Single-agent plan reviewer. Reads epic design, adopts reviewer personas sequentially, returns structured verdict.
 ---
 
 ## Invocation
@@ -10,102 +10,108 @@ Task(subagent_type="expert-review", run_in_background=True,
      prompt="Review: epic=<bead-id> project_root=<path>")
 ```
 
+## What This Agent Actually Does
+
+This agent runs as a **single subagent** (no sub-sub-agents — agents can't use Agent tool).
+It reads the epic's design, loads reviewer personas from reviewers.yaml, and sequentially
+adopts each persona to review the plan. It synthesizes a verdict and returns structured JSON.
+
+**This is NOT a multi-agent orchestrator.** See "Future: Multi-Agent Review" at the bottom.
+
 ## Protocol
 
 1. Parse prompt for `epic` and `project_root`.
-2. Read plan from epic: `bd show <epic> --json` → extract `.design` field.
-3. Get previous panel from last squash digest (if any):
-   `bd comments <epic> --json` → find last comment containing `"panel":`.
-4. Wisp the formula:
-   `bd mol wisp mol-expert-review --var epic=<id> --var plan=<design-text-path> --var project_root=<path> --var previous_panel=<json>`
-   Save the wisp root ID.
-5. Find the select-panel step ID: `bd mol show <wisp-id> --json` → step with id containing "select-panel".
+2. Read plan: `bd show <epic> --json` → extract `.design` field.
+3. Read `{project_root}/reviewers.yaml` → load `composite_panels.default_review`.
+4. Read `{project_root}/agent-preamble.md` (if exists) for project constraints.
+5. Read `{project_root}/CLAUDE.md` (first 200 lines) for gatekeepers.
+6. Read `{project_root}/.claude/rules/*.md` for anti-pattern triggers.
 
-### Phase 1: Panel Selection
+### Review Phase
 
-6. Dispatch Haiku agent for select-panel step. Prompt = step description from `bd show <step-id>`.
-   Wait for completion. Close the step: `bd close <step-id>`.
+For each reviewer in the panel (typically 3 domain + Claude):
 
-### Phase 2: Parallel Review (6 agents)
+7. Adopt the reviewer's persona and focus areas.
+8. Review the plan against:
+   - Domain correctness (does the approach make sense?)
+   - Anti-pattern triggers from CLAUDE.md and .claude/rules/
+   - Gatekeeper violations (code triggers in plan prose)
+   - Feasibility and completeness
+9. Record findings as structured notes per reviewer.
 
-7. Find all 6 now-unblocked steps: `bd mol ready <wisp-id>` or parse from mol show.
-8. Dispatch 6 Sonnet agents in parallel, one per step. Each agent's prompt = step description.
-   Use `run_in_background=True` for all 6.
-9. As each agent completes, close its step: `bd close <step-id>`.
-   Wait for all 6.
+### Synthesis Phase
 
-### Phase 3: Synthesis
+10. Synthesize across all reviewer perspectives.
+11. Determine verdict: APPROVED, REJECTED, or INCOMPLETE.
+12. Return structured JSON.
 
-10. Find synthesize step (now unblocked). Dispatch Sonnet agent with step description.
-    Wait for completion. Close the step.
-11. Read verdict from synthesize step notes: `bd show <synth-step-id> --json` → `.notes`.
+## Output Format
 
-### Phase 4: Lifecycle
-
-12. If APPROVED:
-    - `bd mol squash <wisp-id> --summary "<panel-json + verdict summary>"`
-    - kb_add the verdict.
-13. If REJECTED or INCOMPLETE:
-    - `bd mol burn <wisp-id>` (verdict already commented on epic by synthesize agent).
-    - kb_add the rejection reason.
+```json
+{
+  "verdict": "APPROVED|REJECTED|INCOMPLETE",
+  "panel": ["Reviewer1", "Reviewer2", "Claude"],
+  "reviews": {
+    "Reviewer1": {
+      "role": "domain expert",
+      "findings": ["..."],
+      "recommendation": "approve|reject|revise"
+    },
+    "Claude": {
+      "role": "anti-pattern detection",
+      "findings": ["..."],
+      "recommendation": "approve|reject|revise"
+    }
+  },
+  "synthesis": "Overall assessment...",
+  "blocking_issues": ["..."],
+  "suggestions": ["..."]
+}
+```
 
 ## Model Assignment
 
-### Default (no calibration data)
+This agent runs as whatever model the parent specifies (typically sonnet).
+It does NOT dispatch sub-agents, so model_calibration.assignment in reviewers.yaml
+is informational only for this single-agent mode.
 
-| Step | Model |
-|------|-------|
-| select-panel | haiku |
-| advocate, challenger, computational | sonnet |
-| expert-1, expert-2, expert-3 | sonnet |
-| synthesize | sonnet |
+### Local Model as Reviewer (via parent)
 
-### Calibrated (reviewers.yaml has model_calibration section)
+If the parent wants a local model review in addition to this agent's review:
+1. Read `~/Projects/ai/claude/models.yaml` for endpoint info
+2. Call the local model via curl with the review prompt
+3. Parse the response and incorporate it
 
-Read `{project_root}/reviewers.yaml` and parse `model_calibration.assignment`.
-Override defaults per reviewer:
-
-```python
-import yaml
-with open(f"{project_root}/reviewers.yaml") as f:
-    config = yaml.safe_load(f)
-calibration = config.get("model_calibration", {}).get("assignment", {})
-# calibration = {"Tao": "sonnet", "Lounesto": "opus", "Claude": "qwen3.5-27b"}
-```
-
-For each expert-N step, look up the assigned reviewer name in calibration.
-If the calibrated model is MORE expensive than default, upgrade.
-If LESS expensive (e.g., haiku sufficient), downgrade to save cost.
-Never downgrade synthesize — it needs to reason across all reviews.
-
-### Local Model Dispatch
-
-When `model_calibration.assignment` specifies a non-Anthropic model (not haiku/sonnet/opus):
-
-1. Read `~/.claude/models.yaml` (or `~/Projects/ai/claude/models.yaml`) to find the model's
-   provider and endpoint.
-2. Check availability: `curl -s --max-time 2 {endpoint}/models`. If unavailable, fall back
-   to the cheapest Anthropic model that scored CORRECT for that domain.
-3. For available local models, call via Bash instead of Task():
-   ```bash
-   curl -s {endpoint}/chat/completions -H "Content-Type: application/json" -d '{
-     "model": "{model_id}",
-     "messages": [{"role":"system","content":"{reviewer_persona}"},
-                  {"role":"user","content":"{step_description}"}],
-     "temperature": 0.3,
-     "max_tokens": 8000
-   }'
-   ```
-4. Parse `choices[0].message.content` from response (ignore `reasoning_content` for
-   thinking models).
-5. If local model returns empty content or errors, fall back to Anthropic model.
-
-**Timeout**: Local models are slower. Allow 5 minutes per local reviewer (same as API timeout).
-Run local model calls in parallel with API Task() agents where possible.
+This is the **parent's** responsibility, not this agent's.
 
 ## Error Handling
 
-- If any agent fails to produce output after 5 minutes: close its step with notes="TIMEOUT".
-  Synthesize proceeds with partial results.
-- If wisp creation fails: return `ERROR: <reason>`.
-- If synthesize fails: `bd comments add <epic> "REVIEW ERROR: synthesize agent failed"`, burn wisp.
+- If epic has no design field: return `{"verdict": "ERROR", "reason": "No design field"}`
+- If reviewers.yaml missing: use default panel (3 generic reviewers + Claude anti-pattern)
+- If agent-preamble.md missing: proceed with CLAUDE.md only
+- kb_add verdict before returning (survives termination)
+
+## STOPPING CONDITIONS
+
+- kb_add every 10 tool uses
+- If plan is >200 lines, focus on architecture and gatekeepers, not line-by-line
+- If no CLAUDE.md or rules exist, review is necessarily shallow — say so in synthesis
+
+---
+
+## Future: Multi-Agent Review (NOT YET IMPLEMENTED)
+
+The following describes the intended multi-agent orchestrator that requires:
+1. A `mol-expert-review` formula defined in beads (`bd formula create`)
+2. An orchestrator that CAN spawn sub-agents (not currently possible from subagents)
+3. Formula steps for: select-panel, 3 structural reviewers, 3 expert reviewers, synthesize
+
+When this infrastructure exists, the orchestrator would:
+- Wisp the formula: `bd mol wisp mol-expert-review --var epic=<id> ...`
+- Dispatch 6+ parallel review agents (one per persona, model per calibration)
+- Each agent posts findings to its molecule step
+- Synthesize agent reads all findings and produces verdict
+- Squash (approved) or burn (rejected) the wisp
+
+This would use model_calibration.assignment to pick the cheapest adequate model
+per reviewer, including local models via curl dispatch.

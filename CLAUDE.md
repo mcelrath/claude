@@ -11,17 +11,16 @@ All plans live in beads epics. No `~/.claude/plans/` files. No ExitPlanMode. No 
 ```
 1. Plan:    bd create --type=epic --title="Plan: X" --design-file=<file>
             (plan text goes in epic's design field)
-2. Review:  bd mol wisp mol-expert-review \
-              --var epic=<epic-id> --var plan="$(bd show <epic-id> --json | jq -r .design)" \
-              --var project_root=$(git rev-parse --show-toplevel)
-            (formula runs 6 agents: 3 structural + 3 expert personas)
-3. Verdict: Molecule posts APPROVED/REJECTED as comment on epic
-            APPROVED → bd gate resolve <gate-id>
-            REJECTED → revise design, re-run molecule
+2. Review:  Task(subagent_type="expert-review", run_in_background=True,
+              prompt="Review: epic=<epic-id> project_root=<path>")
+            (single agent adopts reviewer personas from reviewers.yaml sequentially)
+3. Verdict: Agent returns JSON with verdict: APPROVED/REJECTED/INCOMPLETE
+            APPROVED → proceed to implementation
+            REJECTED → revise design, re-run review
 4. Claim:   bd update <epic-id> --status=in_progress
 5. Work:    Create child tasks: bd create --type=task --parent=<epic-id> --title="Phase N: ..."
             Claim tasks: bd update <task-id> --claim
-6. Verify:  Run implementation-review molecule on completed work
+6. Verify:  Run implementation-review on completed work
 7. Close:   bd close <epic-id> <task-ids...>
 8. Commit:  git add <files> && git commit --no-gpg-sign
 ```
@@ -30,38 +29,36 @@ All plans live in beads epics. No `~/.claude/plans/` files. No ExitPlanMode. No 
 
 | When | Action |
 |------|--------|
-| Plan ready | `bd mol wisp mol-expert-review --var epic=<id> ...` |
-| Plan substantively edited | Re-run review molecule |
+| Plan ready | `Task(subagent_type="expert-review", ...)` |
+| Plan substantively edited | Re-run expert-review |
 | Implementation complete | Run implementation-review |
-| Expert review REJECTED | Revise epic design, re-run review molecule |
+| Expert review REJECTED | Revise epic design, re-run expert-review |
 
 **Do NOT use**: ExitPlanMode, EnterPlanMode, `~/.claude/plans/`, `.approved` marker files, `Mode: PLANNING/IMPLEMENTATION`.
 
 ## Tiered Review
 
-Not every decision needs the full 6-agent review molecule. Match review weight to action risk:
+Not every decision needs a full review. Match review weight to action risk:
 
 | Tier | When | Invocation |
 |------|------|------------|
-| **Heavy** | Plans/epics, architectural decisions | `bd mol wisp mol-expert-review --var epic=<id> ...` |
-| **Light** | Issue triage, priority changes, closing issues | `Agent(subagent_type="expert-review", model="haiku", prompt="LIGHT REVIEW: <question>. Read {project_root}/reviewers.yaml, pick 1-2 relevant personas. Assess evidence and return APPROVED/REJECTED/UNCERTAIN with reasoning.")` |
+| **Full** | Plans/epics, architectural decisions | `Task(subagent_type="expert-review", run_in_background=True, prompt="Review: epic=<id> project_root=<path>")` |
+| **Light** | Issue triage, priority changes, closing issues | `Task(subagent_type="expert-review", model="haiku", prompt="LIGHT REVIEW: <question>. Read {project_root}/reviewers.yaml, pick 1-2 relevant personas. Return APPROVED/REJECTED/UNCERTAIN.")` |
 | **None** | Creating issues, recording KB, reading/searching | Just do it |
 
 **Escalation chain** (bounded depth):
 - Depth 0: Propose action
-- Depth 1: Light review assesses → APPROVED (execute) / REJECTED (revise) / UNCERTAIN (escalate)
-- Depth 2: Heavy review (full molecule) if light was uncertain
+- Depth 1: Light review → APPROVED (execute) / REJECTED (revise) / UNCERTAIN (escalate)
+- Depth 2: Full review if light was uncertain
 - Depth 3: STOP. Escalate to user. Never recurse further.
-
-**Principle**: "The first principle is that you must not fool yourself—and you are the easiest person to fool." (Feynman). The user is the LAST resort, not the first.
 
 ## Plan Modification Rule
 
-After ANY substantive edit to an epic's design field, re-run the review molecule.
+After ANY substantive edit to an epic's design field, re-run expert-review.
 "Substantive" = new sections, changed approaches, modified checklists. NOT typos or formatting.
 
-If the epic already has an APPROVED comment from a review molecule, the review is DONE.
-Do not re-run unless the design was substantively changed after that comment.
+If the epic already has an APPROVED verdict from expert-review, the review is DONE.
+Do not re-run unless the design was substantively changed after that verdict.
 
 ## Lean Plan Format
 
@@ -263,7 +260,7 @@ NEVER: "What would you like...", "Would you like me to...", "Should I...", numbe
 | Mixing conventions (bit-pattern vs gamma, two definitions of same thing) | One codebase = one convention. Check existing code first. |
 | Creating duplicate section/KB entry | Search before writing. Consolidate, don't duplicate. |
 | "Let me fix this" without identifying root cause | State the bug first. "The bug is X because Y. Fixing by Z." |
-| Starting implementation without review molecule APPROVED | Run `bd mol wisp mol-expert-review` first. Never bypass review. |
+| Starting implementation without expert-review APPROVED | Run `Task(subagent_type="expert-review", ...)` first for epics. Light review or none for tasks. |
 | `TaskUpdate(status="completed")` then summarizing to user | Run implementation-review BEFORE reporting results. Task completion ≠ review complete. |
 | "Let me take a simpler approach" / "Given the complexity" | Problem has grown beyond initial plan. STOP. Create a new epic: `bd create --type=epic --title="Revised: X"`. |
 | Adding notebook cell to fix syntax error in previous cell | Use `modify_notebook_cells` with `operation="edit_code"` and `position_index=N` to fix the broken cell in place. |
@@ -330,7 +327,7 @@ bd prime                    # Load full workflow context (auto-runs via hooks)
 ```
 bd create --type=epic --title="Plan: X" --design-file=plan.md   # Create plan epic
 bd show <epic-id>           # Read plan (design field)
-bd mol wisp mol-expert-review --var epic=<id> ...               # Review
+Task(subagent_type="expert-review", prompt="Review: epic=<id> project_root=<path>")  # Review
 bd update <epic-id> --status=in_progress                        # Start implementation
 bd close <epic-id>          # Complete
 ```
