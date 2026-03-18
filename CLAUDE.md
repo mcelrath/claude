@@ -17,6 +17,7 @@ All plans live in beads epics. No `~/.claude/plans/` files. No ExitPlanMode. No 
               prompt="FULL REVIEW: epic=<epic-id> project_root=<path>")
             (lead spawns parallel reviewer teammates from reviewers.yaml)
 3. Verdict: Lead returns JSON with verdict: APPROVED/REJECTED/INCOMPLETE
+            TeamDelete("review-<epic-id>")
             APPROVED → proceed to implementation
             REJECTED → revise design, re-run review
 4. Claim:   bd update <epic-id> --status=in_progress
@@ -40,7 +41,7 @@ All plans live in beads epics. No `~/.claude/plans/` files. No ExitPlanMode. No 
 
 ## Tiered Review
 
-Not every decision needs a full review. Match review weight to action risk:
+"The first principle is that you must not fool yourself—and you are the easiest person to fool." (Feynman). Match review weight to action risk:
 
 | Tier | When | Invocation |
 |------|------|------------|
