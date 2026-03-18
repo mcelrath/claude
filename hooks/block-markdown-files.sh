@@ -32,6 +32,10 @@ if [[ "$FILE_PATH" == *.md ]]; then
     if [[ "$FILE_PATH" == */.claude*/*/memory/*.md ]] || [[ "$FILE_PATH" == */.claude*/memory/*.md ]]; then
         exit 0
     fi
+    # Allow agent-preamble.md (project scaffold file created by project-setup agent)
+    if [[ "$FILE_PATH" == */agent-preamble.md ]]; then
+        exit 0
+    fi
     echo "BLOCKED: Creating markdown file '$FILE_PATH'." >&2
     echo "Write the content directly in your response instead." >&2
     echo "Only create .md files if user explicitly requested one." >&2
