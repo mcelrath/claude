@@ -58,6 +58,16 @@
           }
         ],
         "matcher": "Bash"
+      },
+      {
+        "hooks": [
+          {
+            "command": "$HOME/.claude/hooks/record-alternatives.sh",
+            "timeout": 2000,
+            "type": "command"
+          }
+        ],
+        "matcher": "Edit|Write"
       }
     ],
     "PreCompact": [
