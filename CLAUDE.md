@@ -37,6 +37,24 @@ All plans live in beads epics. No `~/.claude/plans/` files. No ExitPlanMode. No 
 
 **Do NOT use**: ExitPlanMode, EnterPlanMode, `~/.claude/plans/`, `.approved` marker files, `Mode: PLANNING/IMPLEMENTATION`.
 
+## Tiered Review
+
+Not every decision needs the full 6-agent review molecule. Match review weight to action risk:
+
+| Tier | When | Invocation |
+|------|------|------------|
+| **Heavy** | Plans/epics, architectural decisions | `bd mol wisp mol-expert-review --var epic=<id> ...` |
+| **Light** | Issue triage, priority changes, closing issues | `Agent(subagent_type="expert-review", model="haiku", prompt="LIGHT REVIEW: <question>. Read {project_root}/reviewers.yaml, pick 1-2 relevant personas. Assess evidence and return APPROVED/REJECTED/UNCERTAIN with reasoning.")` |
+| **None** | Creating issues, recording KB, reading/searching | Just do it |
+
+**Escalation chain** (bounded depth):
+- Depth 0: Propose action
+- Depth 1: Light review assesses → APPROVED (execute) / REJECTED (revise) / UNCERTAIN (escalate)
+- Depth 2: Heavy review (full molecule) if light was uncertain
+- Depth 3: STOP. Escalate to user. Never recurse further.
+
+**Principle**: "The first principle is that you must not fool yourself—and you are the easiest person to fool." (Feynman). The user is the LAST resort, not the first.
+
 ## Plan Modification Rule
 
 After ANY substantive edit to an epic's design field, re-run the review molecule.
@@ -80,6 +98,7 @@ On trigger: spawn Haiku to read `{project_root}/reviewers.yaml` and select 2-3 e
 - **Output**: structured JSON with schema; caller formats for user
 - **Model selection**: If `{project_root}/reviewers.yaml` has `model_calibration:`, use calibrated assignments. Otherwise default: Haiku for lookups, Sonnet for implementation, Opus for lead only (max 1 per batch). Never use a model rated WRONG for a domain in calibration.
 - **KB search**: use kb-research agent (see `~/.claude/agents/kb-research.md`)
+- **Agent preamble (MANDATORY)**: Every agent prompt must start with: `Read ~/.claude/agents/preamble.md FIRST, then proceed.` This file contains epistemological rules that prevent shallow search, "Not Found" = "Open", and inference-instead-of-verification failures.
 
 **Before writing any agent prompt from a long conversation:** State the key constraint first: `"CRITICAL: the naive implementation would be X — do NOT do that. Required: Y."` Agents have no conversation history.
 
@@ -193,11 +212,24 @@ No `git add -A`, `git add .`, `git reset --hard`, `git push --force`.
 
 No markdown file creation unless requested. Enforced by hook.
 
-No "Should I proceed?" — just do it. Reminded by hook.
+## Decision Authority (resolves apparent contradictions)
 
-Options for user → `AskUserQuestion` tool. Reminded by hook on every message.
+Three levels of decision-making. Apply the FIRST matching level:
 
-NEVER: "What would you like...", "Would you like me to...", numbered options, option tables.
+**Level 1 — Light review decides** (state-changing assessments):
+Closing issues, reprioritizing, ranking research, declaring something "done" or "failed".
+→ Gather evidence → light review (see Tiered Review) → execute if APPROVED → report to user.
+
+**Level 2 — You decide, then do it** (implementation & execution):
+Writing code, running tests, searching, reading, creating issues, recording KB.
+→ No "Should I proceed?" — just do it. Don't ask the user for permission on execution steps.
+→ **Record rejected alternatives**: When choosing between approaches, create `idea` type bd issues for the paths not taken, so they survive context compaction and can be revisited if the chosen path fails.
+
+**Level 3 — User decides** (resource allocation & preference):
+Claiming tasks for implementation, choosing which research direction to pursue next, architectural decisions with multiple valid options.
+→ Use `AskUserQuestion` tool. Never open-ended prompts ("What would you like..."). Present concrete options.
+
+NEVER: "What would you like...", "Would you like me to...", "Should I...", numbered option lists in prose.
 
 **Goal Transformation**: Transform vague tasks to verifiable form:
 - "Fix the bug" → "Write test that reproduces it, make it pass"
@@ -218,6 +250,11 @@ NEVER: "What would you like...", "Would you like me to...", numbered options, op
 | Box-drawing table (┌┬┐├┼┤└┴┘│─) | NEVER. Use: `Header  Col2\n-------  ----\nval1     val2` (dashes + spaces only) |
 | "Extracted 50,000" when expecting ~10 | Sanity check results. If output seems wrong, it is. |
 | `Should I use X or Y?` / `What is the correct approach?` | You're the expert. Figure it out yourself. |
+| "promising" / "straightforward" / "just needs" without reading implementation | **SHALLOW ASSESSMENT**. Read actual code, check FAILURES.md, run full 5-round kb search. Stopping at round 2 because you "have enough" is the #1 research failure mode. |
+| "pending" / "untested" / "open question" without 3+ search strategies | **"Not Found" ≠ "Open"**. Cite the searches that returned no results. Check KB (with project=None), tex drafts, code, and other worktrees. If you searched once, you haven't searched. |
+| kb_search with project filter only, no project=None query | **CROSS-PROJECT BLINDNESS**. 150+ findings exist under variant project names. First query must be unfiltered. |
+| kb-research returns `files_to_read`, parent doesn't read them | **INCOMPLETE RESEARCH**. The kb-research agent's `files_to_read` and `conflicts` fields exist because the agent found leads it couldn't fully resolve. YOU must read them. |
+| Agent prompt without `Read preamble.md` instruction | **PREAMBLE MISSING**. Every agent prompt must start with preamble. Without it, agents make shallow-search and inference-over-verification mistakes. |
 | Discovery without `kb_add` | kb_add immediately after any finding. |
 | Research agent returns without KB entry | Agent prompts MUST include KB recording instruction. Parent verifies. |
 | Calling `kb_search()` directly (main agent) | Spawn kb-research agent instead. See `~/.claude/agents/kb-research.md`. |
@@ -447,3 +484,47 @@ Tags: `proven`/`heuristic`/`open-problem`, domain-specific
 **Good Finding Structure**: Title = direct fact statement. Content = self-contained. Code ref = file:function.
 
 **Maintenance** (requires `knowledge-base-advanced` server): `kb_review_queue`, `kb_suggest_consolidation`, `kb_validate`
+
+# Incompleteness Tracking
+
+**Invariant**: Every incompleteness marker in committed code has a corresponding bd issue.
+
+## Markers scanned (all domains)
+
+| Domain | Markers | Severity |
+|--------|---------|----------|
+| Code | TODO, FIXME, XXX, HACK, STUB | Must have bd issue before commit |
+| Code | assert(false), NotImplementedError, unimplemented!() | Must have bd issue before commit |
+| Lean | sorry, admit | CRITICAL — proof incomplete, must track |
+| Lean | trivial on complex goals | WARNING — may hide proof gap |
+| Lean | axiom (non-axiomatic) | WARNING — should be theorem/lemma |
+| Lean | native_decide, Decidable.decide | WARNING — bypasses kernel |
+| Lean | decreasing_by sorry | CRITICAL — well-foundedness unproven |
+| Lean | placeholder | CRITICAL — incomplete tactic |
+| Lean | dbg_trace | WARNING — debug output, never commit |
+| Coq | Admitted, admit | CRITICAL — proof incomplete |
+
+## Workflow
+
+1. During implementation: markers generate warnings (not blocks)
+2. At commit time: markers without bd issues → BLOCKED
+3. At review time: implementation-review checks marker↔issue linkage
+4. Resolution: either complete the work or create `bd create -t task "..." -p P2`
+
+## Anti-patterns
+
+| Pattern | Problem |
+|---------|---------|
+| Commit with sorry, no bd issue | Proof gap lost to history |
+| "Will fix later" without tracking | Later never comes |
+| axiom for provable statement | Soundness hole |
+| trivial on ∀∃ goal | May silently produce wrong proof |
+| 46 open / 0 in-progress bd issues | Lifecycle not tracked |
+
+# Issue Lifecycle (MANDATORY)
+
+When starting implementation of a bd issue: `bd update <id> --status in-progress`
+When committing code that resolves a bd issue: commit message must contain `fixes <id>`
+When implementation-review returns APPROVED: close all referenced bd issues
+
+Post-commit hook (`bd-lifecycle.sh`) auto-closes issues referenced with `fixes`/`closes`/`resolves` in commit messages.

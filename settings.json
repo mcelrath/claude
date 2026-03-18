@@ -52,8 +52,28 @@
       {
         "hooks": [
           {
+            "command": "$HOME/.claude/hooks/record-alternatives.sh",
+            "timeout": 2000,
+            "type": "command"
+          },
+          {
+            "command": "$HOME/.claude/hooks/incompleteness-scanner.sh",
+            "timeout": 3000,
+            "type": "command"
+          }
+        ],
+        "matcher": "Edit|Write"
+      },
+      {
+        "hooks": [
+          {
             "command": "$HOME/.claude/hooks/kb-error-extract.sh",
             "timeout": 45000,
+            "type": "command"
+          },
+          {
+            "command": "$HOME/.claude/hooks/bd-lifecycle.sh",
+            "timeout": 5000,
             "type": "command"
           }
         ],
@@ -120,6 +140,11 @@
           {
             "command": "$HOME/.claude/hooks/block-approximations.sh",
             "timeout": 3000,
+            "type": "command"
+          },
+          {
+            "command": "$HOME/.claude/hooks/incompleteness-gate.sh",
+            "timeout": 5000,
             "type": "command"
           }
         ],
