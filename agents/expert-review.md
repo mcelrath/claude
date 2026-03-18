@@ -1,6 +1,6 @@
 ---
 name: expert-review
-description: Team-based plan reviewer. Creates a review team, dispatches parallel reviewer agents, synthesizes verdict.
+description: Plan reviewer with two modes. Full review uses Agent Teams + optional beads molecule for persistent tracking. Light review is single-agent sequential.
 ---
 
 ## Invocation
@@ -40,12 +40,45 @@ Task(subagent_type="expert-review", model="haiku", run_in_background=True,
 8. For each reviewer in the panel, sequentially adopt their persona and review.
 9. Synthesize and return verdict JSON. Skip to Phase 4.
 
-### FULL MODE: Phase 1 — Dispatch Parallel Reviewers
+### FULL MODE: Phase 1 — Molecule or Teams
 
-For each reviewer in the panel (typically 3 domain + Claude):
+Check if beads molecule formula is available:
+```bash
+bd formula list --json 2>/dev/null | grep -q mol-expert-review
+```
 
-8. Check `model_calibration.assignment` for the reviewer's assigned model.
-9. **API model** (haiku/sonnet/opus): Spawn a teammate:
+**If formula available** (persistent tracking):
+8a. Wisp the molecule:
+    ```bash
+    bd mol wisp mol-expert-review \
+      --var epic=<epic-id> \
+      --var plan="<design-text-or-path>" \
+      --var project_root=<path> \
+      --var previous_panel=""
+    ```
+    Save the wisp root ID. Each step becomes a bd issue with its own notes field.
+8b. Close the `select-panel` step after panel selection:
+    `bd close <select-panel-step-id>`
+8c. For each reviewer step now unblocked (`bd mol ready <wisp-id>`),
+    dispatch a teammate whose prompt includes:
+    "Write your review to the bd issue notes: `bd update <step-id> --append-notes '<review-json>'`"
+8d. As teammates complete, close their steps: `bd close <step-id>`
+8e. When all 6 reviewer steps are closed, the `synthesize` step unblocks.
+    Lead reads all step notes and synthesizes (see Phase 3).
+8f. Close the synthesize step. Then:
+    - APPROVED: `bd mol squash <wisp-id> --summary "<verdict>"` (creates searchable digest)
+    - REJECTED/INCOMPLETE: `bd mol burn <wisp-id>` (discard ephemeral review)
+
+**If formula NOT available** (ephemeral teams):
+8a. Skip molecule creation. Dispatch teammates directly (see below).
+    Results exist only in teammate output + kb_add.
+
+### FULL MODE: Phase 2 — Dispatch Parallel Reviewers
+
+For each reviewer in the panel (typically 3 structural + 3 domain experts):
+
+9. Check `model_calibration.assignment` for the reviewer's assigned model.
+10. **API model** (haiku/sonnet/opus): Spawn a teammate:
    ```python
    Task(team_name="review-{epic_id}", name="{reviewer_name}",
         model="{assigned_model}", run_in_background=True,
@@ -62,6 +95,8 @@ For each reviewer in the panel (typically 3 domain + Claude):
    ANTI-PATTERN TRIGGERS:
    {rules_content}
 
+   {molecule_instruction}
+
    Review the plan. Return JSON:
    {"reviewer": "{name}", "recommendation": "approve|reject|revise",
     "findings": ["..."], "blocking_issues": ["..."]}
@@ -69,7 +104,11 @@ For each reviewer in the panel (typically 3 domain + Claude):
    STOPPING CONDITIONS: kb_add your review. Max 15 tool calls.
    If you need to read code to verify feasibility, do so.""")
    ```
-10. **Local model** (from models.yaml): Call via curl in Bash:
+    Where `{molecule_instruction}` is either:
+    - With molecule: `"Also write your review to bd issue notes: bd update <step-id> --append-notes '<your-json>'"`
+    - Without molecule: (empty)
+
+11. **Local model** (from models.yaml): Call via curl in Bash:
     ```bash
     curl -s {endpoint}/chat/completions -H "Content-Type: application/json" -d '{
       "model": "{model_id}",
@@ -82,29 +121,32 @@ For each reviewer in the panel (typically 3 domain + Claude):
     ```
     Parse `choices[0].message.content`. If empty or error, fall back to cheapest
     CORRECT API model for that domain.
+    With molecule: also `bd update <step-id> --append-notes '<parsed-json>'`.
 
-11. Launch ALL reviewers in parallel (API teammates + local curls simultaneously).
+12. Launch ALL reviewers in parallel (API teammates + local curls simultaneously).
 
-### FULL MODE: Phase 2 — Collect Results
+### FULL MODE: Phase 3 — Collect & Synthesize
 
-12. Wait for all teammates to complete. For each:
-    - Read their output (teammate result or curl response)
+13. Wait for all teammates to complete. For each:
+    - With molecule: read step notes via `bd show <step-id> --json` → `.notes`
+    - Without molecule: read teammate output directly
     - Parse the JSON review
     - If a reviewer failed/timed out, note it as "TIMEOUT" in synthesis
 
-### FULL MODE: Phase 3 — Synthesize
-
-13. With all reviews collected, synthesize:
+14. Synthesize:
     - Count recommendations: approve / reject / revise
     - Any "reject" with blocking_issues → overall REJECTED
     - All "approve" → overall APPROVED
     - Mixed or "revise" → overall INCOMPLETE
-14. Write synthesis explaining the reasoning across reviewers.
+15. Write synthesis explaining the reasoning across reviewers.
+
+With molecule: close synthesize step, then squash (APPROVED) or burn (REJECTED/INCOMPLETE).
+Post verdict as comment on the epic: `bd comments add <epic> "<VERDICT>: <one-line summary>"`
 
 ### Phase 4 — Return Verdict (both modes)
 
-15. kb_add the verdict (survives termination).
-16. Return structured JSON (see Output Format).
+16. kb_add the verdict (survives termination).
+17. Return structured JSON (see Output Format).
 
 ## Output Format
 
@@ -112,11 +154,14 @@ For each reviewer in the panel (typically 3 domain + Claude):
 {
   "verdict": "APPROVED|REJECTED|INCOMPLETE",
   "mode": "FULL|LIGHT",
+  "molecule": true,
+  "wisp_id": "<id or null>",
   "panel": ["Reviewer1", "Reviewer2", "Claude"],
   "reviews": {
     "Reviewer1": {
       "role": "domain expert",
       "model": "sonnet|qwen3.5-122b|...",
+      "step_id": "<molecule-step-id or null>",
       "findings": ["..."],
       "blocking_issues": ["..."],
       "recommendation": "approve|reject|revise"
