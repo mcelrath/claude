@@ -1,20 +1,54 @@
 # Global Development Rules
 
-**For physics-specific methodology, gatekeepers, and computation rules**: See project `CLAUDE.md`
-
 ---
 
-# Review Agents (MANDATORY)
+# Planning and Review (Beads-Based)
 
-| When | Agent | Action |
-|------|-------|--------|
-| Before ExitPlanMode | `expert-review` until APPROVED | Check plan before presenting it |
-| code complete | `implementation-review` until APPROVED | Check correctness, verify archival |
-| Implementation complete | `implementation-review` until APPROVED | Prove you're done to experts |
-| Expert review corrections applied | `expert-review` until APPROVED | Plan changed, re-reviewed required |
+All plans live in beads epics. No `~/.claude/plans/` files. No ExitPlanMode. No `Mode:` fields.
 
-**Triggers for implementation-review**: "done", "complete", "tests pass" (session-end gate — not per-file)
-**Triggers for expert-review**: "plan ready", before ExitPlanMode
+## Planning Workflow
+
+```
+1. Plan:    bd create --type=epic --title="Plan: X" --design-file=<file>
+            (plan text goes in epic's design field)
+2. Review:  bd mol wisp mol-expert-review \
+              --var epic=<epic-id> --var plan="$(bd show <epic-id> --json | jq -r .design)" \
+              --var project_root=$(git rev-parse --show-toplevel)
+            (formula runs 6 agents: 3 structural + 3 expert personas)
+3. Verdict: Molecule posts APPROVED/REJECTED as comment on epic
+            APPROVED → bd gate resolve <gate-id>
+            REJECTED → revise design, re-run molecule
+4. Claim:   bd update <epic-id> --status=in_progress
+5. Work:    Create child tasks: bd create --type=task --parent=<epic-id> --title="Phase N: ..."
+            Claim tasks: bd update <task-id> --claim
+6. Verify:  Run implementation-review molecule on completed work
+7. Close:   bd close <epic-id> <task-ids...>
+8. Commit:  git add <files> && git commit --no-gpg-sign
+```
+
+## Review Triggers
+
+| When | Action |
+|------|--------|
+| Plan ready | `bd mol wisp mol-expert-review --var epic=<id> ...` |
+| Plan substantively edited | Re-run review molecule |
+| Implementation complete | Run implementation-review |
+| Expert review REJECTED | Revise epic design, re-run review molecule |
+
+**Do NOT use**: ExitPlanMode, EnterPlanMode, `~/.claude/plans/`, `.approved` marker files, `Mode: PLANNING/IMPLEMENTATION`.
+
+## Plan Modification Rule
+
+After ANY substantive edit to an epic's design field, re-run the review molecule.
+"Substantive" = new sections, changed approaches, modified checklists. NOT typos or formatting.
+
+If the epic already has an APPROVED comment from a review molecule, the review is DONE.
+Do not re-run unless the design was substantively changed after that comment.
+
+## Lean Plan Format
+
+**Max 50 lines**. Plans: Objective → Phases (with `AGENT(model): task → JSON:{schema}`) → Success criterion.
+**Checkpoint rule**: Every 3-5 tasks: `CHECKPOINT: kb_add, report to user, await "continue"`.
 
 ## Agent Dispatch
 
@@ -28,28 +62,26 @@
 
 ### Reviewer Personas & Review Panel
 
-Personas in `~/.claude/reviewers.yaml`. Key panels: `technical_review` (Peskin+Anderson+Connes), `popular_writing` (Sagan+Feynman+Munroe+Orwell), `skeptic_panel` (Mencken+Russell+'t Hooft). Invoke by name: "Review as Peskin", "use the skeptic panel".
+Personas in project-specific `{project_root}/reviewers.yaml`. Invoke by name: "Review as Peskin", "use the skeptic panel".
 
 **Auto-select triggers** (case-insensitive): "critically review", "review this", "sanity check", "verify this", "is this correct", "does this make sense", "what do you think" (about correctness).
 
-On trigger: spawn Haiku to read `~/.claude/reviewers.yaml` and select 2-3 experts (always include Claude for anti-pattern detection). Adopt each reviewer's voice. Report as `## Review Panel: [names]` with `### [Name] ([domain]):` subsections. Full spawn template: see `agent-prompts.md §Reviewers`. Skip auto-select if user specifies reviewers by name.
+On trigger: spawn Haiku to read `{project_root}/reviewers.yaml` and select 2-3 experts (always include Claude for anti-pattern detection). Adopt each reviewer's voice. Report as `## Review Panel: [names]` with `### [Name] ([domain]):` subsections. Skip auto-select if user specifies reviewers by name.
 
 ### Subagent Rules (MANDATORY)
 
 - **Review agents**: always `run_in_background=True` (prevents 34GB+ memory growth)
-- **Never pass `max_turns`**: omit it entirely. Hard turn limits cut agents off mid-tool-call, preventing kb_add and final summaries. Use STOPPING CONDITIONS in the prompt instead.
+- **Never pass `max_turns`**: omit it entirely. Use STOPPING CONDITIONS in prompt instead.
 - **All agents**: kb_add before returning; parent verifies KB entry exists
 - **Physics project agents only**: Include "Read docs/reference/api_signatures.md BEFORE importing from lib/" in prompt
 - **All agents**: Include "For literature/KB/web search, use kb-research agent (5 rounds)" in prompt
 - **All agents**: Prefer scripts over Jupyter for computation (fewer turn-wasting API errors)
-- **All agents**: Include STOPPING CONDITIONS section in prompt (see agent-prompts.md). kb_add every 10 tool uses.
-- **Output**: structured JSON with schema; caller formats for user. Mandatory suffix: `Return ONLY valid JSON. Schema: {[fields]}`
+- **All agents**: Include STOPPING CONDITIONS section in prompt. kb_add every 10 tool uses.
+- **Output**: structured JSON with schema; caller formats for user
 - **Model selection**: Haiku for lookups/existence checks, Sonnet for implementation, Opus for lead only (max 1 per batch)
 - **KB search**: use kb-research agent (see `~/.claude/agents/kb-research.md`)
 
-**Agent prompts, templates, expert panels:** See `~/.claude/docs/reference/agent-prompts.md`
-
-**Before writing any agent prompt from a long conversation:** Identify the one sentence that distinguishes this task from the naive/obvious implementation and put it first in the prompt: `"CRITICAL: the naive implementation would be X — do NOT do that. Required: Y."` Agents have no conversation history. If you can't state the key constraint in one sentence, you don't understand the task well enough to delegate it.
+**Before writing any agent prompt from a long conversation:** State the key constraint first: `"CRITICAL: the naive implementation would be X — do NOT do that. Required: Y."` Agents have no conversation history.
 
 ### Agent Task Classification
 
@@ -63,7 +95,7 @@ On trigger: spawn Haiku to read `~/.claude/reviewers.yaml` and select 2-3 expert
 ### Agent Teams
 
 Use when: 3+ independent parallel streams. NOT for sequential/same-file/under-15-min work.
-Rules: Max 3-4 teammates (Sonnet), Opus lead only. Assign file ownership (no concurrent edits). Lead delegates (Shift+Tab), teammates kb_add before completing. Lead runs expert-review on combined output.
+Rules: Max 3-4 teammates (Sonnet), Opus lead only. Assign file ownership (no concurrent edits). Lead delegates, teammates kb_add before completing.
 
 ### Scope and Timeout Rules
 
@@ -76,14 +108,6 @@ Rules: Max 3-4 teammates (Sonnet), Opus lead only. Assign file ownership (no con
 | **Mixed compute+theory prompt** | SPLIT into separate agents or answer theory yourself. |
 | **Agent prompt without STOPPING CONDITIONS section** | Add it. Include kb_add checkpoint every 10 tool uses. |
 
-## Plan Session Isolation
-
-Your current plan file path is stored in `~/.claude/sessions/<session-id>/current_plan`.
-- Written automatically by hook when you create/edit a plan in `~/.claude/plans/`
-- Session ID comes from `/tmp/claude-kb-state/session-<PPID>`
-- Read this file to know YOUR plan (don't use `find | head -1`)
-- After implementation-review APPROVED: plan is automatically archived by the agent
-
 ## Git Commit After Implementation (MANDATORY)
 
 **After implementation-review returns APPROVED, commit your changes immediately.**
@@ -91,132 +115,25 @@ Your current plan file path is stored in `~/.claude/sessions/<session-id>/curren
 Rules:
 1. **Commit ONLY files you touched** — use `git add <file1> <file2> ...` with explicit paths
 2. **Never use `git add .` or `git add -A`** — other Claude sessions may be working on other files
-3. **Check what's staged** — run `git status --short` before committing to verify you're only committing your changes
+3. **Check what's staged** — run `git status --short` before committing
 4. **Use `--no-gpg-sign`** — GPG signing doesn't work in non-interactive sessions
-
-Example workflow:
-```bash
-# Check what you modified
-git status --short
-
-# Add ONLY the files you changed for this implementation
-git add path/to/file1.py path/to/file2.py
-
-# Verify staging
-git status --short
-
-# Commit with descriptive message
-git commit --no-gpg-sign -m "Brief description of changes
-
-Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
-```
 
 **When NOT to commit:**
 - If implementation-review returns INCOMPLETE or REJECTED
 - If there are test failures
 - If the user asks you to hold off on committing
 
-### implementation-review Prompt Formats
+## Session Management
 
-Supported invocation formats (ARCHIVE state handles all):
-1. `Review: session://{id}` — Caller creates session dir with context.yaml and current_plan
-2. `Review: ~/.claude/plans/name.md` — Direct path, no session setup needed
-3. `Review: /absolute/path/to/plan.md` — Absolute path
-4. `Review: name.md` — Relative, expands to `~/.claude/plans/`
+**State lives in beads, not files.** No handoff.md, no current_plan, no work_context.json.
 
-Hook `plan-write-review.sh` writes `current_plan` when a plan file is edited.
+**Resume**: `bd list --status=in_progress` shows your active work. `bd show <epic-id>` reads the plan. `kb_list(project)` for recent findings.
 
-## Plan Modification Rule
+**Crash recovery**: Beads state survives crashes, /clear, and compaction. Re-read the epic.
 
-**After ANY substantive edit to a plan file, re-run expert-review before ExitPlanMode.**
+**Before context loss**: `kb_add(content="SESSION CHECKPOINT: ...\nCOMPLETED:\n- ...\nRESUME FROM: ...", tags="session-checkpoint")`
 
-"Substantive" means: adding new sections/examples, changing recommended approaches, modifying checklists/anti-pattern tables, incorporating reviewer feedback.
-
-Does NOT require re-review: typo fixes, renumbering sections, formatting changes, appending `## Approval Status` section.
-
-**On session resume with `expert-review: APPROVED` in plan:** The review is DONE. Do NOT re-run expert-review. Do NOT re-incorporate review feedback that is already reflected in the plan. If `Mode: PLANNING` but `expert-review: APPROVED`, the hook failed to update Mode — treat it as IMPLEMENTATION and proceed.
-
-## Plan Presentation Requirements
-
-When presenting a plan for approval, include:
-1. **Review status**: Whether expert-review was run and final verdict (APPROVED/iterations required)
-2. **Revision summary**: If modifications were required, summarize key changes made
-3. **Experts consulted**: List which domain experts reviewed the plan (e.g., physics, architecture, security)
-
-## ExitPlanMode Workflow
-
-**CRITICAL: Write plans to the plan mode file, not separate files.**
-When you enter plan mode, Claude Code creates a plan file at `~/.claude/plans/<session-name>.md`.
-ExitPlanMode presents THAT file to the user — it does NOT read `current_plan` or any other file.
-You MUST write your plan directly into that file (using Write/Edit on it).
-Do NOT create a separate plan file (e.g. in `<project>/.claude/plans/`) and then call ExitPlanMode —
-the user will be shown the wrong plan. If you need a project-local copy, copy AFTER approval.
-
-**Expert-review loop** (runs in background to prevent memory growth):
-```
-1. Task(subagent_type="expert-review", run_in_background=True, ...)
-2. task_id = result from Task call
-3. output = TaskOutput(task_id, block=True, timeout=120000)
-4. TaskStop(task_id)  ← MANDATORY before ExitPlanMode (prevents screen flash on /clear)
-5. Parse verdict from output (APPROVED / REJECTED / INCOMPLETE)
-6. If REJECTED or INCOMPLETE: revise plan, go to step 1
-7. If APPROVED: TaskStop ALL background agents, then append ## Approval Status and call ExitPlanMode
-```
-Do NOT call ExitPlanMode until TaskOutput returns APPROVED.
-
-Before ExitPlanMode, append `## Approval Status` with `expert-review: APPROVED`, `User: PENDING`, `Mode: PLANNING`.
-On resume: check `Mode:` — if `IMPLEMENTATION`, execute plan (don't call ExitPlanMode again).
-PostToolUse hook `plan-mode-approved.sh` updates `Mode: PLANNING` → `Mode: IMPLEMENTATION` automatically when user approves ExitPlanMode.
-
-**CRITICAL:** If session resumes with `Mode: IMPLEMENTATION` OR with `expert-review: APPROVED`, the plan was ALREADY approved. Do NOT call ExitPlanMode — this causes double-approval and confuses the user. Do NOT re-run expert-review. The `session-start-resume.sh` hook sends the full plan content in its output with "PLAN APPROVED — BEGIN IMPLEMENTATION". Read the plan and start implementing immediately.
-
-## Lean Plan Format
-
-**Max 50 lines**. Plans: Objective → Phases (with `AGENT(model): task → JSON:{schema}`) → Success criterion.
-Offload discovery/modification/verification to agents. Keep only structure + checkpoints in plan.
-**Checkpoint rule**: Every 3-5 tasks: `CHECKPOINT: kb_add, report to user, await "continue"`.
-
-## Session Checkpoints
-
-Before context loss: `kb_add(content="SESSION CHECKPOINT: ...\nCOMPLETED:\n- ...\nRESUME FROM: ...", tags="session-checkpoint")`. Precompact hook captures KB IDs in handoff.md automatically.
-
-## Session Resume
-
-On `RESUME:` from hook: read handoff.md, `kb_list(project)` (source of truth, not tasks.json), summarize, clear resume file, continue. Per-terminal (`resume-{project}-{tty}.txt`).
-
-## Session Work Context
-
-**Purpose**: Prevent sessions from stomping on each other by tracking what type of work THIS session is doing.
-
-Each session has `~/.claude/sessions/{id}/work_context.json`:
-```json
-{
-  "work_type": "implementation",     // or "meta", "debugging", "research"
-  "primary_task": "description",
-  "my_plan": "path/to/plan.md",      // Plan THIS session is implementing (or null)
-  "plans_referenced": ["other.md"]   // Plans examined but not implementing
-}
-```
-
-**Work types:**
-- `implementation` - Implementing a specific plan (normal development)
-- `meta` - Fixing systems, debugging workflows (NOT implementing plans)
-- `debugging` - Debugging other sessions or investigating issues
-- `research` - Research, exploration, no specific deliverable
-
-**Automatic setting:**
-- ExitPlanMode approval → sets `work_type: "implementation"` and `my_plan`
-- Manual: `~/.claude/hooks/set-work-context.sh <type> <task> [plan]`
-
-**Resume behavior:**
-- `implementation` → Resume plan implementation
-- `meta` or `debugging` → Summarize work done, don't resume implementation
-- Plans in `plans_referenced` were examined, NOT for implementation
-
-**Rules for meta-work sessions:**
-- When debugging another session's plan, call `add_referenced_plan()` to mark it
-- Don't set `my_plan` unless THIS session is implementing it
-- Handoff will show work_type and resume won't incorrectly resume implementation
+**Multi-session coordination**: Each session claims tasks with `bd update <task-id> --claim`. Two sessions cannot claim the same task. Check `bd list --assignee=<you>` for your work.
 
 ## Concurrent Edit Detection (MANDATORY)
 
@@ -245,10 +162,6 @@ Do NOT silently overwrite. Do NOT re-read and merge. STOP and inform.
 - Build failures from incompatible changes you didn't make
 
 **On any of these symptoms**: STOP. Do not try to "fix" the conflict yourself. Inform the user which files are affected and what you were trying to do.
-
-## Plan Migration on /clear
-
-On `PLAN_MIGRATION: <path>`: read previous plan, write to current session plan file, preserve `## Approval Status` exactly, continue (don't re-plan).
 
 ---
 
@@ -313,19 +226,16 @@ NEVER: "What would you like...", "Would you like me to...", numbered options, op
 | Mixing conventions (bit-pattern vs gamma, two definitions of same thing) | One codebase = one convention. Check existing code first. |
 | Creating duplicate section/KB entry | Search before writing. Consolidate, don't duplicate. |
 | "Let me fix this" without identifying root cause | State the bug first. "The bug is X because Y. Fixing by Z." |
-| ExitPlanMode without APPROVED expert-review | Re-run expert-review after EVERY substantive plan edit, until explicitly APPROVED. Never bypass with `touch *.approved`. |
-| `TaskUpdate(status="completed")` then summarizing to user | Run `implementation-review` BEFORE reporting results. Task completion ≠ review complete. |
-| "Let me take a simpler approach" / "Given the complexity" | Problem has grown beyond initial plan. STOP. Enter plan mode with EnterPlanMode, reassess the problem, create new plan. |
+| Starting implementation without review molecule APPROVED | Run `bd mol wisp mol-expert-review` first. Never bypass review. |
+| `TaskUpdate(status="completed")` then summarizing to user | Run implementation-review BEFORE reporting results. Task completion ≠ review complete. |
+| "Let me take a simpler approach" / "Given the complexity" | Problem has grown beyond initial plan. STOP. Create a new epic: `bd create --type=epic --title="Revised: X"`. |
 | Adding notebook cell to fix syntax error in previous cell | Use `modify_notebook_cells` with `operation="edit_code"` and `position_index=N` to fix the broken cell in place. |
-| Plan has `Mode: IMPLEMENTATION`, calling ExitPlanMode | Plan already approved. Don't re-ask. Wait for plan migration message before implementing. |
-| Plan has `expert-review: APPROVED` but `Mode: PLANNING` | Hook failed to update Mode. Treat as IMPLEMENTATION. Do NOT re-run expert-review. |
-| Re-running expert-review on session resume | If plan already has `expert-review: APPROVED`, review is DONE. Implement immediately. |
-| `Task(..., max_turns=N, ...)` | Hard turn limits cut agents off mid-tool-call with no final turn to kb_add or summarize. Omit max_turns entirely. Use STOPPING CONDITIONS in the prompt. |
+| ExitPlanMode / EnterPlanMode / `~/.claude/plans/` | DEPRECATED. Use beads epics for all plans. |
+| `Task(..., max_turns=N, ...)` | Hard turn limits cut agents off mid-tool-call. Omit max_turns entirely. Use STOPPING CONDITIONS in prompt. |
 | Agent misuse (3+ Opus, >10min stuck, 10+ files w/o KB, mixed compute+theory) | See Scope and Timeout Rules. Split compute from theory, kill stuck agents. |
-| Dispatching agents to implement X from a long conversation | Agents have NO conversation history. Every prompt must explicitly state: "The naive implementation would be Y — DO NOT do that. The required approach is Z because [reason from our discussion]." Missing this = agents implement the obvious wrong thing. |
-| Agent returns result, accepting without checking key constraint | Before summarizing agent output to user, explicitly verify: does this satisfy the non-obvious constraint stated in the prompt? If not, it's wrong even if it compiles/runs. |
-| Writing plan to separate file then calling ExitPlanMode | ExitPlanMode reads ITS OWN file (`~/.claude/plans/<session-name>.md`), not `current_plan`. Write plan directly to the plan mode file. |
-| Hook blocks tool call, then rephrasing/splitting/using different tool to do same thing | Hook blocks are FINAL. STOP and tell the user what was blocked. Do not work around hooks — they express user intent. |
+| Dispatching agents to implement X from a long conversation | Agents have NO conversation history. State the key constraint first: "The naive implementation would be Y — DO NOT do that." |
+| Agent returns result, accepting without checking key constraint | Before summarizing agent output to user, explicitly verify: does this satisfy the non-obvious constraint stated in the prompt? |
+| Hook blocks tool call, then rephrasing/splitting/using different tool to do same thing | Hook blocks are FINAL. STOP and tell the user what was blocked. Do not work around hooks. |
 | Edit fails with "old_string not found" unexpectedly | Another session may have modified the file. Run `git diff -- file` and STOP if changes aren't yours. See "Concurrent Edit Detection". |
 | `git status` shows files you didn't touch as modified | Another session is active. STOP, warn user, do not stage those files. |
 | Silently re-reading and continuing after unexpected file change | NEVER. If a file changed under you, STOP and inform the user. Do not auto-merge or silently adapt. |
@@ -354,10 +264,6 @@ Task(subagent_type="build-monitor", team_name="...",
 # 3. Stop. Agent wakes you when done via SendMessage.
 ```
 
-The `build-monitor` agent loops `build-manager wait --max-wait 500` (Bash timeout=600000) across multiple turns until `BUILD_DONE`, then SendMessage. You receive it as a new conversation turn — no polling.
-
-**After receiving build completion message:** check status, proceed with next task. Call `TeamDelete` to clean up.
-
 | Pattern | Anti-pattern |
 |---------|-------------|
 | `--sync` + timeout=600000 for short builds | `build-manager status` in a loop |
@@ -367,6 +273,32 @@ The `build-monitor` agent loops `build-manager wait --max-wait 500` (Bash timeou
 # System
 
 Arch. pacman/yay. Python 3.13. rg/fd. git --no-gpg-sign.
+
+# Task Tracking (bd/Beads)
+
+Use `bd` for ALL task and plan tracking. Never use markdown TODOs, comment-based task lists, or `~/.claude/plans/`.
+
+**On session start in any project**: If `.beads/` directory doesn't exist, run `bd init` to initialize, then `bd setup claude` to install hooks.
+
+**Workflow**:
+```
+bd ready                    # Show work with no blockers
+bd create --title="..." --type=task  # Create issue
+bd update <id> --claim      # Claim work
+bd close <id>               # Mark complete
+bd prime                    # Load full workflow context (auto-runs via hooks)
+```
+
+**Planning**:
+```
+bd create --type=epic --title="Plan: X" --design-file=plan.md   # Create plan epic
+bd show <epic-id>           # Read plan (design field)
+bd mol wisp mol-expert-review --var epic=<id> ...               # Review
+bd update <epic-id> --status=in_progress                        # Start implementation
+bd close <epic-id>          # Complete
+```
+
+**Issue types**: bug, feature, task, epic, chore, decision. **Priorities**: 0 (critical) to 4 (backlog).
 
 # KB Access
 
@@ -472,8 +404,6 @@ Casimir  Mult  Composition
 
 **Anti-pattern**: Deciding column width from header, then truncating content to fit.
 
-**Prompt Templates:** See `~/.claude/docs/reference/agent-prompts.md`
-
 # "Not Found" Is Not "Open"
 
 **CRITICAL DISTINCTION**: When you can't find something, that means YOU haven't found it, not that it doesn't exist.
@@ -517,4 +447,3 @@ Tags: `proven`/`heuristic`/`open-problem`, domain-specific
 **Good Finding Structure**: Title = direct fact statement. Content = self-contained. Code ref = file:function.
 
 **Maintenance** (requires `knowledge-base-advanced` server): `kb_review_queue`, `kb_suggest_consolidation`, `kb_validate`
-
