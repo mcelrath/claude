@@ -81,7 +81,9 @@ When `reviewer_persona` and `reviewer_personas` are BOTH missing from context.ya
 2. Spawn Haiku agent to select panel:
    ```
    Task(subagent_type="general-purpose", model="haiku", prompt="""
-   Read ~/.claude/reviewers.yaml and select the most appropriate reviewer panel.
+   Read {project_root}/reviewers.yaml and select the most appropriate reviewer panel.
+   If {project_root}/reviewers.yaml does not exist, ERROR with:
+   "No project-specific reviewers.yaml found at {project_root}/reviewers.yaml"
 
    CHANGED FILES:
    {git diff --stat output}

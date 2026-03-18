@@ -55,7 +55,7 @@ RE-REVIEW → DISPATCH (new reviewer children for blockers)
    - Read plan file content
    - `bd q --type epic -l "plan:active" "{title}"` to create epic
    - Store plan as design: `bd update {EPIC_ID} --design-file {path}`
-4. Load panel from `~/.claude/reviewers.yaml` → `project_panels.{project}`
+4. Load panel from `{project_root}/reviewers.yaml` (REQUIRED — ERROR if missing)
 5. If no existing analysis children, create them:
    ```bash
    for reviewer in panel:
