@@ -10,8 +10,12 @@ if [[ ! -d ".beads" ]]; then
     # Sanitize directory name for Dolt database (no dots, hyphens, or special chars)
     PROJECT_DIR=$(basename "$(git rev-parse --show-toplevel)")
     DB_NAME=$(echo "$PROJECT_DIR" | tr '.-' '_' | tr -cd 'a-zA-Z0-9_')
-    bd init --database="$DB_NAME" 2>/dev/null && bd setup claude 2>/dev/null
-    ACTIONS="${ACTIONS}Initialized beads (db=$DB_NAME). "
+    # All hosts connect to dolt server on tardis
+    DOLT_HOST="${BEADS_DOLT_SERVER_HOST:-tardis}"
+    DOLT_PORT="${BEADS_DOLT_SERVER_PORT:-3308}"
+    bd init --database="$DB_NAME" --server-host="$DOLT_HOST" --server-port="$DOLT_PORT" 2>/dev/null \
+        && bd setup claude 2>/dev/null
+    ACTIONS="${ACTIONS}Initialized beads (db=$DB_NAME, server=$DOLT_HOST:$DOLT_PORT). "
 fi
 
 MISSING=""
