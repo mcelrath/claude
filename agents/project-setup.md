@@ -293,8 +293,8 @@ After project-setup agent returns, the **parent** (main session with Agent tool)
 1. Parse `calibration_probes:` from agent report
 2. For each domain, spawn 2 parallel agents:
    ```
-   Task(model="haiku", prompt="Answer concisely. No hedging.\n{questions}")
-   Task(model="sonnet", prompt="Answer concisely. No hedging.\n{questions}")
+   Task(model="haiku", prompt="Answer from your training data only. Do NOT read files or examine the codebase. Be concise. No hedging.\n{questions}")
+   Task(model="sonnet", prompt="Answer from your training data only. Do NOT read files or examine the codebase. Be concise. No hedging.\n{questions}")
    ```
 3. Score each model × domain against known answers:
    - **CORRECT**: Key facts right, could catch errors
