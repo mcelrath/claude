@@ -92,6 +92,55 @@ the correct answer when it's true.
 
 kb_add: "Reviewer self-evaluation for {project}: selected={names}, rejected={names} with reasons"
 
+## Phase 2b: Model Calibration Probes
+
+After identifying domains and candidate personas, probe each model tier's coverage.
+
+### Protocol
+
+For each primary domain identified in Phase 1, construct 2-3 **calibration questions** that
+require actual domain knowledge (not just reasoning). These should have known correct answers
+that you (Opus) can verify.
+
+Examples:
+- Clifford algebras: "What is the dimension of Cl(p,q) and how does it decompose as a module over its even subalgebra?"
+- Zeta functions: "State the functional equation for the Riemann zeta function and name the gamma factor."
+- Gauge theory: "What is the Casimir operator for SU(3) in the fundamental representation?"
+
+Spawn 2 parallel agents:
+
+```
+Task(model="haiku", prompt="Answer these domain questions concisely. No hedging.\n{questions}")
+Task(model="sonnet", prompt="Answer these domain questions concisely. No hedging.\n{questions}")
+```
+
+You (running as Sonnet or Opus) answer the same questions yourself for comparison.
+
+### Scoring
+
+For each model × domain, rate:
+- **CORRECT**: Got the key facts right, could catch errors in this domain
+- **SHALLOW**: Knows the vocabulary but confuses details or gives textbook-only answers
+- **WRONG**: Confabulates or gives confidently incorrect answers
+- **ABSENT**: Refuses to answer or says "I'm not sure"
+
+SHALLOW and ABSENT are acceptable for some roles (code quality doesn't need deep physics).
+WRONG is disqualifying — a reviewer that confabulates domain knowledge is worse than no reviewer.
+
+### Model Assignment Rules
+
+| Probe Result | Assignment |
+|-------------|------------|
+| All models CORRECT | Use cheapest (Haiku) for that role |
+| Haiku SHALLOW, Sonnet CORRECT | Use Sonnet |
+| Haiku/Sonnet SHALLOW, Opus CORRECT | Use Opus — flag as expensive |
+| All models SHALLOW or WRONG | Flag domain for human review, don't assign AI reviewer |
+| Haiku WRONG on domain X | NEVER use Haiku for X, even for "simple" tasks in that domain |
+
+Store results in reviewers.yaml under `model_calibration:` section.
+
+kb_add: "Model calibration for {project}: haiku={domains_correct}, sonnet={domains_correct}, gaps={domains_all_wrong}"
+
 ## Phase 3: Write reviewers.yaml
 
 Format:
@@ -132,10 +181,27 @@ composite_panels:
 
   # Add more panels as project matures
 
+model_calibration:
+  # Results of domain-specific probes across model tiers
+  # Used by expert-review orchestrator to assign models to reviewer roles
+  calibrated: {date}
+  domains:
+    {domain_1}:
+      haiku: {CORRECT/SHALLOW/WRONG/ABSENT}
+      sonnet: {CORRECT/SHALLOW/WRONG/ABSENT}
+      opus: {CORRECT/SHALLOW/WRONG/ABSENT}
+      notes: "{specific findings, e.g. 'Haiku confuses Cl(p,q) dimension formula'}"
+    {domain_2}:
+      ...
+  assignment:
+    # Model to use for each reviewer role, derived from calibration
+    {reviewer_name}: {haiku/sonnet/opus}
+    Claude: haiku  # Anti-pattern detection works at all tiers
+
 coverage_gaps:
-  # Domains where Claude's training data is thin — flag for human review
+  # Domains where ALL models are SHALLOW or WRONG — flag for human review
   - domain: {X}
-    note: "Limited training data. Consider human reviewer for {specific topic}."
+    note: "All model tiers lack depth. Consider human reviewer for {specific topic}."
 ```
 
 Write to `{project_root}/reviewers.yaml`.

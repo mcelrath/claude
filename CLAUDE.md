@@ -78,7 +78,7 @@ On trigger: spawn Haiku to read `{project_root}/reviewers.yaml` and select 2-3 e
 - **All agents**: Prefer scripts over Jupyter for computation (fewer turn-wasting API errors)
 - **All agents**: Include STOPPING CONDITIONS section in prompt. kb_add every 10 tool uses.
 - **Output**: structured JSON with schema; caller formats for user
-- **Model selection**: Haiku for lookups/existence checks, Sonnet for implementation, Opus for lead only (max 1 per batch)
+- **Model selection**: If `{project_root}/reviewers.yaml` has `model_calibration:`, use calibrated assignments. Otherwise default: Haiku for lookups, Sonnet for implementation, Opus for lead only (max 1 per batch). Never use a model rated WRONG for a domain in calibration.
 - **KB search**: use kb-research agent (see `~/.claude/agents/kb-research.md`)
 
 **Before writing any agent prompt from a long conversation:** State the key constraint first: `"CRITICAL: the naive implementation would be X — do NOT do that. Required: Y."` Agents have no conversation history.

@@ -51,12 +51,32 @@ Task(subagent_type="expert-review", run_in_background=True,
 
 ## Model Assignment
 
+### Default (no calibration data)
+
 | Step | Model |
 |------|-------|
 | select-panel | haiku |
 | advocate, challenger, computational | sonnet |
 | expert-1, expert-2, expert-3 | sonnet |
 | synthesize | sonnet |
+
+### Calibrated (reviewers.yaml has model_calibration section)
+
+Read `{project_root}/reviewers.yaml` and parse `model_calibration.assignment`.
+Override defaults per reviewer:
+
+```python
+import yaml
+with open(f"{project_root}/reviewers.yaml") as f:
+    config = yaml.safe_load(f)
+calibration = config.get("model_calibration", {}).get("assignment", {})
+# calibration = {"Tao": "sonnet", "Lounesto": "opus", "Claude": "haiku"}
+```
+
+For each expert-N step, look up the assigned reviewer name in calibration.
+If the calibrated model is MORE expensive than default, upgrade.
+If LESS expensive (e.g., haiku sufficient), downgrade to save cost.
+Never downgrade synthesize — it needs to reason across all reviews.
 
 ## Error Handling
 
