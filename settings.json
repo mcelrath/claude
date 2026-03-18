@@ -185,6 +185,10 @@
       {
         "hooks": [
           {
+            "command": "$HOME/.claude/hooks/project-scaffold-check.sh",
+            "type": "command"
+          },
+          {
             "command": "$HOME/.claude/hooks/cleanup-stale-sessions.sh",
             "type": "command"
           },
