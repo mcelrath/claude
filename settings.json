@@ -219,6 +219,11 @@
           {
             "command": "$HOME/.claude/hooks/session-start-resume.sh",
             "type": "command"
+          },
+          {
+            "command": "$HOME/.claude/hooks/model-availability.sh",
+            "timeout": 10000,
+            "type": "command"
           }
         ]
       },

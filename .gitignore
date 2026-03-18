@@ -57,3 +57,6 @@ projects/
 # Old/archived configs
 old_claude_md/
 settings.json-*
+
+# Dolt database files (added by bd init)
+.dolt/

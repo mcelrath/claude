@@ -288,28 +288,75 @@ This is correct — it grows as the project matures and failure modes are discov
 
 After project-setup agent returns, the **parent** (main session with Agent tool) runs probes.
 
+### Prerequisites
+
+Read `~/.claude/models.yaml` (or `~/Projects/ai/claude/models.yaml`) for the model registry.
+Discover which local models are currently available:
+
+```bash
+# Check each local provider endpoint
+curl -s --max-time 2 http://localhost:9510/v1/models  # llama-cpp
+curl -s --max-time 2 http://localhost:11434/v1/models  # ollama
+```
+
+Build the probe list: all API models (haiku, sonnet) + all available local models.
+
 ### Steps
 
 1. Parse `calibration_probes:` from agent report
-2. For each domain, spawn 2 parallel agents:
+
+2. Probe API models — spawn parallel Task() agents:
    ```
    Task(model="haiku", prompt="Answer from your training data only. Do NOT read files or examine the codebase. Be concise. No hedging.\n{questions}")
    Task(model="sonnet", prompt="Answer from your training data only. Do NOT read files or examine the codebase. Be concise. No hedging.\n{questions}")
    ```
-3. Score each model × domain against known answers:
+
+3. Probe local models — curl each endpoint directly:
+   ```bash
+   curl -s {endpoint}/chat/completions -H "Content-Type: application/json" -d '{
+     "model": "{model_id}",
+     "messages": [{"role":"user","content":"Answer from your training data only. Be concise. No hedging.\n{questions}"}],
+     "temperature": 0.1,
+     "max_tokens": 8000
+   }'
+   ```
+   Note: thinking models (thinking=true in registry) need high max_tokens (~8000)
+   because chain-of-thought inflates token usage 3-5x. Parse the `content` field
+   (not `reasoning_content`) for scoring.
+
+   Run local probes in parallel with API probes (they're independent).
+
+4. Score each model × domain against known answers:
    - **CORRECT**: Key facts right, could catch errors
    - **SHALLOW**: Knows vocabulary but confuses details
    - **WRONG**: Confabulates confidently — DISQUALIFYING
    - **ABSENT**: Refuses or hedges
-4. Apply assignment rules:
+
+5. Apply assignment rules (prefer cheapest CORRECT model):
 
    | Probe Result | Assignment |
    |-------------|------------|
-   | All models CORRECT | Haiku (cheapest) |
+   | Local model CORRECT | Local (free) |
+   | Local WRONG/SHALLOW, Haiku CORRECT | Haiku |
    | Haiku SHALLOW, Sonnet CORRECT | Sonnet |
    | Haiku/Sonnet SHALLOW, Opus CORRECT | Opus (flag expensive) |
    | All SHALLOW or WRONG | Flag for human review |
-   | Haiku WRONG on domain X | NEVER Haiku for X |
+   | Any model WRONG on domain X | NEVER use that model for X |
 
-5. Update `{project_root}/reviewers.yaml` `model_calibration:` section with results
-6. kb_add: "Model calibration for {project}: haiku={domains}, sonnet={domains}, gaps={list}"
+6. Update `{project_root}/reviewers.yaml` `model_calibration:` section:
+   ```yaml
+   model_calibration:
+     calibrated: {date}
+     models_probed: [haiku, sonnet, qwen3.5-27b, ...]
+     domains:
+       {domain}:
+         haiku: CORRECT/SHALLOW/WRONG/ABSENT
+         sonnet: CORRECT/SHALLOW/WRONG/ABSENT
+         qwen3.5-27b: CORRECT/SHALLOW/WRONG/ABSENT
+         # ... all probed models
+         notes: "{specific findings}"
+     assignment:
+       {reviewer_name}: {model_name}  # cheapest CORRECT model
+   ```
+
+7. kb_add: "Model calibration for {project}: {model}={domains} for each model, gaps={list}"

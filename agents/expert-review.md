@@ -70,13 +70,38 @@ import yaml
 with open(f"{project_root}/reviewers.yaml") as f:
     config = yaml.safe_load(f)
 calibration = config.get("model_calibration", {}).get("assignment", {})
-# calibration = {"Tao": "sonnet", "Lounesto": "opus", "Claude": "haiku"}
+# calibration = {"Tao": "sonnet", "Lounesto": "opus", "Claude": "qwen3.5-27b"}
 ```
 
 For each expert-N step, look up the assigned reviewer name in calibration.
 If the calibrated model is MORE expensive than default, upgrade.
 If LESS expensive (e.g., haiku sufficient), downgrade to save cost.
 Never downgrade synthesize — it needs to reason across all reviews.
+
+### Local Model Dispatch
+
+When `model_calibration.assignment` specifies a non-Anthropic model (not haiku/sonnet/opus):
+
+1. Read `~/.claude/models.yaml` (or `~/Projects/ai/claude/models.yaml`) to find the model's
+   provider and endpoint.
+2. Check availability: `curl -s --max-time 2 {endpoint}/models`. If unavailable, fall back
+   to the cheapest Anthropic model that scored CORRECT for that domain.
+3. For available local models, call via Bash instead of Task():
+   ```bash
+   curl -s {endpoint}/chat/completions -H "Content-Type: application/json" -d '{
+     "model": "{model_id}",
+     "messages": [{"role":"system","content":"{reviewer_persona}"},
+                  {"role":"user","content":"{step_description}"}],
+     "temperature": 0.3,
+     "max_tokens": 8000
+   }'
+   ```
+4. Parse `choices[0].message.content` from response (ignore `reasoning_content` for
+   thinking models).
+5. If local model returns empty content or errors, fall back to Anthropic model.
+
+**Timeout**: Local models are slower. Allow 5 minutes per local reviewer (same as API timeout).
+Run local model calls in parallel with API Task() agents where possible.
 
 ## Error Handling
 

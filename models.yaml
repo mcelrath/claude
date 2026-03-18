@@ -1,0 +1,121 @@
+# Model Registry
+# Available models for calibration, review, and agent routing.
+# cost_tier: 0=free(local), 1=cheap(haiku), 2=mid(sonnet), 3=expensive(opus)
+# speed: tokens/sec approximate
+# thinking: true if model uses chain-of-thought (inflates token usage)
+
+providers:
+  anthropic:
+    type: api
+    note: "Accessed via Claude Code Task() agents natively"
+  llama-cpp:
+    type: local
+    endpoint: http://localhost:9510/v1
+    note: "llama.cpp server, single model at a time"
+  ollama:
+    type: local
+    endpoint: http://localhost:11434/v1
+    note: "Ollama, multiple models, auto-loads on request"
+
+models:
+  # --- Anthropic API (always available when Claude Code is running) ---
+  haiku:
+    provider: anthropic
+    cost_tier: 1
+    speed: 200
+    context: 200000
+    thinking: false
+    strengths: [fast-lookup, existence-checks, anti-pattern-detection]
+    weaknesses: [confabulates-domain-specifics, shallow-on-niche-topics]
+
+  sonnet:
+    provider: anthropic
+    cost_tier: 2
+    speed: 150
+    context: 200000
+    thinking: false
+    strengths: [implementation, domain-review, code-generation]
+    weaknesses: [expensive-for-simple-tasks]
+
+  opus:
+    provider: anthropic
+    cost_tier: 3
+    speed: 100
+    context: 200000
+    thinking: false
+    strengths: [deep-reasoning, synthesis, architectural-review]
+    weaknesses: [cost, overkill-for-lookups]
+
+  # --- Local: llama.cpp (port 9510) ---
+  qwen3.5-27b:
+    provider: llama-cpp
+    model_id: "Qwen3.5-27B-Q4_K_M.gguf"
+    cost_tier: 0
+    speed: 50
+    context: 32768
+    thinking: true
+    note: "Q4 quantized. Thinking cannot be suppressed. ~3K tokens for simple Q&A."
+    strengths: [free, anti-pattern-detection, code-review-basics]
+    weaknesses: [slow, thinking-overhead, confabulates-on-Lumino/niche-APIs]
+
+  # --- Local: Ollama (port 11434) — key models only ---
+  qwen3.5-122b:
+    provider: ollama
+    model_id: "qwen3.5:122b"
+    cost_tier: 0
+    speed: 10
+    context: 32768
+    thinking: true
+    note: "Largest local model. Very slow but potentially Sonnet-competitive on domain knowledge."
+    strengths: [free, likely-deep-domain-knowledge]
+    weaknesses: [very-slow, thinking-overhead, untested]
+
+  qwen3.5-35b:
+    provider: ollama
+    model_id: "qwen3.5:35b"
+    cost_tier: 0
+    speed: 30
+    context: 32768
+    thinking: true
+    strengths: [free, moderate-speed]
+    weaknesses: [thinking-overhead, untested]
+
+  deepseek-r1-32b:
+    provider: ollama
+    model_id: "deepseek-r1:32b"
+    cost_tier: 0
+    speed: 25
+    context: 16384
+    thinking: true
+    note: "Strong reasoning model. Short context."
+    strengths: [free, strong-reasoning, math]
+    weaknesses: [short-context, slow, thinking-overhead]
+
+  devstral-2:
+    provider: ollama
+    model_id: "devstral-2:latest"
+    cost_tier: 0
+    speed: 30
+    context: 131072
+    thinking: false
+    note: "Mistral coding model. Long context, no thinking overhead."
+    strengths: [free, long-context, code-review, no-thinking-overhead]
+    weaknesses: [untested-on-domain-knowledge]
+
+  qwen3-coder:
+    provider: ollama
+    model_id: "qwen3-coder:latest"
+    cost_tier: 0
+    speed: 30
+    context: 262144
+    thinking: true
+    note: "Code-specialized. Very long context."
+    strengths: [free, code-review, very-long-context]
+    weaknesses: [thinking-overhead, may-lack-domain-knowledge]
+
+# Calibration notes:
+# - Run calibration probes on all available models per project
+# - WRONG on any domain = disqualified for that domain (any cost tier)
+# - Prefer cost_tier 0 when CORRECT (save API costs)
+# - thinking=true models need 3-5x more max_tokens for same output
+# - Check availability before calibration: curl --max-time 2 {endpoint}/models
