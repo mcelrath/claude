@@ -133,12 +133,16 @@ For each reviewer in the panel (typically 3 structural + 3 domain experts):
     - Parse the JSON review
     - If a reviewer failed/timed out, note it as "TIMEOUT" in synthesis
 
-14. Synthesize:
-    - Count recommendations: approve / reject / revise
-    - Any "reject" with blocking_issues → overall REJECTED
-    - All "approve" → overall APPROVED
-    - Mixed or "revise" → overall INCOMPLETE
-15. Write synthesis explaining the reasoning across reviewers.
+14. Classify every finding:
+    - DESIGN-BLOCKING: Architecture wrong, invariant violated, approach fundamentally flawed. Blocks approval.
+    - IMPLEMENTATION-NOTE: Valid concern addressable during coding without changing the design. Does not block.
+    - STYLE: Naming, formatting, docs. Ignore.
+    A finding is DESIGN-BLOCKING only if implementing the plan AS WRITTEN would produce incorrect, unsafe, or fundamentally broken results.
+15. Synthesize:
+    - REJECTED only if ≥1 DESIGN-BLOCKING issue with concrete evidence (not hypothetical)
+    - APPROVED if no DESIGN-BLOCKING issues (list IMPLEMENTATION-NOTEs for implementer)
+    - INCOMPLETE only if reviewers couldn't assess (missing info, timeout)
+16. Write synthesis explaining the reasoning across reviewers.
 
 With molecule: close synthesize step, then squash (APPROVED) or burn (REJECTED/INCOMPLETE).
 Post verdict as comment on the epic: `bd comments add <epic> "<VERDICT>: <one-line summary>"`
