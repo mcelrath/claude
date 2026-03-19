@@ -77,8 +77,16 @@ composite_panels:
         focus: [WRONG-model-for-domain violations, missing fallbacks]
 
 model_calibration:
-  calibrated: pending
-  note: "Run parent calibration protocol to populate."
+  calibrated: 2026-03-19
+  probes_run: [agent_orchestration, agent_memory, llm_tooling, distributed_consensus, concurrent_coordination]
+  note: "nemotron-3-super is the only viable local model (5/5 CORRECT). qwen3.5:122b too slow (all timeouts). devstral-2/qwen3-coder API format errors. qwen3.5:35b partial (2 empty responses)."
+  assignment:
+    Lilian Weng: nemotron-3-super
+    Simon Willison: nemotron-3-super
+    Leslie Lamport: nemotron-3-super
+    Claude: haiku
+  fallback:
+    nemotron-3-super: sonnet
 
 coverage_gaps:
   - domain: beads_task_system

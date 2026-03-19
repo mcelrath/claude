@@ -99,7 +99,13 @@ models:
     context: 32768
     thinking: true
     strengths: [free, moderate-speed]
-    weaknesses: [thinking-overhead, untested]
+    weaknesses: [thinking-overhead, empty-responses-on-some-domains]
+    calibration:
+      claude_agent_orchestration: CORRECT
+      claude_agent_memory: WRONG
+      claude_llm_tooling: WRONG
+      claude_distributed_consensus: SHALLOW
+      claude_concurrent_coordination: CORRECT
 
   deepseek-r1-32b:
     provider: ollama
@@ -153,6 +159,11 @@ models:
       physics_complex_structure: CORRECT
       physics_lehmann: CORRECT
       physics_centralizer: SHALLOW
+      claude_agent_orchestration: CORRECT
+      claude_agent_memory: CORRECT
+      claude_llm_tooling: CORRECT
+      claude_distributed_consensus: CORRECT
+      claude_concurrent_coordination: CORRECT
 
 # Calibration notes:
 # - Run calibration probes on all available models per project
