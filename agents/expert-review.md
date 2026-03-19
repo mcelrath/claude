@@ -204,7 +204,7 @@ If no response, fall back immediately. Don't wait.
 ## Error Handling
 
 - If epic has no design field: return `{"verdict": "ERROR", "reason": "No design field"}`
-- If reviewers.yaml missing: use default panel (3 generic reviewers + Claude anti-pattern)
+- If reviewers.yaml missing: return `{"verdict": "ERROR", "reason": "No reviewers.yaml at {project_root}/reviewers.yaml. Run project-setup agent first: Task(subagent_type=\"project-setup\", model=\"sonnet\", run_in_background=True, prompt=\"Setup project at: {project_root}\")"}`
 - If agent-preamble.md missing: proceed with CLAUDE.md only
 - If a reviewer teammate fails after 5 minutes: proceed with partial results
 - If local model returns empty content: fall back to API model, note in synthesis

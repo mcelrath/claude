@@ -27,18 +27,17 @@ Runs before returning control to user to catch issues early.
 ## State Machine
 
 ```
-SETUP → ERROR (if context.yaml or persona missing)
+SETUP → ERROR (if epic not found or persona missing)
       → GATHER
 
 GATHER → ERROR (if git status shows uncommitted AND no staged changes)
        → VERIFY
 
-VERIFY → ARCHIVE (all checks pass) [MANDATORY next step]
+VERIFY → RECORD (all checks pass) [MANDATORY next step]
        → FIXING (check fails, fix possible)
        → ASKING (check fails, needs human judgment)
 
-ARCHIVE → APPROVED (plan archived, path reported)
-        → APPROVED + WARNING (archive failed but checks passed)
+RECORD → APPROVED (verdict recorded via bd comments add)
 
 FIXING → VERIFY (after fix applied)
        → INCOMPLETE (fixes >= 5)
@@ -49,26 +48,24 @@ ASKING → VERIFY (user provides guidance)
 
 ## SETUP State
 
-1. Parse prompt: `Review: session://{id}` or `Review: {path}`
-2. Read `{dir}/context.yaml` (create minimal if missing)
-3. Extract `reviewer_persona` or `reviewer_personas` from context.yaml
-   - If BOTH missing → AUTO-SELECT (see below)
-   - If present → use as specified
-4. Determine project_root (same logic as expert-review)
-5. Load checks from MULTIPLE sources (cumulative, earlier wins on id collision):
-   a. `{dir}/checks.yaml` (session-specific)
-   b. `~/.claude/checks/global-impl-checks.yaml` (if exists)
-   c. `{project_root}/checks/*.yaml` (domain-specific, if exist)
-   d. `{project_root}/.claude/rules/*.md` (project rules — parse all anti-pattern tables)
-   e. CLAUDE.md in project_root (parse "Implementation Checks" table)
-   f. `~/.claude/CLAUDE.md` (global "Implementation Checks" table, if exists)
-   g. Default checks (always applied last, see below)
+1. Parse prompt: `Review: epic=<id> project_root=<path>`
+   - Run `bd show <id>` to read the epic's design/plan
+   - Run `bd children <id>` to see child tasks and their status
+2. Check `{project_root}/reviewers.yaml` exists
+   - If missing → ERROR: "No reviewers.yaml at {project_root}/reviewers.yaml. Run project-setup agent first: Task(subagent_type=\"project-setup\", model=\"sonnet\", run_in_background=True, prompt=\"Setup project at: {project_root}\")"
+3. Auto-select reviewer panel (see AUTO-SELECT below)
+4. Determine project_root from prompt
+4. Load checks from MULTIPLE sources (cumulative, earlier wins on id collision):
+   a. `{project_root}/checks/*.yaml` (domain-specific, if exist)
+   b. `{project_root}/.claude/rules/*.md` (project rules — parse all anti-pattern tables)
+   c. CLAUDE.md in project_root (parse "Implementation Checks" table)
+   d. `~/.claude/CLAUDE.md` (global "Implementation Checks" table, if exists)
+   e. Default checks (always applied last, see below)
 
    **Rules files** (`.claude/rules/*.md`): Same parsing as expert-review — read each file,
    parse all recognized anti-pattern table formats. See expert-review.md "Parsing Rules Tables"
    for format details.
-6. Read `{dir}/state.yaml` or create default
-7. → GATHER
+5. → GATHER
 
 ### AUTO-SELECT: Automatic Panel Selection
 
@@ -199,62 +196,13 @@ Apply checks to gathered artifacts:
      - Else: → ASKING
 2. If all checks pass: → ARCHIVE → APPROVED
 
-## ARCHIVE State (on success)
+## RECORD State (on success)
 
-**MANDATORY**: Archive the completed plan before returning APPROVED.
+**MANDATORY**: Record the verdict on the epic before returning APPROVED.
 
-**YOU MUST execute these bash commands** (not just describe them):
+Run: `bd comments add <epic-id> "IMPL-REVIEW APPROVED: <one-line summary>"`
 
-```bash
-# Extract plan path from prompt - handles multiple formats
-# PROMPT is the full Task prompt text (e.g., "Review: session://abc123" or "Review: ~/.claude/plans/foo.md")
-
-SESSION_ID=""
-PLAN_PATH=""
-
-if [[ "$PROMPT" =~ session://([^[:space:]]+) ]]; then
-    # Format: Review: session://{id}
-    SESSION_ID="${BASH_REMATCH[1]}"
-    PLAN_PATH=$(cat ~/.claude/sessions/${SESSION_ID}/current_plan 2>/dev/null)
-elif [[ "$PROMPT" =~ Review:[[:space:]]+(/[^[:space:]]+\.md) ]]; then
-    # Format: Review: /absolute/path/to/plan.md
-    PLAN_PATH="${BASH_REMATCH[1]}"
-elif [[ "$PROMPT" =~ Review:[[:space:]]+(~[^[:space:]]+\.md) ]]; then
-    # Format: Review: ~/path/to/plan.md (expand tilde)
-    PLAN_PATH="${BASH_REMATCH[1]/#\~/$HOME}"
-elif [[ "$PROMPT" =~ Review:[[:space:]]+([^[:space:]]+\.md) ]]; then
-    # Format: Review: relative.md (expand to ~/.claude/plans/)
-    PLAN_PATH="$HOME/.claude/plans/${BASH_REMATCH[1]}"
-fi
-
-if [[ -n "$PLAN_PATH" && -f "$PLAN_PATH" ]]; then
-    PLAN_NAME=$(basename "$PLAN_PATH" .md)
-    ARCHIVE_PATH="$HOME/.claude/plans/archive/${PLAN_NAME}-$(date +%Y%m%d-%H%M%S).md"
-    mkdir -p "$HOME/.claude/plans/archive"
-    mv "$PLAN_PATH" "$ARCHIVE_PATH"
-
-    # Also move marker files
-    mv "${PLAN_PATH%.md}.approved" "$HOME/.claude/plans/archive/" 2>/dev/null
-    mv "${PLAN_PATH%.md}.pending" "$HOME/.claude/plans/archive/" 2>/dev/null
-
-    # Clean up session's current_plan pointer if it existed
-    [[ -n "$SESSION_ID" ]] && rm -f "$HOME/.claude/sessions/${SESSION_ID}/current_plan"
-
-    echo "Plan archived to: $ARCHIVE_PATH"
-else
-    echo "WARNING: Could not find plan to archive (path: ${PLAN_PATH:-none})"
-fi
-```
-
-**Archive failure does NOT block the verdict.** If all checks passed but archiving fails, still return APPROVED with a warning:
-```
-APPROVED
-...
-WARNING: Plan archiving failed (path: {attempted path}, error: {error message})
-Parent agent should archive manually.
-```
-
-The parent agent is responsible for archiving if the review agent cannot.
+The parent agent is responsible for closing the epic and committing code.
 
 ### Check Types
 
@@ -417,6 +365,7 @@ Default checks can be overridden by defining a check with the same ID in any hig
 
 ```
 APPROVED
+Epic: {epic-id}
 Reviewer: {reviewer_persona}
 Artifacts examined:
   - Diff: +{additions}/-{deletions} lines across {n} files
@@ -425,11 +374,8 @@ Artifacts examined:
 Checks: {n} passed
 Fixes applied: {m}
   - {fix description} ({check.id})
-Plan archived to: {archive_path}
 [Persona summary: 1-2 sentences on implementation quality]
 ```
-
-**Note:** The archive path is provided so the plan can be referenced later if needed.
 
 ### REJECTED
 ```
@@ -461,51 +407,28 @@ Reason: {specific error message}
 
 ## Integration with Workflow
 
-### Automatic Invocation
+### Invocation
 
-Add to project's CLAUDE.md:
-```markdown
-## Post-Implementation Review (MANDATORY)
+Use the molecule formula for structured multi-reviewer review:
+```
+bd mol wisp mol-implementation-review --var epic=<epic-id> --var project_root=<path>
+```
 
-After completing implementation, before returning to user:
-
-\```
-SESSION_ID=impl-$(date +%Y%m%d-%H%M%S)
-mkdir -p ~/.claude/sessions/$SESSION_ID
-cat > ~/.claude/sessions/$SESSION_ID/context.yaml << 'EOF'
-reviewer_persona: "Your project's reviewer persona"
-EOF
-Task(subagent_type="implementation-review", prompt="Review: session://$SESSION_ID")
-\```
-
-Wait for APPROVED before returning control to user.
+Or invoke directly as a single agent for lighter-weight review:
+```python
+Task(subagent_type="implementation-review", run_in_background=True,
+     prompt="Review: epic=<epic-id> project_root=<path>")
 ```
 
 ### Chaining with expert-review
 
 Typical workflow:
 1. User requests feature
-2. Claude enters plan mode
-3. **expert-review** checks plan → APPROVED
-4. Claude implements plan
-5. **implementation-review** checks implementation → APPROVED
-6. Claude returns control to user
-
-## State File (state.yaml)
-
-```yaml
-fixes: 2
-retries:
-  tests_pass: 1
-  no_debug_code: 0
-history:
-  - check: no_debug_code
-    fix: "Removed console.log from utils.py:42"
-    timestamp: "2024-01-20T10:30:00Z"
-approved:
-  - flaky_test_warning  # User approved this check
-artifacts_hash: "abc123"  # To detect if files changed
-```
+2. Write plan file, create epic with `--design-file`
+3. `bd mol wisp mol-expert-review` checks plan → APPROVED
+4. Implement plan (claim tasks, write code)
+5. `bd mol wisp mol-implementation-review` checks implementation → APPROVED
+6. `bd close <epic-id> <task-ids...>`, git commit, return control to user
 
 ## Parsing CLAUDE.md Tables
 

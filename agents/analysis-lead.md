@@ -17,7 +17,7 @@ Replaces expert-review for beads-backed plans. Orchestrates a full analysis cycl
 2. Load reviewer panel from reviewers.yaml (or epic's existing children)
 3. Run parallel reviewer agents (one per analysis child)
 4. Collect findings, run synthesis
-5. Close children to unblock ExitPlanMode
+5. Close children to unblock implementation
 
 ## Input Formats
 
@@ -146,13 +146,13 @@ Timeout: If any reviewer hasn't completed after 10 minutes, proceed to SYNTHESIS
 ```
 
 5. Record synthesis: `bd comments add {SYNTHESIS_ID} "{verdict JSON}"`
-6. If no unresolved blockers: close synthesis child → epic unblocks → ExitPlanMode allowed
+6. If no unresolved blockers: close synthesis child → epic unblocks → implementation allowed
 7. If unresolved blockers and iterations < 3: create new analysis children for blockers → RE-REVIEW
 8. If max iterations: close synthesis with REJECTED, list remaining blockers
 
 ## DONE
 
-Close synthesis child. If all children (analysis + synthesis) are closed, the epic is "approved" and `bd_plan_is_approved()` returns true, unblocking ExitPlanMode.
+Close synthesis child. If all children (analysis + synthesis) are closed, the epic is approved. Record verdict via `bd comments add <epic-id> "APPROVED: {summary}"`.
 
 ```bash
 bd close {SYNTHESIS_ID} --reason "APPROVED: {summary}"

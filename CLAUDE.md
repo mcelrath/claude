@@ -4,29 +4,38 @@
 
 # Planning and Review (Beads-Based)
 
-All plans live in beads epics. No `~/.claude/plans/` files. No ExitPlanMode. No `Mode:` fields.
+All plans live in `~/.claude/plans/PLAN-<slug>.md` files AND are referenced from beads epics via `--design-file`. No ExitPlanMode. No `Mode:` fields.
 
 ## Planning Workflow
 
 ```
-1. Plan:    bd create --type=epic --title="Plan: X" --design-file=<file>
-            (plan text goes in epic's design field)
-2. Review:  TeamCreate(team_name="review-<epic-id>")
-            Task(subagent_type="expert-review", team_name="review-<epic-id>",
-              name="review-lead", model="sonnet", run_in_background=True,
-              prompt="FULL REVIEW: epic=<epic-id> project_root=<path>")
-            (lead spawns parallel reviewer teammates from reviewers.yaml)
-3. Verdict: Lead returns JSON with verdict: APPROVED/REJECTED/INCOMPLETE
-            TeamDelete("review-<epic-id>")
+1. Plan:    Write plan file: ~/.claude/plans/PLAN-<slug>.md (comprehensive — no line limit)
+2. Epic:    bd create --type=epic --title="Plan: X" --design-file=~/.claude/plans/PLAN-<slug>.md
+3. Review:  bd mol wisp mol-expert-review --var epic=<epic-id> --var plan=~/.claude/plans/PLAN-<slug>.md --var project_root=<path>
+            (creates 8-step review molecule: panel selection → 3 structural + 3 expert → synthesis)
+4. Verdict: Synthesizer writes verdict to epic comments and resolves gate if APPROVED.
             APPROVED → proceed to implementation
-            REJECTED → revise design, re-run review
-4. Claim:   bd update <epic-id> --status=in_progress
-5. Work:    Create child tasks: bd create --type=task --parent=<epic-id> --title="Phase N: ..."
+            REJECTED → revise plan file, re-run review
+5. Claim:   bd update <epic-id> --status=in_progress
+6. Work:    Create child tasks: bd create --type=task --parent=<epic-id> --title="Phase N: ..."
             Claim tasks: bd update <task-id> --claim
-6. Verify:  Run implementation-review on completed work
-7. Close:   bd close <epic-id> <task-ids...>
-8. Commit:  git add <files> && git commit --no-gpg-sign
+7. Verify:  bd mol wisp mol-implementation-review --var epic=<epic-id> --var project_root=<path>
+8. Close:   bd close <epic-id> <task-ids...>
+9. Commit:  git add <files> && git commit --no-gpg-sign
 ```
+
+## Epic Trigger (MANDATORY)
+
+Before starting implementation, estimate scope. If ANY of these are true, create a beads epic with child tasks:
+- 3+ implementation phases
+- 5+ files modified
+- Work cannot reasonably complete before context compaction (~50-80 tool calls)
+- Multi-session coordination (other Claude sessions or human collaborators depend on the plan)
+
+Use an agent team when 2+ phases are independent and touch different code sections.
+Single-phase work that fits in one context window can skip the epic and use a plain bd task.
+
+The cost of creating an epic for small work is low; the cost of losing context mid-implementation without one is high.
 
 ## Review Triggers
 
@@ -37,7 +46,8 @@ All plans live in beads epics. No `~/.claude/plans/` files. No ExitPlanMode. No 
 | Implementation complete | Run implementation-review |
 | Expert review REJECTED | Revise epic design, re-run expert-review |
 
-**Do NOT use**: ExitPlanMode, EnterPlanMode, `~/.claude/plans/`, `.approved` marker files, `Mode: PLANNING/IMPLEMENTATION`.
+**Do NOT use**: ExitPlanMode, EnterPlanMode, `.approved` marker files, `Mode: PLANNING/IMPLEMENTATION`.
+**Plan files go in**: `~/.claude/plans/` (hook-exempted for .md). Reference via `bd create --design-file=`.
 
 ## Tiered Review
 
@@ -45,7 +55,7 @@ All plans live in beads epics. No `~/.claude/plans/` files. No ExitPlanMode. No 
 
 | Tier | When | Invocation |
 |------|------|------------|
-| **Full** | Plans/epics, architectural decisions | `TeamCreate("review-<id>")` then `Task(subagent_type="expert-review", team_name="review-<id>", name="review-lead", model="sonnet", run_in_background=True, prompt="FULL REVIEW: epic=<id> project_root=<path>")` |
+| **Full** | Plans/epics, architectural decisions | `bd mol wisp mol-expert-review --var epic=<id> --var plan=<path> --var project_root=<path>` |
 | **Light** | Issue triage, priority changes, closing issues | `Task(subagent_type="expert-review", model="haiku", prompt="LIGHT REVIEW: epic=<id> project_root=<path>")` |
 | **None** | Creating issues, recording KB, reading/searching | Just do it |
 
@@ -55,6 +65,14 @@ All plans live in beads epics. No `~/.claude/plans/` files. No ExitPlanMode. No 
 - Depth 2: Full review if light was uncertain
 - Depth 3: STOP. Escalate to user. Never recurse further.
 
+## Project Scaffold Check (Session Start)
+
+If `{project_root}/reviewers.yaml` does not exist, prompt the user:
+  "Project {name} is missing reviewers.yaml (needed for expert review).
+   Run project-setup agent to create it?"
+If user approves: `Task(subagent_type="project-setup", model="sonnet",
+  run_in_background=True, prompt="Setup project at: {project_root}")`
+
 ## Plan Modification Rule
 
 After ANY substantive edit to an epic's design field, re-run expert-review.
@@ -63,9 +81,12 @@ After ANY substantive edit to an epic's design field, re-run expert-review.
 If the epic already has an APPROVED verdict from expert-review, the review is DONE.
 Do not re-run unless the design was substantively changed after that verdict.
 
-## Lean Plan Format
+## Plan Format
 
-**Max 50 lines**. Plans: Objective → Phases (with `AGENT(model): task → JSON:{schema}`) → Success criterion.
+Plans live in `~/.claude/plans/PLAN-<slug>.md`. No line limit — plans are read from disk, not context.
+Structure: Objective → Background/Problems → Proposed Changes (per phase) → Success criteria.
+Be comprehensive: cover edge cases, interaction points, file lists, API contracts.
+A thorough plan that catches issues up front saves far more than it costs.
 **Checkpoint rule**: Every 3-5 tasks: `CHECKPOINT: kb_add, report to user, await "continue"`.
 
 ## Agent Dispatch
@@ -152,6 +173,8 @@ Rules:
 
 **Before context loss**: `kb_add(content="SESSION CHECKPOINT: ...\nCOMPLETED:\n- ...\nRESUME FROM: ...", tags="session-checkpoint")`
 
+**Persistent memory**: Use `bd remember "insight"` for knowledge that should survive across sessions and account rotations. Retrieve with `bd memories <keyword>`. These are injected via `bd prime`. Do NOT use MEMORY.md files — they fragment across accounts and are not injected reliably.
+
 **Multi-session coordination**: Each session claims tasks with `bd update <task-id> --claim`. Two sessions cannot claim the same task. Check `bd list --assignee=<you>` for your work.
 
 ## Concurrent Edit Detection (MANDATORY)
@@ -223,6 +246,7 @@ Closing issues, reprioritizing, ranking research, declaring something "done" or 
 **Level 2 — You decide, then do it** (implementation & execution):
 Writing code, running tests, searching, reading, creating issues, recording KB.
 → No "Should I proceed?" — just do it. Don't ask the user for permission on execution steps.
+→ **Scale detection**: Before starting, check Epic Trigger rules. If the work is too large for one context window, create an epic + team before writing any code.
 → **Record rejected alternatives**: When choosing between approaches, create `idea` type bd issues for the paths not taken, so they survive context compaction and can be revisited if the chosen path fails.
 
 **Level 3 — User decides** (resource allocation & preference):
@@ -267,7 +291,10 @@ NEVER: "What would you like...", "Would you like me to...", "Should I...", numbe
 | `TaskUpdate(status="completed")` then summarizing to user | Run implementation-review BEFORE reporting results. Task completion ≠ review complete. |
 | "Let me take a simpler approach" / "Given the complexity" | Problem has grown beyond initial plan. STOP. Create a new epic: `bd create --type=epic --title="Revised: X"`. |
 | Adding notebook cell to fix syntax error in previous cell | Use `modify_notebook_cells` with `operation="edit_code"` and `position_index=N` to fix the broken cell in place. |
-| ExitPlanMode / EnterPlanMode / `~/.claude/plans/` | DEPRECATED. Use beads epics for all plans. |
+| ExitPlanMode / EnterPlanMode / `.approved` markers | DEPRECATED. Use beads epics for all plans. |
+| Plan written as conversation prose, no file | Write to `~/.claude/plans/PLAN-<slug>.md` FIRST. Expert-review reads the file. |
+| Expert-review prompt inlines the plan (100+ lines) | Prompt should be ≤3 lines: `FULL REVIEW: epic=<id> project_root=<path>`. Plan lives in the design file. |
+| Starting epic without expert-review | ALL epics get expert-review before implementation. No exceptions. |
 | `Task(..., max_turns=N, ...)` | Hard turn limits cut agents off mid-tool-call. Omit max_turns entirely. Use STOPPING CONDITIONS in prompt. |
 | Agent misuse (3+ Opus, >10min stuck, 10+ files w/o KB, mixed compute+theory) | See Scope and Timeout Rules. Split compute from theory, kill stuck agents. |
 | Dispatching agents to implement X from a long conversation | Agents have NO conversation history. State the key constraint first: "The naive implementation would be Y — DO NOT do that." |
