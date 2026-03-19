@@ -1,0 +1,129 @@
+{
+  "description": "Post-implementation review: gather artifacts, run checks, panel review, synthesize verdict",
+  "formula": "mol-implementation-review",
+  "phase": "vapor",
+  "pour": true,
+  "steps": [
+    {
+      "description": "Gather all implementation artifacts for epic {{epic}}.\n\nProject root: {{project_root}}\nTest command override: {{test_command}}\nBuild command override: {{build_command}}\n\n1. Run `bd show {{epic}}` to read the plan/design\n2. Run `bd children {{epic}}` to list child tasks\n3. Run `git diff HEAD~1 --stat` (or appropriate range for all epic commits)\n4. Run `git diff HEAD~1` for full diff\n5. Auto-detect and run tests (or use {{test_command}} if provided)\n6. Auto-detect and run build (or use {{build_command}} if provided)\n\nAuto-detect test runner:\n- package.json with test script -> npm test\n- pytest.ini or pyproject.toml with pytest -> pytest\n- Cargo.toml -> cargo test\n- Makefile with test target -> make test\n\nWrite results to this issue's notes as JSON:\n{\"files_changed\": [...], \"additions\": N, \"deletions\": N, \"test_result\": \"pass|fail|skipped\", \"test_output\": \"...\", \"build_result\": \"pass|fail|skipped\", \"build_output\": \"...\", \"plan_summary\": \"...\"}\n\nSTOPPING CONDITIONS: After gathering all artifacts and writing notes, stop.",
+      "id": "gather",
+      "labels": [
+        "review",
+        "gather"
+      ],
+      "priority": 1,
+      "title": "Gather implementation artifacts for {{epic}}",
+      "type": "task"
+    },
+    {
+      "depends_on": [
+        "gather"
+      ],
+      "description": "Run automated pattern checks on the implementation diff.\n\nProject root: {{project_root}}\n\nRead the gather step's notes for the diff and changed files.\n\n1. Load checks from (cumulative, earlier wins on ID collision):\n   a. {project_root}/.claude/rules/*.md (parse anti-pattern tables)\n   b. {project_root}/CLAUDE.md (parse Implementation Checks table)\n   c. ~/.claude/CLAUDE.md (global Implementation Checks table)\n\n2. Apply default checks:\n   - no_debug_code: console.log, debugger, print.*DEBUG, TODO.*REMOVE in diff\n   - no_secrets: API_KEY, SECRET, PASSWORD, PRIVATE_KEY in diff\n   - no_incomplete_markers: TODO, FIXME, XXX, HACK without bd issue reference\n\n3. For each check, search the diff. Record matches with file:line.\n\nWrite results to this issue's notes as JSON:\n{\"checks_run\": N, \"checks_passed\": N, \"checks_failed\": [{\"id\": \"...\", \"file\": \"...\", \"line\": N, \"match\": \"...\", \"reason\": \"...\"}]}\n\nSTOPPING CONDITIONS: After running all checks and writing notes, stop.",
+      "id": "check-patterns",
+      "labels": [
+        "review",
+        "automated"
+      ],
+      "priority": 1,
+      "title": "Pattern checks on {{epic}} diff",
+      "type": "task"
+    },
+    {
+      "depends_on": [
+        "gather"
+      ],
+      "description": "Read {{project_root}}/reviewers.yaml and select 2-3 reviewers for implementation review.\n\nRead the gather step's notes to understand what was changed.\n\nRULES:\n1. Select 2-3 reviewers matching the changed code's domain\n2. MUST include Claude for anti-pattern detection\n3. Prefer code_technical reviewers for implementation review\n4. For scientific code, include one technical_domains reviewer\n\nWrite result to this issue's notes as JSON:\n{\"panel\": [{\"name\": \"...\", \"domain\": \"...\", \"focus\": [\"...\"]}], \"reason\": \"...\"}\n\nSTOPPING CONDITIONS: After writing panel JSON to notes, stop.",
+      "id": "select-panel",
+      "labels": [
+        "review",
+        "haiku"
+      ],
+      "priority": 1,
+      "title": "Select implementation review panel for {{epic}}",
+      "type": "task"
+    },
+    {
+      "depends_on": [
+        "select-panel",
+        "check-patterns"
+      ],
+      "description": "Read select-panel notes to find YOUR assigned persona (panel[0]).\nRead gather notes for artifacts. Read check-patterns notes for automated findings.\n\nAdopt that persona. Review the implementation at {{project_root}}.\n\nFocus on:\n- Does implementation match the plan? (read plan via `bd show {{epic}}`)\n- Code quality from your domain perspective\n- Any automated check failures that need human judgment\n\nYou have full tool access. Read code, run tests, verify behavior.\nDo NOT use Edit or Write on project files.\n\nWrite your review to this issue's notes.\n\nSTOPPING CONDITIONS: After completing review with specific findings and recommendation (approve/revise/reject), write notes and stop.",
+      "id": "reviewer-1",
+      "labels": [
+        "review",
+        "expert-persona"
+      ],
+      "priority": 2,
+      "title": "Implementation reviewer 1 for {{epic}}",
+      "type": "task"
+    },
+    {
+      "depends_on": [
+        "select-panel",
+        "check-patterns"
+      ],
+      "description": "Read select-panel notes to find YOUR assigned persona (panel[1]).\nRead gather notes for artifacts. Read check-patterns notes for automated findings.\n\nAdopt that persona. Review the implementation at {{project_root}}.\n\nFocus on:\n- Does implementation match the plan? (read plan via `bd show {{epic}}`)\n- Code quality from your domain perspective\n- Any automated check failures that need human judgment\n\nYou have full tool access. Read code, run tests, verify behavior.\nDo NOT use Edit or Write on project files.\n\nWrite your review to this issue's notes.\n\nSTOPPING CONDITIONS: After completing review with specific findings and recommendation (approve/revise/reject), write notes and stop.",
+      "id": "reviewer-2",
+      "labels": [
+        "review",
+        "expert-persona"
+      ],
+      "priority": 2,
+      "title": "Implementation reviewer 2 for {{epic}}",
+      "type": "task"
+    },
+    {
+      "depends_on": [
+        "select-panel",
+        "check-patterns"
+      ],
+      "description": "ROLE: Claude anti-pattern detector.\n\nRead gather notes for artifacts. Read check-patterns notes for automated findings.\nRead ~/.claude/CLAUDE.md and {{project_root}}/CLAUDE.md for all rules and anti-patterns.\n\nCheck the diff for:\n1. CLAUDE.md anti-pattern violations (the entire Anti-Patterns table)\n2. Debug code, print spam, presentation cells\n3. Incomplete markers (TODO/FIXME/sorry/admit) without bd issues\n4. Security issues (OWASP top 10)\n5. Files that should not have been modified (outside task scope)\n\nDo NOT use Edit or Write on project files.\n\nWrite your review to this issue's notes.\n\nSTOPPING CONDITIONS: After completing anti-pattern scan with specific findings, write notes and stop.",
+      "id": "reviewer-claude",
+      "labels": [
+        "review",
+        "anti-pattern"
+      ],
+      "priority": 2,
+      "title": "Claude anti-pattern review for {{epic}}",
+      "type": "task"
+    },
+    {
+      "depends_on": [
+        "reviewer-1",
+        "reviewer-2",
+        "reviewer-claude",
+        "check-patterns"
+      ],
+      "description": "ROLE: LEAD SYNTHESIZER. Read notes from ALL preceding steps.\n\nEpic: {{epic}}\n\nDecision rules:\n- ANY automated check failure (check-patterns) that wasn't explained by a reviewer: REJECTED\n- Tests fail: REJECTED (unless reviewer explains why failure is expected/transient)\n- 2+ reviewers recommend reject: REJECTED\n- 1 reviewer recommends reject with specific evidence: REJECTED\n- All reviewers approve but with suggestions: APPROVED with notes\n- All reviewers approve clean: APPROVED\n\nWrite verdict to this issue's notes as:\nVERDICT: APPROVED|REJECTED|INCOMPLETE\nThen structured summary with each reviewer's key finding.\n\nAfter writing verdict:\n- APPROVED: run `bd comments add {{epic}} \"IMPL-REVIEW APPROVED: <summary>\"`\n- REJECTED: run `bd comments add {{epic}} \"IMPL-REVIEW REJECTED: <specific fixes>\"`\n- INCOMPLETE: run `bd comments add {{epic}} \"IMPL-REVIEW INCOMPLETE: <what's missing>\"`\n\nSTOPPING CONDITIONS: After writing verdict and running bd comments, stop.",
+      "id": "synthesize",
+      "labels": [
+        "review",
+        "lead"
+      ],
+      "priority": 0,
+      "title": "Synthesize implementation review verdict for {{epic}}",
+      "type": "task"
+    }
+  ],
+  "type": "workflow",
+  "vars": {
+    "build_command": {
+      "default": "",
+      "description": "Build command override (auto-detected if empty)"
+    },
+    "epic": {
+      "description": "Epic bead ID whose implementation is being reviewed",
+      "required": true
+    },
+    "project_root": {
+      "default": ".",
+      "description": "Project root directory"
+    },
+    "test_command": {
+      "default": "",
+      "description": "Test command override (auto-detected if empty)"
+    }
+  },
+  "version": 1
+}

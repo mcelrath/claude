@@ -1,0 +1,143 @@
+{
+  "description": "6-agent expert review: panel selection, 3 structural + 3 expert personas, synthesis",
+  "formula": "mol-expert-review",
+  "phase": "vapor",
+  "pour": true,
+  "steps": [
+    {
+      "description": "Read {{project_root}}/reviewers.yaml and select 3 reviewers for the plan at {{plan}}.\n\nRULES:\n1. Select EXACTLY 3 reviewers from DIFFERENT categories\n2. MUST include exactly 1 from adversarial_error_finders\n3. If reviewers.yaml has panel templates, check if one matches the plan\n4. If previous_panel is non-empty, ROTATE: replace at least 1 reviewer\n5. Prefer confidence A > B > C\n6. For each reviewer, generate a domain-specific hard question based on the plan content\n\nPREVIOUS PANEL: {{previous_panel}}\n\nWrite result to this issue's notes as JSON:\n{\"panel\": [{\"name\": \"...\", \"category\": \"...\", \"role\": \"...\", \"domain\": \"...\", \"question\": \"...\"}], \"reason\": \"...\", \"panel_template_used\": \"...\"}\n\nSTOPPING CONDITIONS: After writing panel JSON to notes, stop.",
+      "id": "select-panel",
+      "labels": [
+        "review",
+        "haiku"
+      ],
+      "priority": 1,
+      "title": "Select review panel for {{plan}}",
+      "type": "task"
+    },
+    {
+      "depends_on": [
+        "select-panel"
+      ],
+      "description": "ROLE: ADVOCATE. Assume the plan is correct. Find its strengths and single point of failure.\n\nPlan: {{plan}}\nProject root: {{project_root}}\n\nRead the plan file first. Read {{project_root}}/CLAUDE.md for project context and {{project_root}}/docs/reference/proven-facts.md for established results.\n\nYou have full tool access. Read code, run tests, verify claims.\n\nWrite your assessment to this issue's notes.\n\nSTOPPING CONDITIONS: After identifying key strength and key vulnerability with evidence, write notes and stop.",
+      "id": "advocate",
+      "labels": [
+        "review",
+        "structural"
+      ],
+      "priority": 1,
+      "title": "Advocate: strengths and vulnerabilities of {{plan}}",
+      "type": "task"
+    },
+    {
+      "depends_on": [
+        "select-panel"
+      ],
+      "description": "ROLE: CHALLENGER. Assume the plan has a flaw. Find it.\n\nPlan: {{plan}}\nProject root: {{project_root}}\n\nRead the plan file first. Read {{project_root}}/CLAUDE.md for project context and {{project_root}}/docs/reference/proven-facts.md for established results.\n\nFind: weakest assumption, implicit step most likely wrong, specific degenerate case or edge case.\n\nYou have full tool access. Read code, construct counterexamples.\n\nWrite your assessment to this issue's notes.\n\nSTOPPING CONDITIONS: After finding at least one potential flaw (or proving none exist) with evidence, write notes and stop.",
+      "id": "challenger",
+      "labels": [
+        "review",
+        "structural"
+      ],
+      "priority": 1,
+      "title": "Challenger: find flaws in {{plan}}",
+      "type": "task"
+    },
+    {
+      "depends_on": [
+        "select-panel"
+      ],
+      "description": "ROLE: COMPUTATIONAL ADVERSARY. Verify testable claims by running code.\n\nPlan: {{plan}}\nProject root: {{project_root}}\n\nRead the plan file. Extract 3-5 specific testable assertions. For each:\n1. Write a minimal script that tests it\n2. Run it in {{project_root}}\n3. Report CONFIRMED or REFUTED with evidence\n\nDo NOT modify any project files. Read-only + run scripts only.\n\nWrite results to this issue's notes.\n\nSTOPPING CONDITIONS: After testing all extracted claims, write notes and stop.",
+      "id": "computational",
+      "labels": [
+        "review",
+        "structural",
+        "computational"
+      ],
+      "priority": 1,
+      "title": "Computational adversary: verify claims in {{plan}}",
+      "type": "task"
+    },
+    {
+      "depends_on": [
+        "select-panel"
+      ],
+      "description": "Read the select-panel step's notes to find YOUR assigned persona and question (panel[0]).\n\nAdopt that persona. Review the plan at {{plan}} from that domain expertise.\nRead {{project_root}}/CLAUDE.md for context and {{project_root}}/docs/reference/proven-facts.md. Do NOT question proven facts.\n\nFocus ONLY on your assigned question. Be specific: cite line numbers, identify exact steps that concern you, propose specific tests.\n\nDo NOT use Edit or Write on project files. Read-only.\n\nWrite your review to this issue's notes.\n\nSTOPPING CONDITIONS: After completing your domain-specific review, write notes and stop.",
+      "id": "expert-1",
+      "labels": [
+        "review",
+        "expert-persona"
+      ],
+      "priority": 2,
+      "title": "Expert review 1 of {{plan}}",
+      "type": "task"
+    },
+    {
+      "depends_on": [
+        "select-panel"
+      ],
+      "description": "Read the select-panel step's notes to find YOUR assigned persona and question (panel[1]).\n\nAdopt that persona. Review the plan at {{plan}} from that domain expertise.\nRead {{project_root}}/CLAUDE.md for context and {{project_root}}/docs/reference/proven-facts.md. Do NOT question proven facts.\n\nFocus ONLY on your assigned question. Be specific: cite line numbers, identify exact steps that concern you, propose specific tests.\n\nDo NOT use Edit or Write on project files. Read-only.\n\nWrite your review to this issue's notes.\n\nSTOPPING CONDITIONS: After completing your domain-specific review, write notes and stop.",
+      "id": "expert-2",
+      "labels": [
+        "review",
+        "expert-persona"
+      ],
+      "priority": 2,
+      "title": "Expert review 2 of {{plan}}",
+      "type": "task"
+    },
+    {
+      "depends_on": [
+        "select-panel"
+      ],
+      "description": "Read the select-panel step's notes to find YOUR assigned persona and question (panel[2]).\n\nAdopt that persona. Review the plan at {{plan}} from that domain expertise.\nRead {{project_root}}/CLAUDE.md for context and {{project_root}}/docs/reference/proven-facts.md. Do NOT question proven facts.\n\nFocus ONLY on your assigned question. Be specific: cite line numbers, identify exact steps that concern you, propose specific tests.\n\nDo NOT use Edit or Write on project files. Read-only.\n\nWrite your review to this issue's notes.\n\nSTOPPING CONDITIONS: After completing your domain-specific review, write notes and stop.",
+      "id": "expert-3",
+      "labels": [
+        "review",
+        "expert-persona"
+      ],
+      "priority": 2,
+      "title": "Expert review 3 of {{plan}}",
+      "type": "task"
+    },
+    {
+      "depends_on": [
+        "advocate",
+        "challenger",
+        "computational",
+        "expert-1",
+        "expert-2",
+        "expert-3"
+      ],
+      "description": "ROLE: LEAD SYNTHESIZER. Read notes from ALL 6 preceding steps.\n\nEpic: {{epic}}\n\nWeighting:\n- Computational REFUTED a claim: CRITICAL -> REJECTED unless explainable\n- Challenger found specific flaw with evidence: HIGH -> needs fixing or user decision\n- 2+ experts agree on a concern: HIGH\n- 1 expert concern, others disagree: MEDIUM (note, don't block)\n- Advocate found vulnerability: MEDIUM (note as risk)\n\nConflict resolution:\n- If advocate and challenger disagree: trust computational evidence. No evidence -> flag for user.\n- If expert contradicts proven-facts.md: trust proven-facts, note disagreement.\n- NEVER resolve by majority vote. Resolve by evidence.\n\nPlan-editing boundary: You may fix ONLY anti-pattern language (literal string replacement). You may NOT modify mathematical content, add/remove steps, or change the approach. If math needs fixing -> REJECTED.\n\nWrite verdict to this issue's notes as:\nVERDICT: APPROVED|REJECTED|INCOMPLETE\nThen structured summary with panel names, each agent's key finding, and evidence.\n\nAfter writing verdict:\n- If APPROVED: run `bd comments add {{epic}} \"APPROVED: <one-line summary>\"` then find the human gate blocking implementation and run `bd gate resolve <gate-id>`.\n- If REJECTED: run `bd comments add {{epic}} \"REJECTED: <specific fixes required>\"`. Do NOT resolve any gate.\n- If INCOMPLETE: run `bd comments add {{epic}} \"INCOMPLETE: <what's missing>\"`. Do NOT resolve any gate.\n\nSTOPPING CONDITIONS: After writing verdict and running the appropriate bd commands, stop.",
+      "id": "synthesize",
+      "labels": [
+        "review",
+        "lead"
+      ],
+      "priority": 0,
+      "title": "Synthesize review verdict for {{plan}}",
+      "type": "task"
+    }
+  ],
+  "type": "workflow",
+  "vars": {
+    "epic": {
+      "description": "Parent epic bead ID. Verdict is commented here; gate resolved on APPROVED.",
+      "required": true
+    },
+    "plan": {
+      "description": "Path to plan file or bead ID being reviewed",
+      "required": true
+    },
+    "previous_panel": {
+      "default": "",
+      "description": "JSON of previous review panel (for rotation). Empty string if first review."
+    },
+    "project_root": {
+      "default": ".",
+      "description": "Project root directory"
+    }
+  },
+  "version": 1
+}
