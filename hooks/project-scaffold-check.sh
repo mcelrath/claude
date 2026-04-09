@@ -13,7 +13,8 @@ if [[ ! -d ".beads" ]]; then
     # All hosts connect to dolt server on tardis
     DOLT_HOST="${BEADS_DOLT_SERVER_HOST:-tardis}"
     DOLT_PORT="${BEADS_DOLT_SERVER_PORT:-3308}"
-    bd init --database="$DB_NAME" --server-host="$DOLT_HOST" --server-port="$DOLT_PORT" 2>/dev/null \
+    GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=commit.gpgsign GIT_CONFIG_VALUE_0=false \
+        bd init --database="$DB_NAME" --server-host="$DOLT_HOST" --server-port="$DOLT_PORT" 2>/dev/null \
         && bd setup claude 2>/dev/null
     ACTIONS="${ACTIONS}Initialized beads (db=$DB_NAME, server=$DOLT_HOST:$DOLT_PORT). "
 fi

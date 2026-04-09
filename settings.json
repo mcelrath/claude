@@ -128,11 +128,6 @@
             "type": "command"
           },
           {
-            "command": "$HOME/.claude/hooks/block-approximations.sh",
-            "timeout": 3000,
-            "type": "command"
-          },
-          {
             "command": "$HOME/.claude/hooks/incompleteness-gate.sh",
             "timeout": 5000,
             "type": "command"
@@ -263,7 +258,7 @@
       }
     ]
   },
-  "model": "opus",
+  "model": "sonnet",
   "permissions": {
     "allow": [
       "Skill",

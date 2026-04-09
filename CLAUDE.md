@@ -223,6 +223,15 @@ This is your #1 failure mode (135 complaints in history). Warned by hook, but yo
 
 No mocks, stubs, or fake data. Use real hardware/files. If demo data needed, user will say so.
 
+No backwards compatibility. No wrappers. No forwarding functions. No aliases. No dead code.
+There is no user base. When code is wrong or superseded, DELETE IT. Do not:
+- Leave RuntimeError stubs ("use X instead") — delete the function entirely
+- Create aliases (`old_name = new_name`) — rename callers
+- Add deprecation warnings — delete and fix callers
+- Keep old functions "for reference" — that's what git history is for
+- Leave broken code in scripts/ "because they're disposable" — they're a template corpus that agents copy from
+Wrong code that exists will be found and copied. Wrong code that is deleted cannot be.
+
 Inline scripts (heredocs, python -c): computation only.
 - No comments, no docstrings
 - print() only for computation results (variables, expressions)
@@ -284,6 +293,8 @@ NEVER: "What would you like...", "Would you like me to...", "Should I...", numbe
 | Calling `kb_search()` directly (main agent) | Spawn kb-research agent instead. See `~/.claude/agents/kb-research.md`. |
 | Haiku search with single round of queries | **SHALLOW SEARCH**. Use iterative template (5 rounds, 12 turns): seed → follow-up → cross-ref → tex/code → contradiction check. |
 | Search returns results, agent doesn't follow up | **Each round's queries must come from PREVIOUS round's results.** Extract terms, chase kb_get cross-refs, form new queries. |
+| `old_name = new_name` / `def old(): return new()` / RuntimeError stub | **NO BACKWARDS COMPATIBILITY**. Delete the old function. Rename callers. There is no user base. |
+| Leaving broken/superseded code "for reference" | **DELETE IT**. Git history exists. Dead code is a template for agents to copy wrong patterns from. |
 | Mixing conventions (bit-pattern vs gamma, two definitions of same thing) | One codebase = one convention. Check existing code first. |
 | Creating duplicate section/KB entry | Search before writing. Consolidate, don't duplicate. |
 | "Let me fix this" without identifying root cause | State the bug first. "The bug is X because Y. Fixing by Z." |
@@ -303,6 +314,30 @@ NEVER: "What would you like...", "Would you like me to...", "Should I...", numbe
 | Edit fails with "old_string not found" unexpectedly | Another session may have modified the file. Run `git diff -- file` and STOP if changes aren't yours. See "Concurrent Edit Detection". |
 | `git status` shows files you didn't touch as modified | Another session is active. STOP, warn user, do not stage those files. |
 | Silently re-reading and continuing after unexpected file change | NEVER. If a file changed under you, STOP and inform the user. Do not auto-merge or silently adapt. |
+
+# Background Bash Output — NEVER PIPE
+
+**CRITICAL**: `run_in_background=true` writes the process stdout to a file. If the command
+contains a shell pipe (`| tail`, `| head`, `2>&1 | ...`), the pipe consumes the output
+BEFORE it reaches the file. The output file ends up **empty or truncated**. This causes
+silent re-runs of the same command.
+
+**Rule**: NEVER use `| tail` / `| head` / `2>&1 |` in a Bash call with `run_in_background=true`.
+
+```
+# WRONG — pipe consumes output before it reaches the file:
+Bash(run_in_background=True, command="pytest ... 2>&1 | tail -20")
+
+# RIGHT — full output goes to the file; read it afterward:
+Bash(run_in_background=True, command="pytest ...")
+# When notified, read with:
+Bash(command="tail -20 <output_file>")
+```
+
+| Right | Wrong |
+|-------|-------|
+| Run without pipe; read file after | Pipe to `| tail` or `| head` in background command |
+| `Bash(command="tail -20 <file>")` after task completes | `2>&1 | tail -20` inside the backgrounded command |
 
 # Build Waiting Protocol
 
