@@ -137,6 +137,28 @@ On trigger: spawn Haiku to read `{project_root}/reviewers.yaml` and select 2-3 e
 Use when: 3+ independent parallel streams. NOT for sequential/same-file/under-15-min work.
 Rules: Max 3-4 teammates (Sonnet), Opus lead only. Assign file ownership (no concurrent edits). Lead delegates, teammates kb_add before completing.
 
+### Worktree Isolation Rules (MANDATORY)
+
+The `isolation: "worktree"` parameter on Agent creates a TEMPORARY worktree that is AUTO-DELETED when the agent completes. Changes made in an isolated worktree are LOST unless explicitly captured.
+
+**NEVER use `isolation: "worktree"` for implementation work that should be kept.** It is ONLY for read-only exploration or speculative analysis where the result is reported back as text.
+
+| Use case | Correct approach |
+|----------|-----------------|
+| **Implement a feature** | Work directly in the main tree (no isolation) |
+| **Implement on a branch** | Create a branch with `git checkout -b`, work in main tree |
+| **Parallel implementation** | Create a worktree manually with `git worktree add`, dispatch agent to that path (no isolation param) |
+| **Read-only exploration** | `isolation: "worktree"` is OK — agent reads files and reports findings |
+| **Speculative refactor to evaluate** | `isolation: "worktree"` is OK if you only need the agent's text report, not the code |
+
+**If the user asks you to create a worktree and implement:**
+1. `git worktree add .worktrees/<name> -b <branch-name>`
+2. Tell the agent to work in `/absolute/path/to/.worktrees/<name>/`
+3. Do NOT pass `isolation: "worktree"` — that creates a SECOND temporary worktree
+4. Verify commits exist in the worktree after the agent completes
+
+**Cost of getting this wrong:** Agent work is lost. The user pays for compute that produced nothing. This has happened and must never happen again.
+
 ### Scope and Timeout Rules
 
 | Rule | Action |

@@ -582,6 +582,7 @@
       "Bash(rm -rf ..:*)",
       "Bash(rm -rf :*::*)",
       "Bash(chmod 777 -R:*)",
+      "Bash(kill:*)",
       "Bash(kill -9:*)",
       "Bash(pkill:*)",
       "Bash(killall:*)",

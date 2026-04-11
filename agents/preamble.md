@@ -29,6 +29,17 @@ Read this BEFORE starting your task. These rules prevent the failure modes that 
 
 9. **Don't duplicate the parent's work**. If the parent gave you KB IDs or findings, start from those. Don't re-search what's already provided.
 
+## Worktree Protocol
+
+If you are working in a git worktree (check: `git rev-parse --show-toplevel` differs from the project root, or `.git` is a file not a directory):
+
+1. **Commit before reporting completion**. Stage only files you modified (`git add <file1> <file2> ...`). Commit with `--no-gpg-sign` and a descriptive message.
+2. **Report your branch name** in your completion message: "Changes committed on branch `<branch-name>`." The team lead needs this to merge.
+3. **Do NOT push** — worktree branches are local.
+4. **Do NOT merge into master** — the lead handles merging.
+
+If you are NOT in a worktree (normal working directory), your edits land directly in the main tree. No commit needed unless the lead instructs you to commit.
+
 ## Stopping Conditions
 
 Stop and return partial results if:

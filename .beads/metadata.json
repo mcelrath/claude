@@ -2,6 +2,8 @@
   "backend": "dolt",
   "database": "dolt",
   "dolt_database": "bd_claude",
+  "dolt_host": "tardis",
   "dolt_mode": "server",
+  "dolt_port": 3308,
   "project_id": "7b0ab8a0-4ec9-4e20-9248-9bafbf95f444"
 }

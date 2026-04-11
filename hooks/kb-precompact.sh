@@ -40,7 +40,7 @@ fi
 export KB_EMBEDDING_URL="${KB_EMBEDDING_URL:-http://localhost:8080/embedding}"
 export KB_EMBEDDING_DIM=4096
 source "$(dirname "$0")/lib/claude-env.sh" 2>/dev/null || true
-export KB_LLM_URL="${KB_LLM_URL:-http://${LLM_HOST:-tardis}:${LLM_PORT:-9510}/completion}"
+export KB_LLM_URL="${KB_LLM_URL:-http://${LLM_HOST:-localhost}:${LLM_PORT:-8014}/completion}"
 
 KB_VENV="${KB_VENV:-$HOME/Projects/ai/kb/.venv/bin/python}"
 KB_SCRIPT="${KB_SCRIPT:-$HOME/Projects/ai/kb/kb.py}"
@@ -70,7 +70,7 @@ KB_SCRIPT = os.environ.get("KB_SCRIPT", os.environ.get("HOME") + "/Projects/ai/k
 def llm_complete(prompt: str, max_tokens: int = 2000) -> str | None:
     """Call local LLM for completion using chat API."""
     # Use chat completion endpoint for better format adherence
-    chat_url = LLM_URL.replace("/completion", "/v1/chat/completions")
+    chat_url = LLM_URL.replace("/v1/completions", "/v1/chat/completions").replace("/completion", "/v1/chat/completions")
     try:
         req = Request(
             chat_url,
