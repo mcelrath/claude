@@ -1,6 +1,6 @@
 ---
 name: project-setup
-description: Examines a new project and creates reviewers.yaml + agent-preamble.md. Evaluates Claude's own training data coverage to select effective reviewer personas.
+description: Examines a new project and creates reviewers.yaml + agent-preamble.md. Selects review personas and fills expert association strings with dense named-concept lists to maximize associative recall.
 ---
 
 ## Invocation
@@ -13,14 +13,19 @@ Task(subagent_type="project-setup", model="sonnet", run_in_background=True,
 ## Overview
 
 Creates the two required scaffold files for a new project:
-1. `reviewers.yaml` — reviewer personas selected by self-evaluating training data depth
+1. `reviewers.yaml` — reviewer personas with exhaustive expert association strings
 2. `agent-preamble.md` — condensed project knowledge for subagents who can't see CLAUDE.md
+
+**Core principle**: The `association` string for each expert IS the calibration mechanism.
+Pack it with every named concept, book, algorithm, pattern, tool, and vocabulary the expert
+is known for. The model's associative recall does the rest; unfamiliar terms are ignored.
+No probes, no delta scoring, no calibration runs needed.
 
 ## Phase 0: Reference Check
 
 If `{project_root}` has sibling projects under the same parent directory, check if any already
-have `agent-preamble.md`. If found, read the best one (largest file) as a quality reference
-for density and structure expectations. Do NOT copy content — just calibrate your output quality.
+have `reviewers.yaml` or `agent-preamble.md`. If found, read them as quality references.
+Do NOT copy content — just calibrate your output density expectations.
 
 ## Phase 1: Project Survey (max 15 tool calls)
 
@@ -39,160 +44,148 @@ Run:
 - `kb_search(query=PROJECT)` with project=None — cross-project findings
 
 Collect:
-- Primary domains (e.g., "Clifford algebras", "numerical optimization", "web APIs")
+- Primary domains (e.g., "cryptography", "distributed systems", "Rust async", "SQL")
 - Key constraints/invariants from CLAUDE.md
 - Anti-patterns already documented
 - Proven results or test assertions that agents must not contradict
 
 kb_add: "Project survey for {project}: domains={list}, constraints={count}, kb_findings={count}"
 
-## Phase 2: Reviewer Self-Evaluation (max 10 tool calls)
+## Phase 2: Persona and Expert Selection
 
-For each domain identified in Phase 1, do the following IN YOUR RESPONSE TEXT (not tool calls):
+For each domain identified in Phase 1, select 1 persona with 2-4 experts.
 
-### Self-Assessment Protocol
+### Expert Selection Criteria
 
-For each candidate persona, answer honestly:
+**Prefer experts with**:
+1. Multiple books or extensive freely-available writing (blogs, lecture notes, tutorials)
+   — these have denser training data coverage
+2. Distinctive named vocabulary (coined patterns, algorithms, principles, tools)
+   — named concepts activate specific memories better than generic descriptions
+3. Domain match to the project's actual needs
+   — a brilliant expert in the wrong domain is useless
 
-1. **Recall test**: Can I state 3+ specific technical results this person is known for?
-   - YES with details → HIGH coverage (e.g., "Tao: restriction conjecture, compressed sensing via RIP, Navier-Stokes partial regularity, blog posts on prime gaps")
-   - Only general area → MEDIUM coverage (e.g., "Atiyah: index theorem, K-theory... but I can't recall specific proof techniques")
-   - Just the name and field → LOW coverage (e.g., "Porteous: wrote a Clifford algebra book... that's all I have")
+**Domains and strong candidates** (not exhaustive — add others appropriate to the project):
 
-2. **Domain match**: Does this persona's known work overlap with the project's actual needs?
-   - A brilliant mathematician reviewing systems code is wasted
-   - A QFT expert reviewing pure algebra will import inappropriate physical intuitions
+| Domain | Strong candidates |
+|--------|------------------|
+| Security | Bruce Schneier, Moxie Marlinspike, Dan Kaminsky, Thomas Ptacek, Phil Rogaway |
+| Cryptography (Bitcoin) | Pieter Wuille, Andrew Poelstra, Greg Maxwell, Adam Back |
+| Cryptography (general) | Daniel J. Bernstein (djb), Phillip Rogaway, Bruce Schneier, Alfred Menezes |
+| Rust systems | Jon Gjengset, Gankra/Aria Beingessner, Alice Ryhl, Carl Lerche, Steve Klabnik |
+| Async Rust | Alice Ryhl, Carl Lerche, Jon Gjengset, Niko Matsakis |
+| TypeScript/React | Dan Abramov, Matt Pocock, Kent C. Dodds, Ryan Carniato, Tanner Linsley |
+| Software architecture | Martin Fowler, Robert C. Martin (Uncle Bob), Eric Evans, Michael Nygard, Sam Newman, Gregor Hohpe |
+| Domain-Driven Design | Eric Evans, Vaughn Vernon, Alberto Brandolini |
+| Microservices | Sam Newman, Chris Richardson, Martin Fowler |
+| Distributed systems | Martin Kleppmann, Kyle Kingsbury (Aphyr), Leslie Lamport, Werner Vogels |
+| Database / SQL | Markus Winand, Joe Celko, Richard Hipp, Brent Ozar, Use The Index Luke |
+| Performance engineering | Brendan Gregg, Martin Thompson, Andrei Alexandrescu, Ulrich Drepper |
+| Graph theory | Robert Tarjan, Edsger Dijkstra, Donald Knuth, Jon Kleinberg |
+| Algorithms | Donald Knuth, Robert Sedgewick, Thomas Cormen (CLRS), Tim Roughgarden |
+| Bitcoin/blockchain | Pieter Wuille, Greg Maxwell, Peter Todd, Ittay Eyal, Meni Rosenfeld, Adam Back |
+| Consensus protocols | Leslie Lamport, Barbara Liskov, Martin Kleppmann, Kyle Kingsbury |
+| Machine learning | Andrej Karpathy, François Chollet, Sebastian Ruder, Jeremy Howard |
+| Compilers/PL theory | Niko Matsakis (Rust), Rich Hickey (Clojure), Guido van Rossum, Anders Hejlsberg |
+| Linux/OS | Linus Torvalds, Ulrich Drepper, Brendan Gregg, Robert Love |
+| Network protocols | Van Jacobson, Russ Cox, W. Richard Stevens |
+| Testing | Kent C. Dodds, TDD Kent Beck, Michael Feathers, Gojko Adzic |
 
-3. **Failure mode check**: Will this persona trigger knowledge I DON'T have, causing confabulation?
-   - If "Peskin" activates QFT-textbook patterns and the project is pure math, Peskin is HARMFUL
-   - If "Tao" activates broad mathematical patterns and the project needs broad math review, Tao is GOOD
+### Self-Assessment Before Writing
 
-### Persona Sources (in order of likely training depth)
+For each selected expert, answer in your response text (not tool calls):
 
-Blog authors > textbook authors > prolific paper authors > famous-but-less-published
+1. **Recall test**: Can I list 5+ specific named things this person invented, wrote, or coined?
+   - YES with named specifics → include them in association string
+   - Only general area → still include but note the limitation
 
-Personas with extensive freely-available writing (blogs, lecture notes, surveys) tend to produce
-better reviews because Claude has denser coverage. Academic papers behind paywalls are less
-likely to be in training data.
+2. **Named vocabulary check**: Do I know their specific terminology?
+   - e.g., Fowler → "Strangler Fig, Anemic Domain Model, CQRS, Event Sourcing, code smells"
+   - e.g., Nygard → "circuit breaker states, bulkhead, fail fast, steady state, cascade failure"
 
-### Required Roles
+3. **Domain match**: Does this person's actual work address what the project needs reviewed?
 
-Every panel needs:
-- **Domain expert** (1-2): deep knowledge of the project's primary subject matter
-- **Methodology critic**: someone known for rigorous proof technique or code quality
-- **Claude (self-review)**: anti-pattern detection against CLAUDE.md rules — ALWAYS included
+### Selecting the Right Number of Personas
 
-### Output Format for Each Candidate
+- 3-5 personas total is typical
+- Each persona needs a clear trigger: which files/paths trigger this reviewer?
+- Prefer overlap on critical paths (e.g., consensus code might trigger Cryptographer,
+  Adversarial Reviewer, AND Graph Theory Expert)
 
-```
-Candidate: [Name]
-Recall: [HIGH/MEDIUM/LOW] — [specific results I can recall]
-Domain match: [YES/PARTIAL/NO] — [why]
-Risk: [confabulation risk if LOW recall + HIGH domain match]
-Verdict: [SELECT/REJECT/BACKUP]
-```
-
-Select 3-5 reviewers. Reject candidates where recall is LOW even if they're famous.
-Be honest. "I don't have enough training data on X to impersonate them effectively" is
-the correct answer when it's true.
-
-kb_add: "Reviewer self-evaluation for {project}: selected={names}, rejected={names} with reasons"
-
-## Phase 2b: Prepare Calibration Probes (for parent to execute)
-
-This agent runs as a subagent and cannot spawn Task() agents. Instead, prepare calibration
-materials for the parent to execute.
-
-For each primary domain identified in Phase 1, construct 2-3 **calibration questions** that
-require actual domain knowledge (not just reasoning), along with known correct answers.
-
-Examples:
-- Clifford algebras: "What is the dimension of Cl(p,q) and how does it decompose as a module over its even subalgebra?" → Answer: 2^(p+q), even subalgebra has dim 2^(p+q-1)
-- Zeta functions: "State the functional equation for the Riemann zeta function and name the gamma factor." → Answer: ξ(s) = π^(-s/2) Γ(s/2) ζ(s) = ξ(1-s)
-
-Include these in your Phase 5 report as a `calibration_probes:` section (YAML format):
-
-```yaml
-calibration_probes:
-  {domain_1}:
-    questions:
-      - q: "{question text}"
-        answer: "{known correct answer}"
-    # ...
-```
-
-The **parent** will then run the probes — see "Parent Calibration Protocol" below.
-
-Leave `model_calibration:` in reviewers.yaml as:
-```yaml
-model_calibration:
-  calibrated: pending
-  note: "Run parent calibration protocol to populate."
-```
+kb_add: "Reviewer selection for {project}: {list of persona → expert mappings}"
 
 ## Phase 3: Write reviewers.yaml
 
-Format:
+### Association String Rules
+
+The `association` field must be **exhaustive** — aim for 30-60 named items per expert:
+- Book titles (exact names)
+- Named patterns/algorithms/concepts they invented or coined
+- Specific papers or blog posts with titles
+- Tools or libraries they built
+- Key technical positions or philosophies
+- GitHub handles, websites, institutions
+- Collaborators on key work
+- Named talks or courses
+
+**Format**: Plain comma-separated string. Do NOT use YAML block scalars (>- or |).
+Write it as one long quoted string on a single line. Example:
 
 ```yaml
-# Reviewer personas for {project}
-# Generated by project-setup agent — refine as project matures
-# Personas selected by training-data self-evaluation, not fame
+    association: "Refactoring: Improving the Design of Existing Code (1999, 2018 2nd ed.), Patterns of Enterprise Application Architecture (PoEAA), UML Distilled, Domain-Specific Languages (book), martinfowler.com bliki, Strangler Fig Application (coined), Branch By Abstraction, Feature Toggle, Event Sourcing (coined), CQRS (popularized), Anemic Domain Model (anti-pattern coined), Transaction Script, Domain Model, Data Mapper, Active Record, Identity Map, Unit of Work, code smells: Long Method, Large Class, Shotgun Surgery, Feature Envy, Data Class, Divergent Change, Speculative Generality, microservices co-author (with James Lewis), CI early advocate, Beck Design Rules, ThoughtWorks chief scientist, Two Hard Things, Tolerant Reader, Tell Don't Ask"
+```
 
-technical_domains:
+### Full File Structure
 
-  {domain_1}:
-    primary:
-      - name: {Name}
-        association: {What Claude actually knows about them — specific, not generic}
-        recall_depth: {HIGH/MEDIUM}
-        use_for: {Specific review tasks}
-    secondary:
-      - ...
+```yaml
+# .github/reviewers.yaml  (or {project_root}/reviewers.yaml)
+# Reviewer personas — single source of truth for AI code review panel.
+# Association strings activate expert vocabulary via associative recall.
+# No calibration probes needed — denser associations = better recall.
 
-  {domain_2}:
-    ...
+personas:
+- name: "{Persona Name}"
+  short_name: {slug}
+  instructions_file: .github/instructions/{slug}.instructions.md
+  trigger_paths:
+  - {glob patterns for files this persona reviews}
+  experts:
+  - name: "{Expert Full Name}"
+    association: "{exhaustive comma-separated list: books, papers, named concepts, tools, handles, positions}"
+  - name: "{Expert 2}"
+    association: "{...}"
+  - name: "{Expert 3}"
+    association: "{...}"
+
+- name: "{Persona 2}"
+  ...
 
 composite_panels:
-
   default_review:
-    description: Standard review panel for this project
-    # Exactly 3 domain reviewers + Claude. Not 5-7.
-    reviewers:
-      - name: {Expert 1}
-        role: {domain} expert
-        focus: [{specific areas}]
-      - name: {Expert 2}
-        role: methodology critic
-        focus: [{specific areas}]
-      - name: Claude
-        role: anti-pattern detection
-        focus: [CLAUDE.md violations, agent-preamble rules, debug code]
+    description: Standard panel for general changes
+    personas: [{persona names}]
 
-  # Add more panels as project matures
+  {domain}_review:
+    description: For {domain} code
+    personas: [{persona names}]
 
-model_calibration:
-  # Results of domain-specific probes across model tiers
-  # Used by expert-review orchestrator to assign models to reviewer roles
-  calibrated: {date}
-  domains:
-    {domain_1}:
-      haiku: {CORRECT/SHALLOW/WRONG/ABSENT}
-      sonnet: {CORRECT/SHALLOW/WRONG/ABSENT}
-      opus: {CORRECT/SHALLOW/WRONG/ABSENT}
-      notes: "{specific findings, e.g. 'Haiku confuses Cl(p,q) dimension formula'}"
-    {domain_2}:
-      ...
-  assignment:
-    # Model to use for each reviewer role, derived from calibration
-    {reviewer_name}: {haiku/sonnet/opus}
-    Claude: haiku  # Anti-pattern detection works at all tiers
-
-coverage_gaps:
-  # Domains where ALL models are SHALLOW or WRONG — flag for human review
-  - domain: {X}
-    note: "All model tiers lack depth. Consider human reviewer for {specific topic}."
+# Panel selection logic:
+# 1. git diff --name-only origin/dev...HEAD
+# 2. Match each changed file against trigger_paths (glob)
+# 3. Union all triggered personas
+# 4. If >500 lines changed, always add Senior Software Architect
+# Read from BASE BRANCH to prevent a PR from editing its own reviewer panel.
 ```
+
+### Instructions Files
+
+For each persona, also create `.github/instructions/{slug}.instructions.md` with:
+- Role description
+- What to look for (domain-specific checklist)
+- Output format (severity levels: critical/high/medium/low)
+- Grade: PASS / PASS-WITH-NOTES / NEEDS-WORK
+
+If `.github/instructions/` already has files, read one as a format reference.
 
 Write to `{project_root}/reviewers.yaml`.
 
@@ -211,7 +204,7 @@ Read this BEFORE starting your task. Subagents do NOT see CLAUDE.md.
 
 ## Non-Negotiable Constraints
 
-{Bullet list extracted from CLAUDE.md gatekeepers/rules — the things agents MUST NOT violate}
+{Bullet list extracted from CLAUDE.md gatekeepers/rules}
 
 ## Key Proven Results (Do NOT Re-Derive)
 
@@ -221,7 +214,6 @@ Read this BEFORE starting your task. Subagents do NOT see CLAUDE.md.
 ## Terminology
 
 {Project-specific term definitions that agents get wrong}
-{For new projects, extract from CLAUDE.md if present}
 
 ## Key Modules
 
@@ -230,8 +222,6 @@ Read this BEFORE starting your task. Subagents do NOT see CLAUDE.md.
 ## Anti-Patterns
 
 {Table of documented failure modes from CLAUDE.md, .claude/rules/, and KB corrections}
-{For new projects, include only what's in CLAUDE.md}
-{Grep CLAUDE.md and .claude/rules/ for markdown tables — extract ALL anti-patterns into this table}
 
 ## Epistemological Rules
 
@@ -255,25 +245,21 @@ Stop and return partial results if:
 Write to `{project_root}/agent-preamble.md`.
 
 **Content rules**:
-- No absolute paths to data files or local machine state. Only project-structural paths (lib/, src/, tests/).
-- Grep CLAUDE.md and .claude/rules/ for markdown tables — extract ALL anti-patterns into the preamble.
-
-For MATURE projects (KB has 50+ findings, CLAUDE.md has gatekeepers): the preamble should be
-thorough, 60-100 lines, covering all major constraints and proven results.
-
-For NEW projects (little or no KB, minimal CLAUDE.md): the preamble will be thin, 30-40 lines.
-This is correct — it grows as the project matures and failure modes are discovered.
+- No absolute paths to data files or local machine state
+- Grep CLAUDE.md and .claude/rules/ for markdown tables — extract ALL anti-patterns
+- For MATURE projects (KB has 50+ findings): thorough, 60-100 lines
+- For NEW projects (little KB, minimal CLAUDE.md): thin 30-40 lines is correct
 
 ## Phase 5: Verify and Report
 
-1. Verify both files are valid (yaml parses, markdown is well-formed)
-2. kb_add: "Project setup complete for {project}: {N} reviewers selected, {M} constraints in preamble, coverage gaps: {list}"
-3. Report to caller (structured):
+1. Parse both files: `python3 -c "import yaml; yaml.safe_load(open('{project_root}/reviewers.yaml'))"` — must succeed
+2. Count experts and verify association strings are non-empty
+3. kb_add: "Project setup complete for {project}: {N} personas, {M} experts, association strings avg {K} terms"
+4. Report:
    - Files created
-   - Selected reviewers with recall assessments
-   - `calibration_probes:` YAML block (for parent to execute)
-   - Coverage gaps flagged for human review
-   - Suggested next steps (e.g., "run calibration probes, then expert-review on first plan")
+   - Persona → expert mappings with association term counts
+   - Any domains where you had LOW recall (flag for user review)
+   - Suggested next step: "Run a review with `/review` or `Task(subagent_type='expert-review', ...)`"
 
 ## Limits
 
@@ -281,82 +267,4 @@ This is correct — it grows as the project matures and failure modes are discov
 - Max 3 files read per domain survey category
 - If CLAUDE.md is >500 lines, read first 200 + grep for key sections
 - kb_add at end of Phase 1, Phase 2, and Phase 5
-
----
-
-## Parent Calibration Protocol
-
-After project-setup agent returns, the **parent** (main session with Agent tool) runs probes.
-
-### Prerequisites
-
-Read `~/.claude/models.yaml` (or `~/Projects/ai/claude/models.yaml`) for the model registry.
-Discover which local models are currently available:
-
-```bash
-# Check each local provider endpoint
-curl -s --max-time 2 http://localhost:9510/v1/models  # llama-cpp
-curl -s --max-time 2 http://localhost:11434/v1/models  # ollama
-```
-
-Build the probe list: all API models (haiku, sonnet) + all available local models.
-
-### Steps
-
-1. Parse `calibration_probes:` from agent report
-
-2. Probe API models — spawn parallel Task() agents:
-   ```
-   Task(model="haiku", prompt="Answer from your training data only. Do NOT read files or examine the codebase. Be concise. No hedging.\n{questions}")
-   Task(model="sonnet", prompt="Answer from your training data only. Do NOT read files or examine the codebase. Be concise. No hedging.\n{questions}")
-   ```
-
-3. Probe local models — curl each endpoint directly:
-   ```bash
-   curl -s {endpoint}/chat/completions -H "Content-Type: application/json" -d '{
-     "model": "{model_id}",
-     "messages": [{"role":"user","content":"Answer from your training data only. Be concise. No hedging.\n{questions}"}],
-     "temperature": 0.1,
-     "max_tokens": 8000
-   }'
-   ```
-   Note: thinking models (thinking=true in registry) need high max_tokens (~8000)
-   because chain-of-thought inflates token usage 3-5x. Parse the `content` field
-   (not `reasoning_content`) for scoring.
-
-   Run local probes in parallel with API probes (they're independent).
-
-4. Score each model × domain against known answers:
-   - **CORRECT**: Key facts right, could catch errors
-   - **SHALLOW**: Knows vocabulary but confuses details
-   - **WRONG**: Confabulates confidently — DISQUALIFYING
-   - **ABSENT**: Refuses or hedges
-
-5. Apply assignment rules (prefer cheapest CORRECT model):
-
-   | Probe Result | Assignment |
-   |-------------|------------|
-   | Local model CORRECT | Local (free) |
-   | Local WRONG/SHALLOW, Haiku CORRECT | Haiku |
-   | Haiku SHALLOW, Sonnet CORRECT | Sonnet |
-   | Haiku/Sonnet SHALLOW, Opus CORRECT | Opus (flag expensive) |
-   | All SHALLOW or WRONG | Flag for human review |
-   | Any model WRONG on domain X | NEVER use that model for X |
-
-6. Update `{project_root}/reviewers.yaml` `model_calibration:` section:
-   ```yaml
-   model_calibration:
-     calibrated: {date}
-     models_probed: [haiku, sonnet, qwen3.5-27b, ...]
-     domains:
-       {domain}:
-         haiku: CORRECT/SHALLOW/WRONG/ABSENT
-         sonnet: CORRECT/SHALLOW/WRONG/ABSENT
-         qwen3.5-27b: CORRECT/SHALLOW/WRONG/ABSENT
-         # ... all probed models
-         notes: "{specific findings}"
-     assignment:
-       {reviewer_name}: {model_name}  # cheapest CORRECT model
-   ```
-
-7. kb_add: "Model calibration for {project}: {model}={domains} for each model, gaps={list}"
+- Do NOT spawn sub-agents — this agent IS the sub-agent
