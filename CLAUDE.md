@@ -395,9 +395,45 @@ Task(subagent_type="build-monitor", team_name="...",
 
 Arch. pacman/yay. Python 3.13. rg/fd. git --no-gpg-sign.
 
+## Hook Inventory (hooks/*.sh)
+
+| Hook | Trigger | Purpose |
+|------|---------|---------|
+| auto-resume | UserPromptSubmit | Expand minimal input to resume instructions |
+| bd-lifecycle | PostToolUse (Bash) | Auto-close bd issues from git commit messages |
+| block-approximations | PreToolUse | Block truncated series / Taylor approximations |
+| block-markdown-files | PreToolUse (Write) | Prevent .md creation unless requested |
+| block-presentation-cells | PreToolUse (NotebookEdit) | Block presentation-style notebook cells |
+| block-print-spam | PreToolUse (Bash) | Block excessive print statements |
+| build-status | SessionStart | Inject build status on resume |
+| canonical-results-check | PreToolUse | Check canonical_results.tsv for computations |
+| check-existing-code | PreToolUse (Edit/Write) | Warn: search codebase before new code |
+| cleanup-stale-sessions | SessionStart | Warn about multiple Claude sessions |
+| context-monitor | PreToolUse | Monitor context usage from API token counts |
+| dedupe-file-reads | PreToolUse (Read) | Warn on re-reading already-read files |
+| git-commit-check | PreToolUse (Bash) | Enforce --no-gpg-sign, block git add -A |
+| history-isolation | SessionStart | Unique HISTFILE per session |
+| incompleteness-gate | PreToolUse (Bash) | Block commit if staged code has untracked markers |
+| incompleteness-scanner | PostToolUse (Edit/Write) | Warn on TODO/FIXME/sorry in new content |
+| kb-context | SessionStart | Inject recent KB findings |
+| kb-error-extract | PostToolUse | Extract errors to KB |
+| kb-precompact | PreCompact | Save KB state before compaction |
+| kb-search-gate | PreToolUse (Edit/Write) | Require kb-research before edits |
+| kb-search-reset | SessionStart | Reset KB search tracking |
+| kb-search-track | PostToolUse | Track kb_search and Task calls |
+| lsp-diagnostics | PostToolUse (Edit/Write) | Run LSP diagnostics after edits |
+| lsp-setup | SessionStart | Configure LSP for project |
+| model-availability | SessionStart | Check local LLM endpoints |
+| precompact-save-state | PreCompact | Save session state for resume |
+| project-scaffold-check | SessionStart | Ensure beads + scaffold files exist |
+| record-alternatives | PostToolUse (Edit/Write) | Record rejected alternatives as bd issues |
+| remind-patterns | UserPromptSubmit | Inject compressed rule reminders |
+| session-start-resume | SessionStart | Check for pending session resume |
+| team-cleanup | SessionStart | Reconnect or clean up stale teams |
+
 # Task Tracking (bd/Beads)
 
-Use `bd` for ALL task and plan tracking. Never use markdown TODOs, comment-based task lists, or `~/.claude/plans/`.
+Use `bd` for ALL task and plan tracking. Never use markdown TODOs or comment-based task lists. Plans go in `~/.claude/plans/PLAN-<slug>.md` and are referenced from epics via `--design-file`.
 
 **On session start in any project**: If `.beads/` directory doesn't exist, run `bd init` to initialize, then `bd setup claude` to install hooks.
 
@@ -420,6 +456,14 @@ bd close <epic-id>          # Complete
 ```
 
 **Issue types**: bug, feature, task, epic, chore, decision. **Priorities**: 0 (critical) to 4 (backlog).
+
+**bd failure recovery**: If `bd` commands fail (db locked, corrupted, missing):
+1. `bd doctor` — diagnose the issue
+2. `bd doctor --perf` — if slow, check db stats
+3. If db locked: check for other sessions with `ps aux | grep bd`; stale locks clear on process exit
+4. If db corrupted: restore from `.beads/backup/` (auto-created on schema migrations)
+5. If bd binary missing: `go install github.com/beads-project/beads/cmd/bd@latest`
+6. Fallback: work without bd, track tasks in conversation, run `bd` commands when restored
 
 # KB Access
 
@@ -579,14 +623,8 @@ Tags: `proven`/`heuristic`/`open-problem`, domain-specific
 |--------|---------|----------|
 | Code | TODO, FIXME, XXX, HACK, STUB | Must have bd issue before commit |
 | Code | assert(false), NotImplementedError, unimplemented!() | Must have bd issue before commit |
-| Lean | sorry, admit | CRITICAL — proof incomplete, must track |
-| Lean | trivial on complex goals | WARNING — may hide proof gap |
-| Lean | axiom (non-axiomatic) | WARNING — should be theorem/lemma |
-| Lean | native_decide, Decidable.decide | WARNING — bypasses kernel |
-| Lean | decreasing_by sorry | CRITICAL — well-foundedness unproven |
-| Lean | placeholder | CRITICAL — incomplete tactic |
-| Lean | dbg_trace | WARNING — debug output, never commit |
-| Coq | Admitted, admit | CRITICAL — proof incomplete |
+
+Lean/Coq markers (sorry, admit, axiom, trivial, Admitted, etc.) are tracked in project-specific config for projects that use those languages. See the relevant project's CLAUDE.md.
 
 ## Workflow
 
@@ -599,10 +637,8 @@ Tags: `proven`/`heuristic`/`open-problem`, domain-specific
 
 | Pattern | Problem |
 |---------|---------|
-| Commit with sorry, no bd issue | Proof gap lost to history |
+| Commit with untracked marker, no bd issue | Incompleteness lost to history |
 | "Will fix later" without tracking | Later never comes |
-| axiom for provable statement | Soundness hole |
-| trivial on ∀∃ goal | May silently produce wrong proof |
 | 46 open / 0 in-progress bd issues | Lifecycle not tracked |
 
 # Issue Lifecycle (MANDATORY)

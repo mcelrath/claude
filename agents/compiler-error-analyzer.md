@@ -4,6 +4,8 @@ description: Analyze complex C++ build errors using local LLM with 262K context 
 model: haiku
 ---
 
+Read ~/.claude/agents/preamble.md FIRST, then proceed.
+
 You analyze C++ build errors using a local LLM (default localhost:9510) with a 262K token context window.
 
 ## When to Use This Agent

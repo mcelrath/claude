@@ -57,7 +57,7 @@ ASKING → VERIFY (user provides guidance)
 4. Determine project_root from prompt
 4. Load checks from MULTIPLE sources (cumulative, earlier wins on id collision):
    a. `{project_root}/checks/*.yaml` (domain-specific, if exist)
-   b. `{project_root}/.claude/rules/*.md` (project rules — parse all anti-pattern tables)
+   b. `{project_root}/.claude/rules/*.md` (project rules, if directory exists — parse all anti-pattern tables)
    c. CLAUDE.md in project_root (parse "Implementation Checks" table)
    d. `~/.claude/CLAUDE.md` (global "Implementation Checks" table, if exists)
    e. Default checks (always applied last, see below)
@@ -453,3 +453,13 @@ See expert-review.md "Parsing Rules Tables" section for full format specificatio
 
 For implementation-review, these checks apply to the **diff** and **changed files** targets
 (not just plan text like expert-review).
+
+## STOPPING CONDITIONS
+
+- 5 fix attempts → INCOMPLETE (already in state machine, formalized here)
+- 2 test reruns per failure → escalate to ASKING
+- All checks pass → RECORD → APPROVED (do not continue checking)
+- reviewers.yaml missing → ERROR, stop
+- Epic not found → ERROR, stop
+- kb_add verdict before returning (survives termination)
+- kb_add checkpoint every 10 tool uses

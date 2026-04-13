@@ -32,7 +32,7 @@ Task(subagent_type="expert-review", model="haiku", run_in_background=True,
 3. Read `{project_root}/reviewers.yaml` → load `composite_panels.default_review`.
 4. Read `{project_root}/agent-preamble.md` (if exists) for project constraints.
 5. Read `{project_root}/CLAUDE.md` (first 200 lines) for gatekeepers.
-6. Collect anti-pattern triggers from `{project_root}/.claude/rules/*.md`.
+6. Collect anti-pattern triggers from `{project_root}/.claude/rules/*.md` (if directory exists).
 7. Read `~/Projects/ai/claude/models.yaml` for local model endpoints.
 
 ### LIGHT MODE (no team, sequential)
@@ -85,6 +85,7 @@ For each reviewer in the panel (typically 3 structural + 3 domain experts):
         prompt="""You are {reviewer_name}, reviewing a plan for {project}.
    YOUR ROLE: {role}
    YOUR FOCUS: {focus_areas}
+   TECHNICAL TERMS TO WATCH FOR: {activation_terms extracted from plan: function names, types, macros, algorithms}
 
    PROJECT CONTEXT:
    {agent_preamble_content}
@@ -146,6 +147,21 @@ For each reviewer in the panel (typically 3 structural + 3 domain experts):
 
 With molecule: close synthesize step, then squash (APPROVED) or burn (REJECTED/INCOMPLETE).
 Post verdict as comment on the epic: `bd comments add <epic> "<VERDICT>: <one-line summary>"`
+
+### FULL MODE: Phase 3a — Re-Review (blocker iteration)
+
+If synthesis found DESIGN-BLOCKING issues and `iteration < 3`:
+
+17. For each unresolved DESIGN-BLOCKING issue, create a focused reviewer prompt:
+    - Target only the specific blocker, not the full plan
+    - Ask: "The original review found this blocking issue: {issue}. The plan author could address it by: {proposed_fix}. Review whether this fix resolves the blocker."
+18. Re-dispatch targeted reviewers (same model assignment rules as Phase 2).
+19. Collect responses. If blocker is resolved, reclassify as IMPLEMENTATION-NOTE.
+20. Re-synthesize with updated findings. Return to step 15.
+
+If `iteration >= 3`: REJECTED with remaining unresolved blockers listed.
+
+With molecule: each re-review iteration creates new step children under the synthesize step.
 
 ### Phase 4 — Return Verdict (both modes)
 

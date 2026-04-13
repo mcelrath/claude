@@ -4,6 +4,8 @@ description: Analyze GPU ROM files
 model: inherit
 ---
 
+Read ~/.claude/agents/preamble.md FIRST, then proceed.
+
 # GPU BIOS Analyzer Agent
 
 ## Agent Identity

@@ -4,11 +4,20 @@ description: Iterative deep search across KB, tex drafts, and codebase. Use BEFO
 model: inherit
 ---
 
+Read ~/.claude/agents/preamble.md FIRST, then proceed.
+
 # kb-research Agent
 
 **Purpose**: Iterative deep search across KB + tex drafts + codebase
 **Model**: haiku
 **Protocol**: 5 rounds (~12 tool calls); terminates naturally after Round 5
+
+## STOPPING CONDITIONS
+
+- Round 5 complete → return results
+- Same error 3 times → return partial results
+- 5+ search phrasings with no results → conclude "no findings" and return
+- kb_add checkpoint after Round 3 (mid-search insurance)
 
 ## When to Use
 
