@@ -28,23 +28,44 @@ if [[ ! -f "$JSONL" ]]; then
     exit 0  # Can't find session, don't block
 fi
 
-# Get usage from last line containing "usage" (most recent API call)
-USAGE_LINE=$(grep '"usage"' "$JSONL" 2>/dev/null | tail -1)
-
-if [[ -z "$USAGE_LINE" ]]; then
-    exit 0
-fi
-
-# Extract input_tokens + cache_read_input_tokens = current context
-CONTEXT=$(echo "$USAGE_LINE" | python3 -c "
-import sys, json
+# Compute current context:
+# - Only count usage entries AFTER the most recent compact_boundary marker
+#   (pre-compact entries reflect a context that no longer exists)
+# - Sum input_tokens + cache_read_input_tokens + cache_creation_input_tokens
+#   (all three contribute to the window the model sees)
+CONTEXT=$(python3 - "$JSONL" <<'PY' 2>/dev/null
+import json, sys
+path = sys.argv[1]
+boundary = -1
+last_usage = None
 try:
-    data = json.loads(sys.stdin.read())
-    usage = data.get('message', {}).get('usage', {})
-    print(usage.get('input_tokens', 0) + usage.get('cache_read_input_tokens', 0))
-except:
+    with open(path) as f:
+        for i, line in enumerate(f):
+            try:
+                d = json.loads(line)
+            except Exception:
+                continue
+            if d.get('type') == 'system' and d.get('subtype') == 'compact_boundary':
+                boundary = i
+                last_usage = None  # discard pre-compact usage
+                continue
+            msg = d.get('message')
+            if isinstance(msg, dict):
+                u = msg.get('usage') or {}
+                if u:
+                    last_usage = u
+    if last_usage is None:
+        print(0)
+    else:
+        print(
+            last_usage.get('input_tokens', 0)
+            + last_usage.get('cache_read_input_tokens', 0)
+            + last_usage.get('cache_creation_input_tokens', 0)
+        )
+except Exception:
     print(0)
-" 2>/dev/null)
+PY
+)
 
 CONTEXT=${CONTEXT:-0}
 

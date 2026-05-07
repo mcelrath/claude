@@ -40,6 +40,15 @@ If you are working in a git worktree (check: `git rev-parse --show-toplevel` dif
 
 If you are NOT in a worktree (normal working directory), your edits land directly in the main tree. No commit needed unless the lead instructs you to commit.
 
+## Scope
+
+When you finish editing, run `git diff --stat` and include the summary in your return
+message — which files, how many lines, brief description. The parent uses this to verify
+the diff matches the task.
+
+If a build failure or hidden dependency pushes you beyond the files named in the task,
+stop and report — don't edit a different file to work around it.
+
 ## Stopping Conditions
 
 Stop and return partial results if:

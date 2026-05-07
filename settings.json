@@ -45,6 +45,11 @@
             "command": "$HOME/.claude/hooks/kb-search-track.sh",
             "timeout": 2000,
             "type": "command"
+          },
+          {
+            "command": "$HOME/.claude/hooks/agent-report-checklist.sh",
+            "timeout": 3000,
+            "type": "command"
           }
         ],
         "matcher": "Task"
@@ -118,6 +123,16 @@
       {
         "hooks": [
           {
+            "command": "$HOME/.claude/hooks/prior-art-gate.sh",
+            "timeout": 2000,
+            "type": "command"
+          }
+        ],
+        "matcher": "Task"
+      },
+      {
+        "hooks": [
+          {
             "command": "$HOME/.claude/hooks/block-print-spam.sh",
             "timeout": 5000,
             "type": "command"
@@ -131,6 +146,11 @@
             "command": "$HOME/.claude/hooks/incompleteness-gate.sh",
             "timeout": 5000,
             "type": "command"
+          },
+          {
+            "command": "$HOME/.claude/hooks/weak-claim-gate.sh",
+            "timeout": 3000,
+            "type": "command"
           }
         ],
         "matcher": "Bash"
@@ -141,9 +161,24 @@
             "command": "$HOME/.claude/hooks/dedupe-file-reads.sh",
             "timeout": 1000,
             "type": "command"
+          },
+          {
+            "command": "$HOME/.claude/hooks/quarantine-paths.sh",
+            "timeout": 1000,
+            "type": "command"
           }
         ],
         "matcher": "Read"
+      },
+      {
+        "hooks": [
+          {
+            "command": "$HOME/.claude/hooks/quarantine-paths.sh",
+            "timeout": 1000,
+            "type": "command"
+          }
+        ],
+        "matcher": "Grep|Glob"
       },
       {
         "hooks": [
@@ -154,6 +189,21 @@
           },
           {
             "command": "$HOME/.claude/hooks/block-approximations.sh",
+            "timeout": 3000,
+            "type": "command"
+          },
+          {
+            "command": "$HOME/.claude/hooks/annotate-traces.sh",
+            "timeout": 2000,
+            "type": "command"
+          },
+          {
+            "command": "$HOME/.claude/hooks/block-scratch-imports.sh",
+            "timeout": 2000,
+            "type": "command"
+          },
+          {
+            "command": "$HOME/.claude/hooks/weak-claim-gate.sh",
             "timeout": 3000,
             "type": "command"
           }
@@ -258,7 +308,6 @@
       }
     ]
   },
-  "model": "sonnet",
   "permissions": {
     "allow": [
       "Skill",
@@ -598,5 +647,6 @@
     "padding": 0,
     "type": "command"
   },
+  "teammateMode": "auto",
   "terminalProgressBarEnabled": false
 }

@@ -5,6 +5,9 @@
     },
     "allow_remote_control": {
       "allowed": false
+    },
+    "enforce_web_search_mcp_isolation": {
+      "allowed": false
     }
   }
 }

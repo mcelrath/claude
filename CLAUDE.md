@@ -70,6 +70,8 @@ Use an agent team when 2+ phases are independent and touch different code sectio
 - Include `kb_add before returning` in every agent prompt
 - Structured JSON output with schema
 - Model defaults: Haiku for lookups, Sonnet for implementation, Opus lead only (max 1/batch)
+- **VERIFY AGENT WORK (MANDATORY)**: when an agent writes or modifies a script, proof, or production code, the dispatching Claude process MUST Read the artifact and verify it implements what was requested BEFORE accepting the result. Agent summaries describe intent, not what landed. Read scripts before reporting their findings; read Lean proofs before claiming sorrys are discharged; read tests before claiming they pass. Negative results from agents in particular must be re-checked against the prompt — a "negative" often means the agent computed the wrong object.
+- **AGENTS MUST READ, NOT GREP (MANDATORY)**: when dispatching audit/inventory tasks (sorry counts, theorem inventories, file-content claims), the prompt MUST instruct the agent to **Read each required file in full** rather than `grep` for keywords. `grep sorry` matches comments, docstrings, and TODO notes — not actual proof obligations. Same for `grep axiom`, `grep TODO`, etc. The Lean attribute that matters is the proof body of `theorem`/`lemma` declarations, which only Read can disambiguate. Apply this whenever an agent's output is a count or list extracted from source files.
 
 **Agent preamble**: `"CRITICAL: the naive implementation would be X — do NOT do that. Required: Y."` (agents have no conversation history)
 
