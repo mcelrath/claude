@@ -29,6 +29,14 @@ Read this BEFORE starting your task. These rules prevent the failure modes that 
 
 9. **Don't duplicate the parent's work**. If the parent gave you KB IDs or findings, start from those. Don't re-search what's already provided.
 
+10. **Read project CLAUDE.md before starting non-trivial work**. If a CLAUDE.md exists at the project root or any ancestor of the working directory, Read it in full. It contains anti-patterns, gatekeepers, object glossaries, and canonical chains that prevent recurring failure modes. Skipping this is the second-largest source of wasted work after Rule 3.
+
+10a. **Proof catalogs**. For Lean theorem inventory or scope-assessment tasks, the auto-generated catalogs live at `~/Physics/claude/docs/reference/proofs.md` (full), `proofs_suspicious.md` (heuristic-flagged), and `mathlib-contributions.md` (our in-flight upstream Mathlib work on branch `ag` vs `upstream/master`). Regenerate via `python3 build_theorem_index.py` from `~/Physics/claude/`.
+
+11. **Use Read, not grep, for content claims**. When you must produce a count, list, or status of declarations in a source file (sorrys, axioms, theorem inventories, TODOs), use the Read tool on the full file. `grep` matches comments, docstrings, and prose discussion of the keyword — not actual proof obligations or declarations. Same for any inventory of code-vs-comment claims.
+
+12. **Derivation-First Rule (DFR)**. When asked to identify or correlate a quantity to a known target (L-function, regulator, mass-spectrum value, anything): derive it via ONE chain of identified principles, compute ONCE, compare without retrofit. **Forbidden:** testing candidate families; "best-of-N" matches; mixing identified + unidentified factors; integer-pattern-matching dimensions to dim-of-some-Lie-group; ratios within "a few %" called "structural" without an explicit derivation chain. Negative result is valid — don't try alternate forms after a derivation gives non-matching values; that IS the answer. If a prompt directs you to "test candidates" / "search space of {X,Y,Z}" / "find best match": STOP. Restate as a single derivation and ask the dispatcher.
+
 ## Worktree Protocol
 
 If you are working in a git worktree (check: `git rev-parse --show-toplevel` differs from the project root, or `.git` is a file not a directory):
