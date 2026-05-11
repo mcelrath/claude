@@ -40,16 +40,21 @@ Task(subagent_type="expert-review", model="haiku", run_in_background=True,
 8. For each reviewer in the panel, sequentially adopt their persona and review.
 9. Synthesize and return verdict JSON. Skip to Phase 4.
 
-### FULL MODE: Phase 1 — Ephemeral Teams (ALWAYS)
+### FULL MODE: Phase 1 — Ephemeral Teams + Pre-Extraction (ALWAYS)
 
 **Reviews are ALWAYS non-persistent.** Do NOT use `bd mol wisp mol-expert-review` — it spawns 6+ wisp-* bd tasks that never auto-close and pollute `bd ready` / `bd list` (50+ accumulated in one project by 2026-05-11).
 
-8a. Dispatch teammates directly via parallel `Task(subagent_type=...)` calls. No bd molecule. Results exist only in teammate inline output + `kb_add` if findings are durable.
-8b. If you were spawned via `bd mol wisp` despite the rule above (legacy invocation), self-close your own wisp task at exit: `bd close <self-id> --reason="review complete: <verdict>"`. Also close any sibling wisp-* tasks under the same wisp root before returning.
+**Default panel size: 3 reviewers** (Advocate, Challenger, Computational adversary). Reserve the 6-reviewer panel (+ 3 domain experts) ONLY for architectural decisions, irreversible commitments, or plans touching 10+ files. Most plans get 3.
+
+8a. **Pre-extraction (lead does once, before dispatch):** Read every file the reviewers will need — plan/design file, the 3-5 supporting source files cited, relevant CLAUDE.md sections, anti-pattern rules. For each reviewer role, extract the focused excerpts (50-200 lines each) they need with explicit file:line citations. Bundle as inline content in the teammate prompt. This replaces 6 teammates × full file reads (~30-50K tokens each) with 1 lead read pass + ~3-10K excerpt bundles per teammate. Expected ~70% token reduction.
+
+8b. Dispatch teammates directly via parallel `Task(subagent_type=...)` calls. Each teammate's prompt MUST include: "Excerpts below are pre-extracted by the lead. DO NOT Read source files unless your verdict hinges on a claim the excerpts cannot resolve — and then state which file:line you need and stop." No bd molecule. Results exist only in teammate inline output + `kb_add` if findings are durable.
+
+8c. If you were spawned via `bd mol wisp` despite the rule above (legacy invocation), self-close your own wisp task at exit: `bd close <self-id> --reason="review complete: <verdict>"`. Also close any sibling wisp-* tasks under the same wisp root before returning.
 
 ### FULL MODE: Phase 2 — Dispatch Parallel Reviewers
 
-For each reviewer in the panel (typically 3 structural + 3 domain experts):
+For each reviewer in the panel (default 3: Advocate, Challenger, Computational adversary; up to 6 for architectural reviews):
 
 9. Check `model_calibration.assignment` for the reviewer's assigned model.
 10. **API model** (haiku/sonnet/opus): Spawn a teammate:
@@ -70,14 +75,19 @@ For each reviewer in the panel (typically 3 structural + 3 domain experts):
    ANTI-PATTERN TRIGGERS:
    {rules_content}
 
-   {molecule_instruction}
+   PRE-EXTRACTED EXCERPTS (lead pulled these for you; cite file:line from them):
+   {role_specific_excerpts}
 
    Review the plan. Return JSON:
    {"reviewer": "{name}", "recommendation": "approve|reject|revise",
     "findings": ["..."], "blocking_issues": ["..."]}
 
-   STOPPING CONDITIONS: kb_add your review. Max 15 tool calls.
-   If you need to read code to verify feasibility, do so.""")
+   STOPPING CONDITIONS:
+   - Use the pre-extracted excerpts; DO NOT Read source files unless your verdict
+     hinges on a claim the excerpts cannot resolve. If you must, state which
+     file:line you need and stop after that single Read.
+   - Max 8 tool calls total (was 15; tightened because excerpts are pre-bundled).
+   - kb_add your review only if findings are durable/cross-session.""")
    ```
     Where `{molecule_instruction}` is either:
     - With molecule: `"Also write your review to bd issue notes: bd update <step-id> --append-notes '<your-json>'"`

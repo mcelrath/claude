@@ -34,7 +34,7 @@ Use an agent team when 2+ phases are independent and touch different code sectio
 | Tier | When | Invocation |
 |------|------|------------|
 | **Full** | Plans/epics, architectural decisions | `Task(subagent_type="expert-review", prompt="FULL REVIEW: epic=<id> plan=<path> project_root=<path>")` |
-| **Light** | Issue triage, priority changes, closing issues | `Task(subagent_type="expert-review", model="haiku", prompt="LIGHT REVIEW: epic=<id> project_root=<path>")` |
+| **Light** | Issue triage, priority changes, closing issues | `Task(subagent_type="expert-review", model="sonnet", prompt="LIGHT REVIEW: epic=<id> project_root=<path>")` |
 | **None** | Creating issues, recording KB, reading/searching | Just do it |
 
 **Reviews are ALWAYS non-persistent.** Use `Task(subagent_type="expert-review", ...)` directly — NEVER `bd mol wisp mol-expert-review` (creates 6+ wisp-* tasks per review that never auto-close and pollute `bd ready` / `bd list`). Review verdicts return inline to the dispatching session; persistence is unwanted. Applies to all review types: full, light, implementation-review.
