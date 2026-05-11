@@ -409,25 +409,23 @@ Reason: {specific error message}
 
 ### Invocation
 
-Use the molecule formula for structured multi-reviewer review:
-```
-bd mol wisp mol-implementation-review --var epic=<epic-id> --var project_root=<path>
-```
+**Reviews are ALWAYS non-persistent.** Invoke directly via `Task(subagent_type="implementation-review", ...)`. Do NOT use `bd mol wisp mol-implementation-review` — it creates wisp-* bd tasks that never auto-close and pollute the work queue.
 
-Or invoke directly as a single agent for lighter-weight review:
 ```python
 Task(subagent_type="implementation-review", run_in_background=True,
      prompt="Review: epic=<epic-id> project_root=<path>")
 ```
+
+If you were spawned via `bd mol wisp` (legacy invocation), self-close your wisp task on exit: `bd close <self-id> --reason="review complete: <verdict>"`.
 
 ### Chaining with expert-review
 
 Typical workflow:
 1. User requests feature
 2. Write plan file, create epic with `--design-file`
-3. `bd mol wisp mol-expert-review` checks plan → APPROVED
+3. `Task(subagent_type="expert-review", ...)` checks plan → APPROVED
 4. Implement plan (claim tasks, write code)
-5. `bd mol wisp mol-implementation-review` checks implementation → APPROVED
+5. `Task(subagent_type="implementation-review", ...)` checks implementation → APPROVED
 6. `bd close <epic-id> <task-ids...>`, git commit, return control to user
 
 ## Parsing CLAUDE.md Tables

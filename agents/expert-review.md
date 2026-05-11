@@ -40,38 +40,12 @@ Task(subagent_type="expert-review", model="haiku", run_in_background=True,
 8. For each reviewer in the panel, sequentially adopt their persona and review.
 9. Synthesize and return verdict JSON. Skip to Phase 4.
 
-### FULL MODE: Phase 1 — Molecule or Teams
+### FULL MODE: Phase 1 — Ephemeral Teams (ALWAYS)
 
-Check if beads molecule formula is available:
-```bash
-bd formula list --json 2>/dev/null | grep -q mol-expert-review
-```
+**Reviews are ALWAYS non-persistent.** Do NOT use `bd mol wisp mol-expert-review` — it spawns 6+ wisp-* bd tasks that never auto-close and pollute `bd ready` / `bd list` (50+ accumulated in one project by 2026-05-11).
 
-**If formula available** (persistent tracking):
-8a. Wisp the molecule:
-    ```bash
-    bd mol wisp mol-expert-review \
-      --var epic=<epic-id> \
-      --var plan="<design-text-or-path>" \
-      --var project_root=<path> \
-      --var previous_panel=""
-    ```
-    Save the wisp root ID. Each step becomes a bd issue with its own notes field.
-8b. Close the `select-panel` step after panel selection:
-    `bd close <select-panel-step-id>`
-8c. For each reviewer step now unblocked (`bd mol ready <wisp-id>`),
-    dispatch a teammate whose prompt includes:
-    "Write your review to the bd issue notes: `bd update <step-id> --append-notes '<review-json>'`"
-8d. As teammates complete, close their steps: `bd close <step-id>`
-8e. When all 6 reviewer steps are closed, the `synthesize` step unblocks.
-    Lead reads all step notes and synthesizes (see Phase 3).
-8f. Close the synthesize step. Then:
-    - APPROVED: `bd mol squash <wisp-id> --summary "<verdict>"` (creates searchable digest)
-    - REJECTED/INCOMPLETE: `bd mol burn <wisp-id>` (discard ephemeral review)
-
-**If formula NOT available** (ephemeral teams):
-8a. Skip molecule creation. Dispatch teammates directly (see below).
-    Results exist only in teammate output + kb_add.
+8a. Dispatch teammates directly via parallel `Task(subagent_type=...)` calls. No bd molecule. Results exist only in teammate inline output + `kb_add` if findings are durable.
+8b. If you were spawned via `bd mol wisp` despite the rule above (legacy invocation), self-close your own wisp task at exit: `bd close <self-id> --reason="review complete: <verdict>"`. Also close any sibling wisp-* tasks under the same wisp root before returning.
 
 ### FULL MODE: Phase 2 — Dispatch Parallel Reviewers
 

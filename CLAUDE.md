@@ -11,11 +11,11 @@ All plans live in `~/.claude/plans/PLAN-<slug>.md` files AND are referenced from
 ```
 1. Plan:    Write plan file: ~/.claude/plans/PLAN-<slug>.md
 2. Epic:    bd create --type=epic --title="Plan: X" --design-file=~/.claude/plans/PLAN-<slug>.md
-3. Review:  bd mol wisp mol-expert-review --var epic=<id> --var plan=<path> --var project_root=<path>
+3. Review:  Task(subagent_type="expert-review", prompt="FULL REVIEW: epic=<id> plan=<path> project_root=<path>")  -- non-persistent
 4. Verdict: APPROVED → proceed; REJECTED → revise plan, re-run review
 5. Claim:   bd update <epic-id> --status=in_progress
 6. Work:    bd create --type=task --parent=<epic-id> --title="Phase N: ..."; bd update <task-id> --claim
-7. Verify:  bd mol wisp mol-implementation-review --var epic=<epic-id> --var project_root=<path>
+7. Verify:  Task(subagent_type="implementation-review", prompt="epic=<epic-id> project_root=<path>")  -- non-persistent
 8. Close:   bd close <epic-id> <task-ids...>
 9. Commit:  git add <files> && git commit --no-gpg-sign
 ```
@@ -33,13 +33,15 @@ Use an agent team when 2+ phases are independent and touch different code sectio
 
 | Tier | When | Invocation |
 |------|------|------------|
-| **Full** | Plans/epics, architectural decisions | `bd mol wisp mol-expert-review --var epic=<id> --var plan=<path> --var project_root=<path>` |
+| **Full** | Plans/epics, architectural decisions | `Task(subagent_type="expert-review", prompt="FULL REVIEW: epic=<id> plan=<path> project_root=<path>")` |
 | **Light** | Issue triage, priority changes, closing issues | `Task(subagent_type="expert-review", model="haiku", prompt="LIGHT REVIEW: epic=<id> project_root=<path>")` |
 | **None** | Creating issues, recording KB, reading/searching | Just do it |
 
+**Reviews are ALWAYS non-persistent.** Use `Task(subagent_type="expert-review", ...)` directly — NEVER `bd mol wisp mol-expert-review` (creates 6+ wisp-* tasks per review that never auto-close and pollute `bd ready` / `bd list`). Review verdicts return inline to the dispatching session; persistence is unwanted. Applies to all review types: full, light, implementation-review.
+
 **Escalation chain** (bounded depth): Depth 0: propose. Depth 1: light review. Depth 2: full review. Depth 3: STOP, escalate to user.
 
-**Do NOT use**: ExitPlanMode, EnterPlanMode, `.approved` marker files, `Mode: PLANNING/IMPLEMENTATION`.
+**Do NOT use**: ExitPlanMode, EnterPlanMode, `.approved` marker files, `Mode: PLANNING/IMPLEMENTATION`, `bd mol wisp mol-expert-review`, `bd mol wisp mol-implementation-review`.
 
 ## Session Management
 
@@ -149,6 +151,8 @@ NEVER: "What would you like...", "Would you like me to...", "Should I..."
 | `Task(..., max_turns=N, ...)` | Use STOPPING CONDITIONS instead. |
 | Dispatching agents to implement from long conversation | State key constraint first: "naive impl = X, DO NOT do that." |
 | Hook blocks tool call, then rephrasing/splitting | Hook blocks are FINAL. STOP. |
+| Blending two contradictory patterns to satisfy both | CONFLICT AVERAGING. Pick one (newer/more tested), justify it, flag the other for cleanup. Don't satisfy both. |
+| Test asserts function returned *something* (truthy, non-null, has key) | INTENT-FREE TEST. Assert the *correct* value for a *stated reason*. A test that can't fail when business logic changes is wrong. |
 
 # Background Bash Output — NEVER PIPE
 
@@ -181,6 +185,8 @@ bd prime                    # Load full workflow context
 ```
 
 **bd failure recovery**: `bd doctor` → check `ps aux | grep bd` → restore from `.beads/backup/`.
+
+**bd notes/description format**: use a single-line `--notes "..."` or `--description "..."` argument with plain text. **Hooks block** long heredocs (`<<EOF` > ~30 lines) AND writing `.md` files in `.beads/` or anywhere unrequested. For long content: keep notes concise (1-2 paragraphs of plain prose, no markdown tables, no bullet lists across many lines), or split into multiple `bd update --notes` calls (note: each replaces the prior — last one wins), or store the long content as a `kb_add` entry and put the kb-id in the bd note. Don't write to `.md` files; don't try heredocs >30 lines.
 
 # KB Access
 
