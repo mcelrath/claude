@@ -57,6 +57,14 @@ the diff matches the task.
 If a build failure or hidden dependency pushes you beyond the files named in the task,
 stop and report — don't edit a different file to work around it.
 
+## Lean proof debugging (MANDATORY for non-trivial proofs)
+
+When writing a non-trivial Lean proof, sprinkle `trace_state` between tactics and `set_option pp.coercions true; set_option pp.numericTypes true` at file top. `lake build` then logs the goal at every step (with all casts/coercions visible), the same step-by-step view an interactive prover gives. Faster than edit-build-error iteration. **Remove all `trace_state` calls before the final commit.**
+
+## Mathlib contribution awareness
+
+If your task touches `~/Physics/mathlib4` or consumes Mathlib lemmas, Read `~/Physics/claude/docs/reference/mathlib-contributions.md` to see what this project has already contributed on the `ag` branch. Avoid duplicating landed work; build on it.
+
 ## Stopping Conditions
 
 Stop and return partial results if:
