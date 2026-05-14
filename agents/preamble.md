@@ -7,6 +7,61 @@ description: Standard preamble for all agent prompts. Read this file at start of
 
 Read this BEFORE starting your task. These rules prevent the failure modes that waste the most work.
 
+## Pre-flight assertion (secular-constraints)
+
+This project is pure Cl(4,4) mathematics. Output is Cl(4,4)-intrinsic. Use canonical functions in cl44/; do not reimplement. Do not compare to external references.
+
+## Prompt framing checklist
+
+Before dispatching any sub-agent or writing any computation prompt, verify:
+
+POSITIVE FRAMING — use these terms:
+- "shift-operator eigenvalue" (not "fermion mass")
+- "Q-sector mixing matrix (specify Q)" (not "PMNS" or "CKM")
+- "auxiliary-field self-energy" (not "Higgs self-energy")
+- "Gaussian aux-field saddle" (not "Hubbard-Stratonovich")
+- "complex-parameter continuation" (not "Wick rotation")
+- "scalar-saddle resonance" (not "EWSB")
+- "spectral zeta / lattice theta / Hecke functional equation / Mellin transform" (not "1-loop / Feynman / Taylor")
+- "phi-onset / large-phi limit / small-phi regime" (not "freeze-out / early universe / today")
+- "phi-rescaling or spectral rescaling" (not "RGE" or "running")
+- "Cl(4,4)-intrinsic eigenvalue" (not "SM expected value")
+- Dimensionless numbers only (not "GeV / MeV / M_Pl / M_Z")
+
+REPLACE THESE PATTERNS:
+- "PMNS" / "CKM" -> "Q-sector mixing matrix (state which Q)"
+- "Higgs" / "fermion masses" / "gauge couplings" -> math terms above
+- "freeze-out" / "EWSB" / "today" / "early universe" -> "phi-onset" / "large-phi" / "small-phi"
+- "Hubbard-Stratonovich" -> "Gaussian aux-field"
+- "Wick rotation" -> "complex continuation"
+- "1-loop" / "Feynman" / "Taylor" -> "exact functional derivative of Tr log K"
+- "RGE" / "running" -> "phi-rescaling" or "spectral rescaling"
+- "GeV" / "MeV" / "M_Pl" / "M_Z" -> DELETE (dimensionless)
+- "SM expected" / "SM observed" / "PDG value" -> DELETE
+- "scan for SM match" / "best beta where g ~ X" -> "report eigenvalues at canonical phi"
+- "GREEN/YELLOW/RED" verdicts -> "report raw values"
+
+## Canonical-function map
+
+Use these functions; do not reimplement saddle/SVD/extraction:
+
+| Question | Canonical function |
+|----------|-------------------|
+| Q=-1 sector mixing matrix | cl44.q_minus1_mixing.q_minus1_mixing_at_phi(phi) |
+| Q=+2/3 sector mixing matrix | cl44.q_plus2_3_mixing.q_plus2_3_mixing_at_phi(phi) |
+| Shift-operator eigenvalues | cl44.shift_eigenvalues.shift_eigenvalues_at_phi(phi) |
+| Auxiliary-field self-energy spectrum | cl44.aux_field_selfenergy.spectrum_at_phi(phi) |
+| phi-onset value | cl44.cosmology.PHI_ONSET |
+| beta <-> phi relation | cl44.cosmology.phi_to_beta(phi) |
+| Cold-limit sigma_chi values | cl44.cold_limit.solve_saddle_cold(beta) |
+| Multi-channel saddle | cl44.gaussian_aux_field.solve_multi_channel(beta, p) |
+| Q-sector projectors | cl44.canonical_operators.q_sector_projectors() |
+| Tree-level shift spectrum | cl44.tree_yukawa.tree_yukawa_spectrum() |
+
+## Project mathematical framing (secular-constraints)
+
+This project is Cl(4,4) Clifford algebra: 48-dim R-vector space with quaternionic structure {J_A, J_B, J_C}, shift operator M, centralizer gl(4). Tools: Gaussian integration over auxiliary scalars, analytic continuation, spectral zeta, lattice theta, Hecke functional equations. Output: Cl(4,4)-intrinsic eigenvalues and unitary mixings reported as exact rational/algebraic objects.
+
 ## Epistemological Rules (MOST IMPORTANT)
 
 1. **"Not Found" ≠ "Doesn't Exist"**. If you search and find nothing, say "I found no evidence for X (searched: [queries])." Never say "X is open/untested/unknown."
