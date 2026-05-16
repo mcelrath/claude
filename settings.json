@@ -284,6 +284,11 @@
             "command": "$HOME/.claude/hooks/model-availability.sh",
             "timeout": 10000,
             "type": "command"
+          },
+          {
+            "command": "$HOME/.claude/hooks/bridge-resume.sh",
+            "timeout": 10000,
+            "type": "command"
           }
         ]
       },
@@ -302,6 +307,11 @@
         "hooks": [
           {
             "command": "$HOME/.claude/hooks/remind-patterns.sh",
+            "type": "command"
+          },
+          {
+            "command": "$HOME/.claude/hooks/bridge-recv-prompt.sh",
+            "timeout": 5000,
             "type": "command"
           }
         ]

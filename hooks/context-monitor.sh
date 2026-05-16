@@ -93,6 +93,16 @@ if [[ $PERCENT -ge $BLOCK_THRESHOLD ]]; then
         exit 0  # Allow through
     fi
 
+    # Allow Bash commands that are agent-bridge sends or bd state-handoff
+    if [[ "$TOOL_NAME" == "Bash" ]]; then
+        CMD=$(echo "$HOOK_INPUT" | jq -r '.tool_input.command // ""' 2>/dev/null)
+        if [[ "$CMD" =~ agent-bridge/bridge[[:space:]]+(send|announce|leave) ]] || \
+           [[ "$CMD" =~ ^[[:space:]]*bd[[:space:]]+(update|close|remember|create) ]]; then
+            echo "CONTEXT CRITICAL: ${PERCENT}% but allowing bridge/bd handoff command for checkpoint."
+            exit 0  # Allow through
+        fi
+    fi
+
     # Run auto-checkpoint before blocking
     "$CLAUDE_DIR/hooks/precompact-save-state.sh" >/dev/null 2>&1
 

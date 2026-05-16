@@ -114,6 +114,8 @@ Use an agent team when 2+ phases are independent and touch different code sectio
 
 **Hook blocks are FINAL.** If a hook blocks your tool call (exit 2), STOP. Do not rephrase, restructure, or use a different tool to do the same thing. Tell the user what was blocked and why.
 
+Lean proofs before analysis. For any structural claim (operator origin, symmetry, eigenvalue, factorization), search `proofs.md` before reading code. A 0-sorry theorem is proof; a sorry-bearing theorem is a contract. Code that contradicts a Lean theorem is wrong.
+
 kb-research agent before implementation. Enforced by hook.
 
 Before implementing ANY new function/struct/algorithm: `rg "similar_name"` across codebase; read *.md docs in directory; use Task/Explore agent if uncertain. USE existing code instead of reimplementing. This is your #1 failure mode.
@@ -155,12 +157,30 @@ NEVER: "What would you like...", "Would you like me to...", "Should I..."
 | Test asserts function returned *something* (truthy, non-null, has key) | INTENT-FREE TEST. Assert the *correct* value for a *stated reason*. A test that can't fail when business logic changes is wrong. |
 | Survey/research agent claims "axiom X can be retired by reusing template Y" | LABEL-MATCH MISTAKE. Read X's *statement* before dispatching implementation. Similar names / same character / shared kb refs ≠ same content. Identification (Mellin bridge / template) ≠ localization (Selberg / FE / zero-on-line). |
 | Acting on a haiku-survey recommendation that changes axiom count, critical path, or implementation scope | OUT-OF-SCOPE MODEL. Haiku is for true lookups; load-bearing structural claims require Sonnet+. |
+| Reviewing a plan by reading plan doc + code without first searching `proofs.md` | LEAN-BLIND REVIEW. The plan's premise may be superseded by a Lean theorem (operator origin, coupling constant, interaction order). A review that doesn't check Lean can approve a plan whose foundation is already proven wrong — or already proven right. |
+| Analyzing operator structure by reading Python source first | LEAN-BLIND ANALYSIS. The operator's origin, coupling value, and algebraic identity are axiomatized in Lean. Python implements; Lean proves. Check Lean first. |
 
 # Background Bash Output — NEVER PIPE
 
 `run_in_background=true` writes stdout to a file. Shell pipes (`| tail`, `| head`) consume output BEFORE it reaches the file.
 
 **Rule**: NEVER use `| tail` / `| head` in a Bash call with `run_in_background=true`. Run without pipe; read file afterward.
+
+# Agent Bridge — Correct Usage
+
+`bridge send` is fast and synchronous — NEVER use `run_in_background=true` for it. Background sends leave zombie shell wrappers that accumulate (observed: 12 stale processes from one session).
+
+`bridge watch <id>` is a single-shot blocker — launch it ONCE with `run_in_background=true`, then relaunch after every task-notification wake. Never stack multiple watchers; check `ps aux | grep "bridge watch"` before launching if unsure.
+
+`bridge send` body goes on stdin via heredoc, not as a quoted argument. Long quoted strings in the command line cause exit code 144 (message too large or hook-blocked). Pattern:
+
+```
+~/.agent-bridge/bridge send all "subject line" <<'EOF'
+body content here
+EOF
+```
+
+After every compaction or new session: run `bridge recv` to catch up, then `bridge announce` to re-register, then launch `bridge watch <id>` in background. Ask peers "adj resumed after compaction — what did I miss?" — claude-origin will respond with a bulleted catch-up.
 
 # Build Waiting Protocol
 
@@ -224,6 +244,8 @@ Check server: `query_notebook("test", "check_server", server_url="http://localho
 
 Before declaring something "open": use kb-research (5 rounds); `rg "relevant_term" lib/`; trust code over comments.
 
-# Truth Hierarchy: Code > Comments > KB
+# Truth Hierarchy: Lean proofs > Code > Comments > KB
 
-Test assertions > code > recent KB > comments > old KB.
+Lean proofs (0-sorry) > test assertions > code > recent KB > comments > old KB.
+
+**Lean-first rule (MANDATORY)**: Before any analysis of a structural claim (operator identity, eigenvalue bound, symmetry, factorization, operator origin), search `~/Physics/claude/docs/reference/proofs.md` and `~/Physics/claude/proofs/` FIRST. A 0-sorry Lean theorem is the strongest possible evidence and supersedes code, comments, and KB. A theorem with sorry is still a contract — it constrains what the code MUST do even if not yet proven. Only after confirming no Lean proof exists should you fall back to code inspection.

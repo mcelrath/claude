@@ -22,6 +22,10 @@ fi
 if echo "$COMMAND" | grep -qE "git\s+(-[A-Za-z]+\s+\S+\s+)*commit" 2>/dev/null; then
     exit 0
 fi
+# Skip bridge send/announce/user-direction (heredocs are the recommended way to pass message bodies)
+if echo "$COMMAND" | grep -qE "bridge\s+(send|announce|user-direction)" 2>/dev/null; then
+    exit 0
+fi
 if echo "$COMMAND" | grep -qE "<<\s*['\"]?[A-Za-z_][A-Za-z0-9_]*['\"]?" 2>/dev/null; then
     # Extract the delimiter
     DELIM=$(echo "$COMMAND" | grep -oE "<<\s*['\"]?[A-Za-z_][A-Za-z0-9_]*['\"]?" 2>/dev/null | head -1 | sed "s/<<\s*['\"]*//" | sed "s/['\"]$//") || true

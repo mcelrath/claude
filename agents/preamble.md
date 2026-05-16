@@ -11,35 +11,38 @@ Read this BEFORE starting your task. These rules prevent the failure modes that 
 
 This project is pure Cl(4,4) mathematics. Output is Cl(4,4)-intrinsic. Use canonical functions in cl44/; do not reimplement. Do not compare to external references.
 
+## ALWAYS check the mathlib4 fork
+
+Before declaring any Mathlib infrastructure missing or any Lean theorem unprovable:
+
+- The sibling mathlib4 fork at `~/Physics/mathlib4` on branch `ag` contains in-flight upstream contributions not yet in any Mathlib release. **Read `~/Physics/secular-constraints/docs/reference/proofs.md` and `~/Physics/claude/docs/reference/mathlib-contributions.md`** for the inventory.
+- Concrete files commonly forgotten by recon agents (all branch `ag` only):
+  - `Mathlib/NumberTheory/LSeries/RiemannZetaBound.lean`
+  - `Mathlib/NumberTheory/LSeries/LFunctionPolynomialBound.lean`
+  - `Mathlib/NumberTheory/LSeries/OrderOfVanishing.lean` (uses `Mathlib.Analysis.Meromorphic.Order`)
+  - `Mathlib/NumberTheory/LSeries/DirichletHadamard.lean`
+  - `Mathlib/NumberTheory/LSeries/BorromeanTwist.lean`
+  - `Mathlib/Complex/RectangleResidueFinset.lean` + `RectangleResidueTendsto.lean`
+  - `Mathlib/Analysis/Matrix/TraceExponentialDecay.lean`
+- `git log ag ^upstream/master --oneline | grep -i <topic>` is the canonical query for ag-only contributions.
+- If recon claims "Mathlib has no X infrastructure", verify against the fork before declaring infeasibility.
+
 ## Prompt framing checklist
 
 Before dispatching any sub-agent or writing any computation prompt, verify:
 
 POSITIVE FRAMING — use these terms:
-- "shift-operator eigenvalue" (not "fermion mass")
-- "Q-sector mixing matrix (specify Q)" (not "PMNS" or "CKM")
-- "auxiliary-field self-energy" (not "Higgs self-energy")
-- "Gaussian aux-field saddle" (not "Hubbard-Stratonovich")
-- "complex-parameter continuation" (not "Wick rotation")
-- "scalar-saddle resonance" (not "EWSB")
-- "spectral zeta / lattice theta / Hecke functional equation / Mellin transform" (not "1-loop / Feynman / Taylor")
-- "phi-onset / large-phi limit / small-phi regime" (not "freeze-out / early universe / today")
-- "phi-rescaling or spectral rescaling" (not "RGE" or "running")
-- "Cl(4,4)-intrinsic eigenvalue" (not "SM expected value")
-- Dimensionless numbers only (not "GeV / MeV / M_Pl / M_Z")
-
-REPLACE THESE PATTERNS:
-- "PMNS" / "CKM" -> "Q-sector mixing matrix (state which Q)"
-- "Higgs" / "fermion masses" / "gauge couplings" -> math terms above
-- "freeze-out" / "EWSB" / "today" / "early universe" -> "phi-onset" / "large-phi" / "small-phi"
-- "Hubbard-Stratonovich" -> "Gaussian aux-field"
-- "Wick rotation" -> "complex continuation"
-- "1-loop" / "Feynman" / "Taylor" -> "exact functional derivative of Tr log K"
-- "RGE" / "running" -> "phi-rescaling" or "spectral rescaling"
-- "GeV" / "MeV" / "M_Pl" / "M_Z" -> DELETE (dimensionless)
-- "SM expected" / "SM observed" / "PDG value" -> DELETE
-- "scan for SM match" / "best beta where g ~ X" -> "report eigenvalues at canonical phi"
-- "GREEN/YELLOW/RED" verdicts -> "report raw values"
+- shift-operator eigenvalue
+- Q-sector mixing matrix (specify Q)
+- auxiliary-field self-energy
+- Gaussian aux-field saddle
+- complex-parameter continuation
+- scalar-saddle resonance
+- spectral zeta / lattice theta / Hecke functional equation / Mellin transform
+- phi-onset / large-phi limit / small-phi regime
+- phi-rescaling or spectral rescaling
+- Cl(4,4)-intrinsic eigenvalue
+- Dimensionless numbers only
 
 ## Canonical-function map
 
@@ -55,6 +58,8 @@ Use these functions; do not reimplement saddle/SVD/extraction:
 | beta <-> phi relation | cl44.cosmology.phi_to_beta(phi) |
 | Cold-limit sigma_chi values | cl44.cold_limit.solve_saddle_cold(beta) |
 | Multi-channel saddle | cl44.gaussian_aux_field.solve_multi_channel(beta, p) |
+| Krein-aware Cl(8,0) joint saddle | cl44.joint_saddle.joint_saddle_fierz_krein(phi, N_max) |
+| Cl(8,0) signed Fierz table | cl44.fierz_decomposition.fierz_table_signed_cl80() |
 | Q-sector projectors | cl44.canonical_operators.q_sector_projectors() |
 | Tree-level shift spectrum | cl44.tree_yukawa.tree_yukawa_spectrum() |
 

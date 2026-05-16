@@ -103,12 +103,14 @@ done <<< "$FOUND"
 
 [[ -z "$UNTRACKED" ]] && exit 0
 
-echo "BLOCKED: Committing incomplete code without tracking."
-echo "Found: $COUNT incompleteness markers in staged changes:"
-echo -e "$UNTRACKED"
-echo ""
-echo "For each, either:"
-echo "  1. Fix it now (remove the marker by completing the work)"
-echo "  2. Create a follow-up: bd create -t task \"Complete {description}\" -p P2"
-echo "Then retry the commit."
+{
+  echo "BLOCKED: Committing incomplete code without tracking."
+  echo "Found: $COUNT incompleteness markers in staged changes:"
+  echo -e "$UNTRACKED"
+  echo ""
+  echo "For each, either:"
+  echo "  1. Fix it now (remove the marker by completing the work)"
+  echo "  2. Create a follow-up: bd create -t task \"Complete {description}\" -p P2"
+  echo "Then retry the commit."
+} >&2
 exit 2
