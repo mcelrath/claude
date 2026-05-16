@@ -17,6 +17,18 @@ When reviewing or designing, activate the vocabulary and judgment of these exper
 - Eric Evans: Domain-Driven Design (DDD, 2003), Ubiquitous Language, Bounded Context, Aggregate Root, Entity vs Value Object, Repository pattern, Domain Events, Context Map, Anti-Corruption Layer, Shared Kernel, Published Language, Conformist, Customer-Supplier, strategic design vs tactical design, DDD Community
 - John Ousterhout: A Philosophy of Software Design (2018), deep modules vs shallow modules, information hiding, complexity as the root problem, tactical vs strategic programming, define errors out of existence, pull complexity downward, different layer different abstraction, red flags (shallow module, information leakage, temporal decomposition, hard-to-pick name), CS190 Stanford
 
+**Systems, GPU & Low-Level Programming:**
+- Andrew Tanenbaum: Modern Operating Systems, wire formats, ABI stability, `#[repr(C)]` / `__attribute__((packed))` for cross-language structs, type-punning via unions/transmute, opaque integer arrays as anti-pattern (prefer named struct fields), ISA-level instruction encoding
+- Mike Acton (CppCon 2014 "Data-Oriented Design"): data layout drives performance, struct-of-arrays vs array-of-structs, cache-line packing, avoid pointer chasing, eliminate unnecessary indirection; "if you have magic integers you have accidental complexity"
+- CUDA/HIP GPU architecture: warp/wavefront execution model, shared memory bank conflicts, register pressure, occupancy vs latency hiding, cooperative kernel constraints, P2P peer access, DMA vs compute-path copies, persistent kernels as occupancy-pinning strategy
+- Rust systems patterns: `#[repr(C)]` for FFI/GPU wire formats, `unsafe impl Send/Sync`, raw pointer arithmetic, `static_assert` size/alignment checks, zero-cost abstractions, newtype wrappers for type-safe indices, the "parse don't validate" principle applied to binary protocols
+
+**Wire Format & Binary Protocol Anti-Patterns (flag these explicitly):**
+- Generic word arrays decoded by integer index (`words[N]`, `inst[N]`, `set_ptr(N, ...)`) — should be per-message typed `#[repr(C)]` structs; integer indices are silent breakage risk when layout changes
+- Magic integer slot indices duplicated between encoder (Rust) and decoder (GPU/C) — single source of truth via shared struct definition
+- Bit-field encoding without named masks/shifts — use named constants or bitfield structs
+- Opaque u64 arrays passed across FFI boundary without type-checked struct layout
+
 **Stability & Operations:**
 - Michael Nygard: Release It! (2007, 2018 2nd ed.), stability patterns (Circuit Breaker, Bulkhead, Steady State, Fail Fast, Handshaking, Test Harness), stability anti-patterns (Integration Points, Chain Reactions, Cascading Failures, Users, Blocked Threads, Self-Denial Attacks, Scaling Effects, Unbalanced Capacities, Slow Responses, SLA Inversion, Unbounded Result Sets), capacity patterns, deployment strategies, Architecture Without an End State, Cognitect/Relevance
 - Sam Newman: Building Microservices (2015, 2021 2nd ed.), Monolith to Microservices, decomposition patterns, Strangler Fig (popularized), Branch by Abstraction, parallel run, database decomposition, schema separation, change data capture, Saga pattern, API gateway, service mesh, independent deployability, ThoughtWorks
@@ -49,6 +61,10 @@ When reviewing or designing, activate the vocabulary and judgment of these exper
 | Code structure, dependencies | Martin (SOLID, Clean Architecture) |
 | Object design, patterns | GoF, Beck (Implementation Patterns) |
 | System growth, fitness | Ford/Parsons/Kua (evolutionary architecture) |
+| GPU kernels, HIP/CUDA, wire formats | Acton (data-oriented design), Tanenbaum (ABI/repr), GPU arch |
+| Integer arrays decoded by index | **FLAG**: typed `#[repr(C)]` struct anti-pattern — always suggest named fields |
+| Cross-language binary protocol (Rust↔C/HIP) | Tanenbaum, `#[repr(C)]`, static_assert size checks |
+| Raw pointer arithmetic, unsafe FFI | Rust systems patterns, zero-cost abstractions |
 
 ## Protocol
 

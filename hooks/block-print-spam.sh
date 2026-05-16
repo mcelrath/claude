@@ -1,64 +1,73 @@
 #!/bin/bash
-# PreToolUse hook for Bash
-# Blocks heredocs that are too long or mostly print statements
+# PreToolUse hook for Bash. Blocks decorative output in scripts (echo banners,
+# narrative print() calls). The rationale: such output belongs in Claude's
+# conversation response, not in script stdout. There is no allow flag — this
+# is a code-quality rule, not a permission rule.
+#
+# Detection looks at the Bash command string and any inline python/bash
+# heredoc bodies for these patterns:
+#   - echo "=== ... ===", echo "---", echo "Step N", echo "Done!", echo "Successfully ..."
+#   - print("=== ... ==="), print("Step N"), print(f"step {i} of N"), print("Done"), print("Loading...")
+# A pattern fires if at least 3 decorative lines are found.
 
 INPUT=$(cat)
+TOOL_NAME=$(echo "$INPUT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('tool_name',''))" 2>/dev/null)
+[ "$TOOL_NAME" != "Bash" ] && exit 0
 
-TOOL_NAME=$(echo "$INPUT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('tool_name',''))" 2>/dev/null) || true
+CMD=$(echo "$INPUT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('tool_input',{}).get('command',''))" 2>/dev/null)
+[ -z "$CMD" ] && exit 0
 
-if [[ "$TOOL_NAME" != "Bash" ]]; then
-    exit 0
-fi
+# Skip git commit (heredoc-style commit messages are recommended)
+echo "$CMD" | grep -qE "git\s+(-[A-Za-z]+\s+\S+\s+)*commit" 2>/dev/null && exit 0
+# Skip bridge send/announce/user-direction (heredoc message bodies)
+echo "$CMD" | grep -qE "bridge\s+(send|announce|user-direction)" 2>/dev/null && exit 0
 
-COMMAND=$(echo "$INPUT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('tool_input',{}).get('command',''))" 2>/dev/null) || true
+# Decorative-output detector. Counts narrative/banner lines.
+export _SPAM_CMD="$CMD"
+python3 - <<'PY'
+import os, sys, re
+cmd = os.environ.get('_SPAM_CMD', '')
 
-# If we couldn't parse the command, allow it through
-if [[ -z "$COMMAND" ]]; then
-    exit 0
-fi
+# Strip f-string braces for matching purposes (so f"step {i}" matches "step ?")
+def normalize(s):
+    return re.sub(r'\{[^}]*\}', '?', s)
 
-# Check for any heredoc (python, bash, etc) - match ANY delimiter
-# Skip git commit commands (heredocs are the recommended way to pass commit messages)
-if echo "$COMMAND" | grep -qE "git\s+(-[A-Za-z]+\s+\S+\s+)*commit" 2>/dev/null; then
-    exit 0
-fi
-# Skip bridge send/announce/user-direction (heredocs are the recommended way to pass message bodies)
-if echo "$COMMAND" | grep -qE "bridge\s+(send|announce|user-direction)" 2>/dev/null; then
-    exit 0
-fi
-if echo "$COMMAND" | grep -qE "<<\s*['\"]?[A-Za-z_][A-Za-z0-9_]*['\"]?" 2>/dev/null; then
-    # Extract the delimiter
-    DELIM=$(echo "$COMMAND" | grep -oE "<<\s*['\"]?[A-Za-z_][A-Za-z0-9_]*['\"]?" 2>/dev/null | head -1 | sed "s/<<\s*['\"]*//" | sed "s/['\"]$//") || true
+# Patterns that indicate decorative output. Each is a regex on a single line.
+patterns = [
+    # banners and separators
+    r'^\s*(echo|print)\s*\(?\s*["\']\s*[=\-*#_]{3,}',
+    r'^\s*(echo|print)\s*\(?\s*[fr]?["\'][^"\']*[=\-*#_]{3,}[^"\']*["\']',
+    # step/phase narration
+    r'^\s*(echo|print)\s*\(?\s*[fr]?["\']\s*(step|phase|stage|part|section)\s+\d',
+    # progress narration
+    r'^\s*(echo|print)\s*\(?\s*[fr]?["\']\s*(loading|running|starting|finished|complete|completed|processing|building|compiling|installing|preparing|generating|computing|launching)\b',
+    # status announcements
+    r'^\s*(echo|print)\s*\(?\s*[fr]?["\']\s*(done|ok|success|successfully|pass|passed|fail|failed|warning|error)\b[^"\']*["\']?\s*\)?\s*$',
+    # result labels with trivial f-string
+    r'^\s*(echo|print)\s*\(?\s*[fr]["\'](result|value|answer|output|total)\s*[:=]\s*\?["\']\s*\)?',
+    # bare heredoc echo with === or --- separators
+    r'^\s*echo\s+["\']\s*[=\-*#_]{3,}',
+]
 
-    # If we got a valid delimiter, count lines
-    if [[ -n "$DELIM" ]]; then
-        # Count lines in heredoc (use fixed string matching to avoid regex issues)
-        HEREDOC_LINES=$(echo "$COMMAND" | sed -n "/<<.*${DELIM}/,/^${DELIM}\$/p" 2>/dev/null | wc -l) || true
+# Count matches across all lines of the command (heredoc bodies included).
+matches = []
+for line in cmd.splitlines():
+    n = normalize(line)
+    for p in patterns:
+        if re.search(p, n, re.IGNORECASE):
+            matches.append(line.strip())
+            break
 
-        if [[ "$HEREDOC_LINES" -gt 5 ]]; then
-            echo "WARNING: Heredoc is $HEREDOC_LINES lines. Use Jupyter MCP or Write a script file instead. Commentary belongs in your text response." >&2
-            exit 2
-        fi
-    fi
-fi
+if len(matches) >= 3:
+    sys.stderr.write("BLOCKED: Decorative output detected ({} narrative/banner lines).\n".format(len(matches)))
+    sys.stderr.write("Sample:\n")
+    for m in matches[:5]:
+        sys.stderr.write("  " + m[:120] + "\n")
+    sys.stderr.write("\n")
+    sys.stderr.write("These belong in your conversation response, not in script stdout. Strip every banner / step-narration / status print and re-run. Numeric results, tables, and structured data are fine; commentary about what the script is doing is not.\n")
+    sys.stderr.write("\nDo NOT retry with fewer banners — strip them all. Do NOT split into multiple Bash calls to dodge the count.\n")
+    sys.exit(2)
 
-# Check if this is python code (heredoc OR -c) with mostly print statements
-if echo "$COMMAND" | grep -qE "python3?\s+(-c|<<)" 2>/dev/null; then
-    PRINT_COUNT=$(echo "$COMMAND" | grep -c "print(" 2>/dev/null) || PRINT_COUNT=0
-    # Exclude common non-logic lines (comments, prints, imports, docstrings, whitespace, delimiters, f-strings of literals)
-    # Actual computation: assignments with expressions, function calls that aren't print, loops, conditionals
-    CODE_LINES=$(echo "$COMMAND" | grep -vE '^\s*(#|print\(|import |from |"""|'"'"''"'"''"'"'|\s*$|[A-Z]+$)' 2>/dev/null | wc -l) || CODE_LINES=0
-
-    # Warn (not block) if prints dominate - avoids sibling tool call cascades
-    if [[ "$PRINT_COUNT" -gt 5 ]] && [[ "$CODE_LINES" -lt 10 ]]; then
-        echo "WARNING: Python script has $PRINT_COUNT print() calls but only $CODE_LINES lines of logic. Put formatted output in your text response."
-        exit 0
-    fi
-
-    if [[ "$PRINT_COUNT" -gt 2 ]] && [[ "$PRINT_COUNT" -gt "$CODE_LINES" ]]; then
-        echo "WARNING: Python script has $PRINT_COUNT print() calls but only $CODE_LINES lines of actual code. Output text belongs in your response."
-        exit 0
-    fi
-fi
-
-exit 0
+sys.exit(0)
+PY
+exit $?

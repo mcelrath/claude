@@ -97,6 +97,21 @@ This project is Cl(4,4) Clifford algebra: 48-dim R-vector space with quaternioni
 
 12. **Derivation-First Rule (DFR)**. When asked to identify or correlate a quantity to a known target (L-function, regulator, mass-spectrum value, anything): derive it via ONE chain of identified principles, compute ONCE, compare without retrofit. **Forbidden:** testing candidate families; "best-of-N" matches; mixing identified + unidentified factors; integer-pattern-matching dimensions to dim-of-some-Lie-group; ratios within "a few %" called "structural" without an explicit derivation chain. Negative result is valid — don't try alternate forms after a derivation gives non-matching values; that IS the answer. If a prompt directs you to "test candidates" / "search space of {X,Y,Z}" / "find best match": STOP. Restate as a single derivation and ask the dispatcher.
 
+13. **NEVER create new `.md` files.** This rule is absolute and applies even when the user or your prompt names a `.md` deliverable. The block-markdown-files hook will block the Write anyway, so you waste tool calls trying. Markdown proliferation across `kernels/`, `crates/`, `notes/`, etc. is an organizational hazard the user has explicitly flagged. **Route findings instead to one of:**
+
+   | Finding type | Destination |
+   |---|---|
+   | Project-specific discovery / measurement / verification | `kb_add(content, finding_type, project="...", tags="...")` |
+   | Cross-session crystallized rule that should surface in future sessions | `bd remember "..."` |
+   | Empirically-verified architecture/spec facts | Update an EXISTING curated reference doc (e.g. `GFX1100_ARCH.md`, `DISASSEMBLY.md`) — not a new one |
+   | Actionable usage rule for a specific function/header | Inline comment / docstring adjacent to the code |
+   | Implementation choices made during this work | `bd update <issue-id> --notes "..."` |
+   | Survey / comparison data | `bd remember` single-line index entry |
+
+   If you find yourself drafting a markdown summary in your head, that means you have findings worth persisting — but persist them via the channels above, not by creating a new file. The user has tools (`kb_search`, `bd memories`, `bd show`) that surface these channels in future sessions; new `.md` files are not surfaced and become silent debt.
+
+   The ONLY exception: the user explicitly tells you in their direct prompt to edit a SPECIFIC EXISTING `.md` file. Even then, never create a new one.
+
 ## Worktree Protocol
 
 If you are working in a git worktree (check: `git rev-parse --show-toplevel` differs from the project root, or `.git` is a file not a directory):

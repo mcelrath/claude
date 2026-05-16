@@ -8,6 +8,7 @@
     "pr": ""
   },
   "autoUpdatesChannel": "latest",
+  "editorMode": "vim",
   "effortLevel": "low",
   "enabledPlugins": {
     "clangd-lsp@claude-plugins-official": true,
@@ -108,18 +109,19 @@
           }
         ],
         "matcher": ""
-      }
-    ],
-    "PreToolUse": [
+      },
       {
         "hooks": [
           {
-            "command": "$HOME/.claude/hooks/context-monitor.sh",
-            "timeout": 5000,
+            "command": "$HOME/.claude/hooks/md-asked-gate.sh",
+            "timeout": 1000,
             "type": "command"
           }
-        ]
-      },
+        ],
+        "matcher": "AskUserQuestion"
+      }
+    ],
+    "PreToolUse": [
       {
         "hooks": [
           {
@@ -150,6 +152,26 @@
           {
             "command": "$HOME/.claude/hooks/weak-claim-gate.sh",
             "timeout": 3000,
+            "type": "command"
+          },
+          {
+            "command": "$HOME/.claude/hooks/bridge-watcher-check.sh",
+            "timeout": 2000,
+            "type": "command"
+          },
+          {
+            "command": "$HOME/.claude/hooks/block-markdown-via-bash.sh",
+            "timeout": 2000,
+            "type": "command"
+          },
+          {
+            "command": "$HOME/.claude/hooks/block-large-heredoc.sh",
+            "timeout": 3000,
+            "type": "command"
+          },
+          {
+            "command": "$HOME/.claude/hooks/bridge-watcher-alive.sh",
+            "timeout": 2000,
             "type": "command"
           }
         ],
@@ -289,6 +311,10 @@
             "command": "$HOME/.claude/hooks/bridge-resume.sh",
             "timeout": 10000,
             "type": "command"
+          },
+          {
+            "command": "$HOME/.claude/hooks/remind-patterns.sh",
+            "type": "command"
           }
         ]
       },
@@ -302,11 +328,28 @@
         "matcher": ""
       }
     ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "command": "$HOME/.claude/hooks/md-cleanup.sh",
+            "timeout": 1000,
+            "type": "command"
+          }
+        ]
+      }
+    ],
     "UserPromptSubmit": [
       {
         "hooks": [
           {
-            "command": "$HOME/.claude/hooks/remind-patterns.sh",
+            "command": "$HOME/.claude/hooks/bridge-watcher-check.sh",
+            "timeout": 3000,
+            "type": "command"
+          },
+          {
+            "command": "$HOME/.claude/hooks/bridge-watcher-alive.sh",
+            "timeout": 2000,
             "type": "command"
           },
           {
@@ -645,10 +688,10 @@
       "Bash(kill -9:*)",
       "Bash(pkill:*)",
       "Bash(killall:*)",
-      "Bash(sudo:*)",
       "Bash(cat <<:*)"
     ]
   },
+  "preferredNotifChannel": "terminal_bell",
   "prefersReducedMotion": true,
   "promptSuggestionEnabled": false,
   "skipDangerousModePermissionPrompt": true,
