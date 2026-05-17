@@ -34,6 +34,8 @@ kb.db
 # Backups
 *.backup
 *.bak
+*.bak.*
+*.bak[0-9]*
 *.old
 
 # Local overrides and caches
