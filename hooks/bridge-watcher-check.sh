@@ -22,14 +22,27 @@ fi
 
 INPUT=$(cat 2>/dev/null)
 EVENT=$(echo "$INPUT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('hook_event_name',''))" 2>/dev/null)
+SESSION_ID=$(echo "$INPUT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('session_id',''))" 2>/dev/null)
 
-WHOAMI=$("$HOME/.agent-bridge/bridge" whoami 2>/dev/null)
-ID=$(echo "$WHOAMI" | sed -nE 's/^Effective identity:\s*(\S+).*$/\1/p')
-[ -z "$ID" ] && exit 0
+# Identity resolution: trust SESSION_ID from Claude's hook input (authoritative,
+# unlike subprocess env/cwd). Look up agent in agents.json by session_id directly.
+# Fall back to `bridge whoami` only if no match.
+AGENTS_FILE="$HOME/.agent-bridge/agents.json"
+ID=""
+if [ -n "$SESSION_ID" ] && [ -f "$AGENTS_FILE" ]; then
+    ID=$(jq -r --arg sid "$SESSION_ID" '.agents[] | select(.session_id == $sid) | .id' "$AGENTS_FILE" 2>/dev/null | head -n1)
+fi
+if [ -z "$ID" ]; then
+    WHOAMI=$("$HOME/.agent-bridge/bridge" whoami 2>/dev/null)
+    ID=$(echo "$WHOAMI" | sed -nE 's/^Effective identity:\s*(\S+).*$/\1/p')
+fi
+case "$ID" in
+    ""|"("*) exit 0 ;;
+esac
 
 # Drain unread. `bridge recv` prints all unread messages addressed to
 # the reader and advances the cursor atomically.
-UNREAD=$("$HOME/.agent-bridge/bridge" recv "$ID" 2>/dev/null)
+UNREAD=$(AGENT_ID="$ID" "$HOME/.agent-bridge/bridge" recv 2>/dev/null)
 
 # Empty → tool proceeds normally.
 [ -z "$UNREAD" ] && exit 0
