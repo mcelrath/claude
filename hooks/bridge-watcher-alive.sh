@@ -48,6 +48,19 @@ if [ -f "$PID_FILE" ]; then
     rm -f "$PID_FILE" 2>/dev/null
 fi
 
+# (#3) Recent-exit suppression: if the watcher exited cleanly less than ~10s
+# ago, suppress the nag.  The exit trap in `bridge watch` touches
+# `${ID}.last_watcher_exit` on every clean shutdown.  This gives the agent
+# room to relaunch in its next tool call without an immediate spurious nag
+# claiming the watcher is down.
+EXIT_FILE="$HOME/.agent-bridge/${ID}.last_watcher_exit"
+if [ -f "$EXIT_FILE" ]; then
+    EXIT_AGE=$(( $(date +%s) - $(stat -c %Y "$EXIT_FILE" 2>/dev/null || echo 0) ))
+    if [ "$EXIT_AGE" -lt 10 ]; then
+        exit 0
+    fi
+fi
+
 # Watcher dead. Emit reminder. The same message goes via stdout (UserPromptSubmit
 # injects as system-reminder, reliably surfaced) AND via stderr on a blocking
 # exit (PreToolUse exit-2 stderr is the only reliable way to surface to Claude

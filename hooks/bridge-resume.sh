@@ -64,14 +64,16 @@ if [[ -n "$PENDING" ]]; then
     echo "$PENDING"
 fi
 
-# Kill any stale watcher for this agent, launch a fresh one
+# Clean any stale watcher pidfile. Do NOT launch a watcher here: a setsid
+# launch detaches it from the Claude session (PPID=1), so its exit won't
+# fire a task-notification — defeating the proactive-wake mechanism. The
+# alive-check hook (bridge-watcher-alive.sh) will emit BRIDGE_WATCHER_DOWN
+# on the first prompt/tool call, prompting Claude to launch it via
+# run_in_background=true (Claude-session sibling, task-notification on exit).
 PIDFILE="$HOME/.agent-bridge/${AGENT_ID}.watcher.pid"
 if [[ -f "$PIDFILE" ]]; then
     OLD_PID=$(cat "$PIDFILE" 2>/dev/null)
     [[ -n "$OLD_PID" ]] && kill "$OLD_PID" 2>/dev/null
     rm -f "$PIDFILE"
 fi
-
-# Launch fresh watcher in background (setsid so it survives hook process exit)
-setsid "$BRIDGE" watch "$AGENT_ID" </dev/null >/dev/null 2>&1 &
-echo "BRIDGE RESUME [$AGENT_ID]: watcher relaunched (pid $!)"
+echo "BRIDGE RESUME [$AGENT_ID]: pidfile cleared. Launch watcher via run_in_background=true on first tool call (alive-check will remind)."

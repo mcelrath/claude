@@ -22,6 +22,13 @@ if [[ "$CMD" != *.md* ]]; then
     exit 0
 fi
 
+# Exclude `bridge send` and other heredoc-body commands where .md filenames
+# appear in message bodies (blockquote `> ` + filename can trick the regex).
+# These commands don't create files; they send messages.
+if [[ "$CMD" =~ (^|[[:space:]\;\&\|])(bridge|~/\.agent-bridge/bridge|/home/mcelrath/\.agent-bridge/bridge)[[:space:]]+send([[:space:]]|$) ]]; then
+    exit 0
+fi
+
 # Honor the per-turn allow flag (set by md-asked-gate.sh when Claude calls
 # AskUserQuestion). Also check the session-agnostic flag with a 15-min
 # window so a single AskUserQuestion confirmation covers a batch of
