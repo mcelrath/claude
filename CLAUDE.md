@@ -47,11 +47,11 @@ Use an agent team when 2+ phases are independent and touch different code sectio
 
 **State lives in beads.** No handoff.md, no work_context.json.
 
-**Resume**: `bd list --status=in_progress` → `bd show <epic-id>` → `kb_list(project)`.
+**Resume**: `bd list --status=in_progress` → `bd show <epic-id>` → `~/.local/bin/kb list -p <project>`.
 
-**Before context loss**: `kb_add(content="SESSION CHECKPOINT: ...", tags="session-checkpoint")`
+**Before context loss**: `~/.local/bin/kb add "SESSION CHECKPOINT: ..." -t discovery -p <project> --tags session-checkpoint`
 
-**Persistent memory**: `bd remember "insight"`. Retrieve with `bd memories <keyword>`. NOT MEMORY.md files.
+**Persistent memory**: `~/.local/bin/kb add "insight" -t discovery -p <project> --tags <topic>`. Retrieve with `~/.local/bin/kb search "<keyword>"`. Do NOT use `bd remember` / `bd memories` (deprecated 2026-05-19; the 158 historical entries were migrated to kb) and do NOT use MEMORY.md files (those also migrated).
 
 ## Agent Dispatch
 
@@ -69,7 +69,7 @@ Use an agent team when 2+ phases are independent and touch different code sectio
 - Review agents: `run_in_background=True`
 - Never pass `max_turns`; use STOPPING CONDITIONS in prompt instead
 - Every prompt: start with `Read ~/.claude/agents/preamble.md FIRST`
-- Include `kb_add before returning` in every agent prompt
+- Include `~/.local/bin/kb add before returning` in every agent prompt (CLI; the MCP `kb_add` tool was removed 2026-05-19)
 - Structured JSON output with schema
 - Model defaults: Haiku for **true lookups only** (find a file, list a definition, retrieve a single fact); Sonnet for implementation; Opus lead only (max 1/batch). **Haiku is FORBIDDEN for any dispatch whose verdict would change implementation scope, retire axioms, alter the critical path, or recommend a structural refactor.** Load-bearing structural claims require Sonnet or Opus — haiku in survey/kb-research mode can confidently mislabel similar-named obligations (e.g., conflating "L-function identification" with "L-function zero-localization" because both involve the same character).
 - **VERIFY AGENT WORK (MANDATORY) — ALWAYS, for ALL agent output**: the dispatching Claude process MUST Read whatever the agent claims, regardless of whether the agent wrote code or just returned a recommendation. This applies to: (a) code-writing agents (Read the committed files; check sorry counts, axiom counts, signatures match the claim); (b) research/survey/planning agents (Read the cited theorem statements / source files / kb entries before acting on the recommendation); (c) any agent that returns a load-bearing claim (axiom retired, infrastructure available, scope reduced, blocker found). Agent summaries describe intent, not what landed. Negative results from agents in particular must be re-checked against the prompt — a "negative" often means the agent computed the wrong object. Positive results that change scope must be re-checked against the source — a "feasible" often means the agent matched labels, not statements.
@@ -146,7 +146,7 @@ NEVER: "What would you like...", "Would you like me to...", "Should I..."
 | Box-drawing table (┌┬┐├┼┤└┴┘│─) | NEVER. Use dashes + spaces only. |
 | "promising" / "straightforward" / "just needs" without reading implementation | SHALLOW ASSESSMENT. |
 | "pending" / "untested" / "open question" without 3+ search strategies | "Not Found" ≠ "Open". Cite searches. |
-| kb_search with project filter only | CROSS-PROJECT BLINDNESS. First query must be unfiltered. |
+| `kb search -p <one-project>` as first query | CROSS-PROJECT BLINDNESS. First search must be unfiltered (`kb search "query"` without `-p`). |
 | Agent prompt without `Read preamble.md` | PREAMBLE MISSING. |
 | `old_name = new_name` / RuntimeError stub | NO BACKWARDS COMPATIBILITY. Delete the old function. |
 | Starting epic without expert-review | ALL epics get expert-review first. No exceptions. |
@@ -208,7 +208,7 @@ bd prime                    # Load full workflow context
 
 **bd failure recovery**: `bd doctor` → check `ps aux | grep bd` → restore from `.beads/backup/`.
 
-**bd notes/description format**: use a single-line `--notes "..."` or `--description "..."` argument with plain text. **Hooks block** long heredocs (`<<EOF` > ~30 lines) AND writing `.md` files in `.beads/` or anywhere unrequested. For long content: keep notes concise (1-2 paragraphs of plain prose, no markdown tables, no bullet lists across many lines), or split into multiple `bd update --notes` calls (note: each replaces the prior — last one wins), or store the long content as a `kb_add` entry and put the kb-id in the bd note. Don't write to `.md` files; don't try heredocs >30 lines.
+**bd notes/description format**: use a single-line `--notes "..."` or `--description "..."` argument with plain text. **Hooks block** long heredocs (`<<EOF` > ~30 lines) AND writing `.md` files in `.beads/` or anywhere unrequested. For long content: keep notes concise (1-2 paragraphs of plain prose, no markdown tables, no bullet lists across many lines), or split into multiple `bd update --notes` calls (note: each replaces the prior — last one wins), or store the long content as a `~/.local/bin/kb add` entry and put the returned kb-id in the bd note. Don't write to `.md` files; don't try heredocs >30 lines.
 
 # KB Access — CLI ONLY (MCP DEPRECATED 2026-05-19)
 
