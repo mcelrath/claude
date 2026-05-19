@@ -48,7 +48,7 @@ BLOCKED: '$BASENAME' matches a reflex-pattern filename. These are never genuinel
 Status updates, summaries, reviews, plans, analyses, recaps, notes, observations belong in:
   - your conversation response (the user reads it)
   - a beads issue: bd create --title "..." --description "..."
-  - kb: kb_add(content="...", tags="...")
+  - kb: ~/.local/bin/kb add "..." -t TYPE -p PROJECT --tags T1,T2
 
 Markdown files are NOT a scratch pad. This block is unconditional — even AskUserQuestion confirmation will not unblock a reflex-pattern name. If the content is legitimate, rename to a non-reflex filename.
 EOF
@@ -82,6 +82,6 @@ BLOCKED: creating a new markdown file '$FILE_PATH'.
 
 Before creating any new markdown file, use AskUserQuestion to confirm with the user that they want it. AskUserQuestion is the canonical mechanism for capturing user intent; once you have called it this turn, the hook will allow the Write (for any number of .md files within the next 15 minutes).
 
-If the content is a status update, summary, review, analysis, plan, or recap: it does not belong in a markdown file at all. Put it in your conversation response (the user reads it), or in a beads issue (bd create), or in kb (kb_add).
+If the content is a status update, summary, review, analysis, plan, or recap: it does not belong in a markdown file at all. Put it in your conversation response (the user reads it), or in a beads issue (bd create), or in kb (~/.local/bin/kb add).
 EOF
 exit 2

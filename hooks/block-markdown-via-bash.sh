@@ -63,6 +63,6 @@ BLOCKED: This Bash command would create or rename to a .md file.
 
 Before creating a markdown file, use AskUserQuestion to confirm with the user. AskUserQuestion is the canonical user-intent capture mechanism; once you have called it this turn, the hook will allow the operation.
 
-If the content is a summary, status, recap, or analysis: it does not belong in a markdown file. Put it in your conversation response, beads (bd create), or kb (kb_add).
+If the content is a summary, status, recap, or analysis: it does not belong in a markdown file. Put it in your conversation response, beads (bd create), or kb (~/.local/bin/kb add).
 EOF
 exit 2

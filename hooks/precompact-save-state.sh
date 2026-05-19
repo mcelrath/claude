@@ -126,7 +126,7 @@ except:
 
 SUMMARY=$(python3 "$CLAUDE_DIR/hooks/lib/summarize_session.py" "$JSONL" "none" "$LLM_URL" 2>/dev/null)
 if ! echo "$SUMMARY" | python3 -c "import sys,json; json.load(sys.stdin)" 2>/dev/null; then
-    SUMMARY='{"summary":"LLM unavailable","current_task":"unknown","next_steps":["kb_list for context"],"blockers":[]}'
+    SUMMARY='{"summary":"LLM unavailable","current_task":"unknown","next_steps":["~/.local/bin/kb list (CLI)"],"blockers":[]}'
 fi
 
 cat > "$OUT_DIR/handoff.md.tmp" << EOF
@@ -173,7 +173,7 @@ ${KB_IDS:-[none]}
 1. Read this handoff for context
 2. Run: bd ready (find available work)
 3. Run: bd list --status=in_progress (active work)
-4. kb_list(project="$PROJECT_NAME") for session findings
+4. ~/.local/bin/kb list -p "$PROJECT_NAME"  (session findings; MCP removed 2026-05-19)
 5. Continue from last user query — do NOT ask what to work on
 EOF
 

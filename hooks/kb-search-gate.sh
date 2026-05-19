@@ -1,7 +1,9 @@
 #!/bin/bash
 # PreToolUse hook for Edit/Write
-# BLOCKS unless kb_search was called this session
+# BLOCKS unless `kb search` (Bash CLI) was called this session
 # EXCEPTIONS: hooks directory, /tmp/, /dev/shm/
+# MCP kb_search tool was removed 2026-05-19; canonical form is
+# `~/.local/bin/kb search "<query>"` via Bash. See kb-search-track.sh.
 source "$(dirname "$0")/lib/claude-env.sh"
 
 STATE_DIR="/tmp/claude-kb-state"
@@ -46,9 +48,10 @@ except:
         # Check if search was done
         SEARCHED_FILE="$STATE_DIR/${SESSION_ID}-searched"
         if [[ ! -f "$SEARCHED_FILE" ]]; then
-            echo "BLOCKED: No kb_search called yet this session." >&2
+            echo "BLOCKED: No 'kb search' run yet this session." >&2
             echo "" >&2
-            echo "Run kb_search('<what you are implementing>') first." >&2
+            echo "Run: ~/.local/bin/kb search \"<what you are implementing>\"" >&2
+            echo "(MCP kb_search was removed 2026-05-19; Bash CLI is the only entrypoint.)" >&2
             echo "This is mandatory. Every time. No exceptions." >&2
             exit 2
         fi

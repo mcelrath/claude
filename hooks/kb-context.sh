@@ -61,7 +61,7 @@ if [[ -f "$CONTEXT_FILE" ]]; then
     fi
 fi
 
-# Show recent finding IDs only (compact - use kb_get to fetch content)
+# Show recent finding IDs only (compact - use ~/.local/bin/kb get <id> to fetch content)
 FINDINGS=$("$KB_VENV" "$KB_SCRIPT" list --project="$PROJECT" --limit=3 2>/dev/null) || true
 
 if [[ -n "$FINDINGS" && "$FINDINGS" != "No findings found." ]]; then

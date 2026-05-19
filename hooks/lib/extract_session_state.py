@@ -60,19 +60,31 @@ def extract_state(jsonl_path: str, max_messages: int = 50) -> dict:
                                             task_map[tid]['status'] = inp['status']
                                         if 'subject' in inp:
                                             task_map[tid]['subject'] = inp['subject']
-                                # Track kb_correct to identify superseded entries
-                                elif name == 'mcp__knowledge-base__kb_correct':
-                                    supersedes_id = inp.get('supersedes_id', '')
-                                    if supersedes_id:
-                                        kb_superseded.add(supersedes_id)
-                                # Track kb_add to capture new findings
-                                elif name == 'mcp__knowledge-base__kb_add':
-                                    kb_added.append({
-                                        'content': inp.get('content', '')[:500],
-                                        'tags': inp.get('tags', ''),
-                                        'project': inp.get('project', ''),
-                                        'finding_type': inp.get('finding_type', '')
-                                    })
+                                # Track kb add / kb correct via Bash CLI (MCP removed 2026-05-19).
+                                # Match commands like:
+                                #   ~/.local/bin/kb add "content" -t TYPE -p PROJECT --tags T1,T2
+                                #   ~/.local/bin/kb correct ... --supersedes-id kb-...
+                                #   kb add ... (PATH form)
+                                elif name == 'Bash':
+                                    _cmd = inp.get('command', '') or ''
+                                    _m_kb = re.search(r'(?:^|[\s;&|`(])(?:~/\.local/bin/)?kb\s+(add|correct)\b', _cmd)
+                                    if _m_kb:
+                                        _sub = _m_kb.group(1)
+                                        if _sub == 'correct':
+                                            _sup = re.search(r'--supersedes[-_]id[= ]+(kb-\S+)', _cmd)
+                                            if _sup:
+                                                kb_superseded.add(_sup.group(1))
+                                        elif _sub == 'add':
+                                            _t = re.search(r'(?:^|\s)-t\s+(\S+)', _cmd)
+                                            _p = re.search(r'(?:^|\s)-p\s+(\S+)', _cmd)
+                                            _tags = re.search(r'--tags\s+(\S+)', _cmd)
+                                            _content = re.search(r'kb\s+add\s+["\']([^"\']{0,500})', _cmd)
+                                            kb_added.append({
+                                                'content': (_content.group(1) if _content else _cmd[:500]),
+                                                'tags': (_tags.group(1) if _tags else ''),
+                                                'project': (_p.group(1).strip('"\'') if _p else ''),
+                                                'finding_type': (_t.group(1) if _t else 'discovery'),
+                                            })
                                 # Track file operations
                                 elif name == 'Read':
                                     fp = inp.get('file_path', '')

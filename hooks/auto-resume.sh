@@ -72,7 +72,7 @@ INSTRUCTIONS:
 3. If a plan was shown above, CONTINUE WORKING ON IT immediately:
    - PLANNING mode: continue developing the plan, run expert-review when ready
    - IMPLEMENTATION mode: start implementing, do not call ExitPlanMode
-4. If no plan was shown, kb_search("$PROJECT") for context and continue the last task
+4. If no plan was shown, ~/.local/bin/kb search "" -p "$PROJECT" for context and continue the last task
 5. After resuming, run: rm $RESUME_FILE
 6. Do NOT ask "What would you like to work on?" — just continue.
 

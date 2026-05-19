@@ -1,7 +1,7 @@
 #!/bin/bash
-# PostToolUse hook for mcp__knowledge-base__kb_search and Task
-# Sets flag that kb_search was called in this session
-# Also sets flag when delegating to kb-research agent
+# PostToolUse hook tracking kb search activity (Bash CLI or kb-research Task).
+# Sets a per-session flag the gate hook reads. The MCP kb_search tool was
+# removed 2026-05-19; canonical entrypoint is `~/.local/bin/kb search` via Bash.
 
 STATE_DIR="/tmp/claude-kb-state"
 mkdir -p "$STATE_DIR"
@@ -17,9 +17,12 @@ if [[ ! -f "$SESSION_FILE" ]]; then
 fi
 SESSION_ID=$(cat "$SESSION_FILE")
 
-# Direct kb_search call
-if [[ "$TOOL_NAME" == "mcp__knowledge-base__kb_search" ]]; then
-    touch "$STATE_DIR/${SESSION_ID}-searched"
+# CLI kb search via Bash (current path).
+if [[ "$TOOL_NAME" == "Bash" ]]; then
+    CMD=$(echo "$INPUT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('tool_input',{}).get('command',''))" 2>/dev/null)
+    if echo "$CMD" | grep -qE '(^|[[:space:];&|`(])(~/\.local/bin/)?kb[[:space:]]+search\b'; then
+        touch "$STATE_DIR/${SESSION_ID}-searched"
+    fi
 fi
 
 # Task delegation to kb-research agent (agent will call kb_search in its session)

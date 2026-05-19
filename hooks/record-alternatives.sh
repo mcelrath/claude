@@ -24,8 +24,7 @@ except:
         [[ "$FILE_PATH" == "/tmp/"* ]] && exit 0
         [[ "$FILE_PATH" == "/dev/shm/"* ]] && exit 0
         [[ "$FILE_PATH" == *"/CLAUDE.md" ]] && exit 0
-        [[ "$FILE_PATH" == *"/memory/"* ]] && exit 0
-        [[ "$FILE_PATH" == *"/MEMORY.md" ]] && exit 0
+        # /memory/ and MEMORY.md skips removed: those files migrated to kb 2026-05-19
 
         # Get session ID
         SESSION_FILE="$STATE_DIR/session-$PPID"

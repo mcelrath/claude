@@ -12,7 +12,7 @@ import json
 import re
 import urllib.request
 
-FALLBACK = '{"summary":"LLM unavailable","current_task":"unknown","next_steps":["kb_list for context","check handoff files_edited section"],"blockers":[]}'
+FALLBACK = '{"summary":"LLM unavailable","current_task":"unknown","next_steps":["~/.local/bin/kb list (CLI)","check handoff files_edited section"],"blockers":[]}'
 
 SYSTEM_PROMPT = "Summarize this Claude Code session for handoff. Output ONLY valid JSON."
 

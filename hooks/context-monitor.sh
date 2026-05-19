@@ -9,7 +9,7 @@ WRAPUP_THRESHOLD=90
 BLOCK_THRESHOLD=95
 
 # Tools allowed through even at block threshold (essential for session continuity)
-ALLOWED_AT_BLOCK="mcp__knowledge-base__kb_add|mcp__knowledge-base__kb_search|Read|TaskOutput"
+ALLOWED_AT_BLOCK="Bash|Read|TaskOutput"  # Bash covers ~/.local/bin/kb add|search (MCP removed 2026-05-19)
 
 # Read hook input JSON
 HOOK_INPUT=$(cat)
@@ -118,7 +118,7 @@ elif [[ $PERCENT -ge $WRAPUP_THRESHOLD ]]; then
         "$CLAUDE_DIR/hooks/precompact-save-state.sh" >/dev/null 2>&1
         touch "$CHECKPOINT_MARKER"
     fi
-    echo "CONTEXT ${PERCENT}%: WRAP UP current task. kb_add any findings. Next tool call at ${BLOCK_THRESHOLD}% will be blocked."
+    echo "CONTEXT ${PERCENT}%: WRAP UP current task. ~/.local/bin/kb add any findings. Next tool call at ${BLOCK_THRESHOLD}% will be blocked."
     echo "State auto-saved. When blocked, type /clear to continue seamlessly."
 
 elif [[ $PERCENT -ge $WARN_THRESHOLD ]]; then
