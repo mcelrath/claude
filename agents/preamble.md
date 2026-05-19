@@ -81,11 +81,26 @@ This project is Cl(4,4) Clifford algebra: 48-dim R-vector space with quaternioni
 
 ## Operational Rules
 
-6. **kb_add before returning**. Your work survives termination only if recorded. Checkpoint every 10 tool uses.
+6. **kb_add before returning, VIA CLI** (the MCP `mcp__knowledge-base__kb_add` was REMOVED 2026-05-19 because sub-agent MCP propagation is racy per GitHub claude-code #14496/#13254). Your work survives termination only if recorded. Checkpoint every 10 tool uses. Exact invocation:
 
-7. **Project tag = what's in the project CLAUDE.md**. For exterior_algebra, always use project="exterior_algebra". Don't invent project names.
+   ```
+   ~/.local/bin/kb add "FINDING CONTENT" \
+     -t discovery \
+     -p algebraic-genesis \
+     -s SPRINT-NAME \
+     --tags TAG1,TAG2,TAG3 \
+     -e "evidence: file:line citations"
+   ```
 
-8. **kb_search with project=None first** if your topic might span projects. Then narrow. Many findings are filed under variant project names.
+   Returns `Added: kb-YYYYMMDD-HHMMSS-hash`. Capture the kb-id and report it.
+
+   Other operations: `kb get <id>`, `kb search "query" -p PROJECT`, `kb list -p PROJECT`, `kb correct <new> --supersedes-id <old> --correction-reason <reason>`, `kb stats`.
+
+   **NEVER** call `mcp__knowledge-base__kb_*` — those tools no longer exist on the MCP server.
+
+7. **Project tag is one of: `algebraic-genesis` (physics/math cross-cutting), `secular-constraints`, `claude`, or another existing project name listed in your project's CLAUDE.md**. Do NOT invent new project names. If unsure, check `~/.local/bin/kb stats` (lists current namespaces). For the two-repo Physics work (`~/Physics/secular-constraints/` + `~/Physics/claude/`), the canonical name is **Algebraic Genesis**.
+
+8. **kb search with project=None first** if your topic might span projects. Then narrow. Many findings are filed under variant project names (the Algebraic Genesis namespace-consolidation epic is in flight; see bd `secular-constraints-adkh.4`).
 
 9. **Don't duplicate the parent's work**. If the parent gave you KB IDs or findings, start from those. Don't re-search what's already provided.
 

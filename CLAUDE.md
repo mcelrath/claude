@@ -210,19 +210,29 @@ bd prime                    # Load full workflow context
 
 **bd notes/description format**: use a single-line `--notes "..."` or `--description "..."` argument with plain text. **Hooks block** long heredocs (`<<EOF` > ~30 lines) AND writing `.md` files in `.beads/` or anywhere unrequested. For long content: keep notes concise (1-2 paragraphs of plain prose, no markdown tables, no bullet lists across many lines), or split into multiple `bd update --notes` calls (note: each replaces the prior — last one wins), or store the long content as a `kb_add` entry and put the kb-id in the bd note. Don't write to `.md` files; don't try heredocs >30 lines.
 
-# KB Access
+# KB Access — CLI ONLY (MCP DEPRECATED 2026-05-19)
 
-| Operation | Direct Call? |
-|-----------|--------------|
-| kb_search | NO — spawn kb-research agent |
-| kb_add | YES |
-| kb_correct | YES |
-| kb_get | YES |
-| kb_list | YES |
+KB MCP server removed from `~/.claude.json` 2026-05-19. **All kb operations go through the CLI** (`~/.local/bin/kb`). Reason: sub-agent MCP tool propagation is racy in Claude Code (GitHub issues #14496 open, #13254 closed not-planned, #19964 docs); tools appear in inventory but calls fail with "No such tool available" intermittently. CLI is reliable, parallel-safe, foreground/background-agnostic, and matches the `bd` precedent.
 
-**Template**: `Task(subagent_type="kb-research", model="haiku", prompt="TOPIC: {x}")`
+| Operation | Pattern |
+|-----------|---------|
+| kb add | `~/.local/bin/kb add "content" -t TYPE -p PROJECT -s SPRINT --tags T1,T2 -e EVIDENCE` |
+| kb search | `~/.local/bin/kb search "query" -p PROJECT` (or spawn `kb-research` agent for thorough multi-round) |
+| kb get | `~/.local/bin/kb get kb-YYYYMMDD-HHMMSS-hash` |
+| kb list | `~/.local/bin/kb list -p PROJECT` |
+| kb correct | `~/.local/bin/kb correct <new-content> --supersedes-id <old-id> --correction-reason <reason>` |
+| kb stats | `~/.local/bin/kb stats` |
+| kb reembed | `~/.local/bin/kb reembed --force` (full re-embed after model change) |
 
-Tags: proven|heuristic|open-problem, core-result|technique|detail
+Tool returns `Added: kb-<YYYYMMDD>-<HHMMSS>-<hash>` on success; capture the id for cross-reference.
+
+`add` returns the kb-id on its first line (`Added: kb-...`). Parse for downstream chaining.
+
+**Sub-agent dispatch prompts MUST** include the explicit CLI form (NOT `mcp__knowledge-base__kb_add` — that tool is gone from MCP and was racy anyway).
+
+Tags taxonomy: proven|heuristic|open-problem, core-result|technique|detail.
+
+**Project field for the two-repo Physics work**: use `algebraic-genesis` (canonical), or `secular-constraints` / `claude` for repo-specific work. Do NOT invent new project namespaces. (See bd `secular-constraints-adkh.4`.)
 
 # Jupyter Notebooks (Computation Only)
 

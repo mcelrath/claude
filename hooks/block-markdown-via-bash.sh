@@ -22,10 +22,15 @@ if [[ "$CMD" != *.md* ]]; then
     exit 0
 fi
 
-# Exclude `bridge send` and other heredoc-body commands where .md filenames
-# appear in message bodies (blockquote `> ` + filename can trick the regex).
-# These commands don't create files; they send messages.
-if [[ "$CMD" =~ (^|[[:space:]\;\&\|])(bridge|~/\.agent-bridge/bridge|/home/mcelrath/\.agent-bridge/bridge)[[:space:]]+send([[:space:]]|$) ]]; then
+# Exclude command-line tools where .md filenames appear in arg bodies (these
+# don't create files, they're communicating about files via tool args):
+#   bridge send  — heredoc message body may quote `> path.md`
+#   kb add/correct/get/search/list/stats — content/evidence args may cite .md paths
+#   bd create/update/remember/show — notes/description args may cite .md paths
+# Match command-name occurrence anywhere in CMD (allows $(...) substitution + pipes).
+if [[ "$CMD" =~ (^|[[:space:]\;\&\|\(])(bridge|~/\.agent-bridge/bridge|/home/mcelrath/\.agent-bridge/bridge)[[:space:]]+send([[:space:]]|$) ]] \
+   || [[ "$CMD" =~ (^|[[:space:]\;\&\|\(])(kb|~/\.local/bin/kb|/home/mcelrath/\.local/bin/kb)[[:space:]]+(add|correct|update|get|search|list|stats|reembed|delete|check|bulk-tag|bulk-consolidate)([[:space:]]|$) ]] \
+   || [[ "$CMD" =~ (^|[[:space:]\;\&\|\(])bd[[:space:]]+(create|update|remember|show|close|note|memories|recall)([[:space:]]|$) ]]; then
     exit 0
 fi
 

@@ -71,9 +71,10 @@ ALWAYS_ALLOW_RX = [
     r'(^|[\s\|;&])kubectl\s+(apply|create|replace|patch)\b.*-f\s+-',
     r'(^|[\s\|;&])(docker|podman)\s+exec\s+-i\b',
     r'(^|[\s\|;&])sudo\s+tee\b',
-    r'(^|[\s\|;&])bd\s+(create|update)\b',
+    r'(^|[\s\|;&])bd\s+(create|update|remember)\b',
     r'(^|[\s\|;&])git\b[^|;&]*\s+commit\b',
     r'(^|[\s\|;&])\S*bridge\s+(send|user-direction|announce)\b',
+    r'(^|[\s\|;&])\S*kb\s+(add|correct|update|get|search|list|stats|reembed)\b',
 ]
 INTERPRETER_RX = [
     r'(^|[\s\|;&])python3?\s*<<',

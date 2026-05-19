@@ -21,6 +21,10 @@ CMD=$(echo "$INPUT" | python3 -c "import sys,json; print(json.load(sys.stdin).ge
 echo "$CMD" | grep -qE "git\s+(-[A-Za-z]+\s+\S+\s+)*commit" 2>/dev/null && exit 0
 # Skip bridge send/announce/user-direction (heredoc message bodies)
 echo "$CMD" | grep -qE "bridge\s+(send|announce|user-direction)" 2>/dev/null && exit 0
+# Skip kb CLI (content arg may include narrative; not script-style banners)
+echo "$CMD" | grep -qE "\bkb\s+(add|correct|update)" 2>/dev/null && exit 0
+# Skip bd CLI heredoc-style notes/descriptions
+echo "$CMD" | grep -qE "\bbd\s+(create|update|remember)" 2>/dev/null && exit 0
 
 # Decorative-output detector. Counts narrative/banner lines.
 export _SPAM_CMD="$CMD"
