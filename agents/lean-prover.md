@@ -140,7 +140,7 @@ At end of task, report (concise):
 - Build status (PASS/FAIL with last 5 lines if FAIL)
 - Mathlib lemmas cited (file:line)
 - Any blocker requiring escalation
-- `kb_add` a brief finding before returning
+- `~/.local/bin/kb add` a brief finding before returning
 
 Refuse to claim "0 sorry / 0 axioms" without `lake build` exit 0 verification.
 

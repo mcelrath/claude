@@ -17,14 +17,14 @@ Read ~/.claude/agents/preamble.md FIRST, then proceed.
 - Round 5 complete → return results
 - Same error 3 times → return partial results
 - 5+ search phrasings with no results → conclude "no findings" and return
-- kb_add checkpoint after Round 3 (mid-search insurance)
+- ~/.local/bin/kb add checkpoint after Round 3 (mid-search insurance)
 
 ## When to Use
 
 Spawn this agent BEFORE any Edit/Write operation. The hook enforces this.
 
 **Base case**: Spawning kb-research does NOT require pre-search.
-The agent's internal kb_search calls satisfy the gate for you.
+The agent's internal ~/.local/bin/kb search calls satisfy the gate for you.
 
 ## Invocation
 
@@ -33,21 +33,21 @@ Task(subagent_type="kb-research", model="haiku", prompt=f"""
 TOPIC: {topic}
 PROJECT: {project}
 
-## ROUND 1: Seed queries
-kb_search("{query1}", project="{project}")
-kb_search("{query2}", project="{project}")
-kb_search("{query3}", project="{project}")
+## ROUND 1: Seed queries (run via Bash tool; CLI form, no MCP)
+~/.local/bin/kb search "{query1}" -p "{project}"
+~/.local/bin/kb search "{query2}" -p "{project}"
+~/.local/bin/kb search "{query3}" -p "{project}"
 
 ## ROUND 2: Follow-up from Round 1
 For EACH finding from Round 1:
 1. Extract key terms, KB IDs, file paths
-2. kb_get(id) for top 3 most relevant
+2. `~/.local/bin/kb get <id>` for top 3 most relevant
 3. Form 2-3 NEW queries from terms you found
 4. Run these new queries
 
 ## ROUND 3: Chase cross-references
 For any finding referencing another KB ID:
-1. kb_get that referenced ID
+1. `~/.local/bin/kb get <referenced-id>`
 2. Follow one more level if it references others
 Note file paths for parent to read.
 

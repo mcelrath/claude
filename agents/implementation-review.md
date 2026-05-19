@@ -361,7 +361,7 @@ Default checks can be overridden by defining a check with the same ID in any hig
 
 ### APPROVED
 
-**IMPORTANT: Do all side effects (archiving, kb_add) BEFORE outputting the verdict.** The parent reads your output and proceeds immediately — any work after the verdict may not complete.
+**IMPORTANT: Do all side effects (archiving, ~/.local/bin/kb add) BEFORE outputting the verdict.** The parent reads your output and proceeds immediately — any work after the verdict may not complete.
 
 ```
 APPROVED
@@ -459,5 +459,5 @@ For implementation-review, these checks apply to the **diff** and **changed file
 - All checks pass → RECORD → APPROVED (do not continue checking)
 - reviewers.yaml missing → ERROR, stop
 - Epic not found → ERROR, stop
-- kb_add verdict before returning (survives termination)
-- kb_add checkpoint every 10 tool uses
+- ~/.local/bin/kb add verdict before returning (survives termination)
+- ~/.local/bin/kb add checkpoint every 10 tool uses

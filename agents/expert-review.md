@@ -48,7 +48,7 @@ Task(subagent_type="expert-review", model="haiku", run_in_background=True,
 
 8a. **Pre-extraction (lead does once, before dispatch):** Read every file the reviewers will need — plan/design file, the 3-5 supporting source files cited, relevant CLAUDE.md sections, anti-pattern rules. For each reviewer role, extract the focused excerpts (50-200 lines each) they need with explicit file:line citations. Bundle as inline content in the teammate prompt. This replaces 6 teammates × full file reads (~30-50K tokens each) with 1 lead read pass + ~3-10K excerpt bundles per teammate. Expected ~70% token reduction.
 
-8b. Dispatch teammates directly via parallel `Task(subagent_type=...)` calls. Each teammate's prompt MUST include: "Excerpts below are pre-extracted by the lead. DO NOT Read source files unless your verdict hinges on a claim the excerpts cannot resolve — and then state which file:line you need and stop." No bd molecule. Results exist only in teammate inline output + `kb_add` if findings are durable.
+8b. Dispatch teammates directly via parallel `Task(subagent_type=...)` calls. Each teammate's prompt MUST include: "Excerpts below are pre-extracted by the lead. DO NOT Read source files unless your verdict hinges on a claim the excerpts cannot resolve — and then state which file:line you need and stop." No bd molecule. Results exist only in teammate inline output + `~/.local/bin/kb add` if findings are durable.
 
 8c. If you were spawned via `bd mol wisp` despite the rule above (legacy invocation), self-close your own wisp task at exit: `bd close <self-id> --reason="review complete: <verdict>"`. Also close any sibling wisp-* tasks under the same wisp root before returning.
 
@@ -87,7 +87,7 @@ For each reviewer in the panel (default 3: Advocate, Challenger, Computational a
      hinges on a claim the excerpts cannot resolve. If you must, state which
      file:line you need and stop after that single Read.
    - Max 8 tool calls total (was 15; tightened because excerpts are pre-bundled).
-   - kb_add your review only if findings are durable/cross-session.""")
+   - ~/.local/bin/kb add your review only if findings are durable/cross-session.""")
    ```
     Where `{molecule_instruction}` is either:
     - With molecule: `"Also write your review to bd issue notes: bd update <step-id> --append-notes '<your-json>'"`
@@ -149,7 +149,7 @@ With molecule: each re-review iteration creates new step children under the synt
 
 ### Phase 4 — Return Verdict (both modes)
 
-16. kb_add the verdict (survives termination).
+16. ~/.local/bin/kb add the verdict (survives termination).
 17. Return structured JSON (see Output Format).
 
 ## Output Format
@@ -212,11 +212,11 @@ If no response, fall back immediately. Don't wait.
 - If agent-preamble.md missing: proceed with CLAUDE.md only
 - If a reviewer teammate fails after 5 minutes: proceed with partial results
 - If local model returns empty content: fall back to API model, note in synthesis
-- kb_add verdict before returning (survives termination)
+- ~/.local/bin/kb add verdict before returning (survives termination)
 
 ## STOPPING CONDITIONS
 
-- Lead: kb_add every 10 tool uses
-- Teammates: max 15 tool calls each, kb_add before completing
+- Lead: ~/.local/bin/kb add every 10 tool uses
+- Teammates: max 15 tool calls each, ~/.local/bin/kb add before completing
 - If plan is >200 lines, focus on architecture and gatekeepers, not line-by-line
 - If no CLAUDE.md or rules exist, review is necessarily shallow — say so in synthesis

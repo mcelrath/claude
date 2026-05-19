@@ -98,9 +98,9 @@ Everything in FULL, plus:
 17. Grep for `fixes|closes|resolves beads-` patterns → verify those issues were actually closed
 18. Commits that mention issue IDs without fix-keywords → issues that may be partially addressed
 
-### KB Hygiene (if knowledge-base MCP available)
+### KB Hygiene (CLI only; MCP deprecated 2026-05-19)
 
-19. `kb_list(project=PROJECT)` — recent findings
+19. `~/.local/bin/kb list -p PROJECT` — recent findings
 20. Check for session-checkpoint findings older than 7 days → recommend cleanup
 21. Check for findings tagged `heuristic` older than 30 days → recommend re-verification
 
@@ -165,7 +165,7 @@ Actions: {total_recommendations} recommendations ({critical} critical, {cleanup}
 - Classify each recommendation: `critical` (blocks progress), `cleanup` (hygiene), `info` (awareness)
 - For LIGHT mode, skip sections with zero findings — keep output minimal
 - Always show the `bd` command needed to act on each recommendation
-- kb_add a summary before returning: "Project health scan ({mode}): {N} findings, {M} critical"
+- ~/.local/bin/kb add a summary before returning: "Project health scan ({mode}): {N} findings, {M} critical"
 - If bd commands fail (no .beads/ directory), report ERROR and stop
 
 ## STOPPING CONDITIONS
@@ -175,4 +175,4 @@ Actions: {total_recommendations} recommendations ({critical} critical, {cleanup}
 - LIGHT: max 15 tool calls
 - FULL: max 30 tool calls
 - COMPREHENSIVE: max 50 tool calls
-- kb_add checkpoint every 10 tool uses
+- ~/.local/bin/kb add checkpoint every 10 tool uses

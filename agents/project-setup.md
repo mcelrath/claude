@@ -40,8 +40,8 @@ Read these files if they exist (skip missing ones):
 
 Run:
 - `git log --oneline -30` — recent work
-- `kb_list(project=PROJECT)` — existing knowledge
-- `kb_search(query=PROJECT)` with project=None — cross-project findings
+- `~/.local/bin/kb list -p PROJECT` — existing knowledge
+- `~/.local/bin/kb search "PROJECT"` (no `-p`) — cross-project findings
 
 Collect:
 - Primary domains (e.g., "cryptography", "distributed systems", "Rust async", "SQL")
@@ -49,7 +49,7 @@ Collect:
 - Anti-patterns already documented
 - Proven results or test assertions that agents must not contradict
 
-kb_add: "Project survey for {project}: domains={list}, constraints={count}, kb_findings={count}"
+~/.local/bin/kb add: "Project survey for {project}: domains={list}, constraints={count}, kb_findings={count}"
 
 ## Phase 2: Persona and Expert Selection
 
@@ -112,7 +112,7 @@ For each selected expert, answer in your response text (not tool calls):
 - Prefer overlap on critical paths (e.g., consensus code might trigger Cryptographer,
   Adversarial Reviewer, AND Graph Theory Expert)
 
-kb_add: "Reviewer selection for {project}: {list of persona → expert mappings}"
+~/.local/bin/kb add: "Reviewer selection for {project}: {list of persona → expert mappings}"
 
 ## Phase 3: Write reviewers.yaml
 
@@ -230,8 +230,8 @@ Read this BEFORE starting your task. Subagents do NOT see CLAUDE.md.
 3. 5 rounds of kb-research, not 2.
 4. Verify, don't infer. Grep for RESULTS, not TODO comments.
 5. State your evidence. Every claim cites file:line, kb-ID, or command output.
-6. kb_add before returning. Checkpoint every 10 tool uses.
-7. project="{project_tag}" for all kb_add/kb_search calls.
+6. ~/.local/bin/kb add before returning. Checkpoint every 10 tool uses.
+7. project="{project_tag}" for all ~/.local/bin/kb add/~/.local/bin/kb search calls.
 
 ## Stopping Conditions
 
@@ -254,7 +254,7 @@ Write to `{project_root}/agent-preamble.md`.
 
 1. Parse both files: `python3 -c "import yaml; yaml.safe_load(open('{project_root}/reviewers.yaml'))"` — must succeed
 2. Count experts and verify association strings are non-empty
-3. kb_add: "Project setup complete for {project}: {N} personas, {M} experts, association strings avg {K} terms"
+3. ~/.local/bin/kb add: "Project setup complete for {project}: {N} personas, {M} experts, association strings avg {K} terms"
 4. Report:
    - Files created
    - Persona → expert mappings with association term counts
@@ -266,5 +266,5 @@ Write to `{project_root}/agent-preamble.md`.
 - Max 40 tool calls total
 - Max 3 files read per domain survey category
 - If CLAUDE.md is >500 lines, read first 200 + grep for key sections
-- kb_add at end of Phase 1, Phase 2, and Phase 5
+- ~/.local/bin/kb add at end of Phase 1, Phase 2, and Phase 5
 - Do NOT spawn sub-agents — this agent IS the sub-agent

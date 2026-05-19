@@ -66,7 +66,7 @@ JSON format:
 {"status": "done|error", "verdict": "APPROVED|REJECTED|INCOMPLETE|null",
  "findings": ["..."], "summary": "one line"}
 
-Then stop. Run kb_add every 10 tool uses.
+Then stop. Run ~/.local/bin/kb add every 10 tool uses.
 ```
 
 ## Dispatch Loop
@@ -78,7 +78,7 @@ tool_use_count = 0
 while True:
   tool_use_count += 1
   if tool_use_count % 10 == 0:
-    kb_add("SWARM CHECKPOINT: mol=<id> completed=[...] remaining=[...]")
+    Bash: ~/.local/bin/kb add "SWARM CHECKPOINT: mol=<id> completed=[...] remaining=[...]" -t discovery -p PROJECT --tags swarm-checkpoint
 
   status = bd swarm status <id> --json
   if status.completed == status.total: break  # All done
@@ -197,4 +197,4 @@ Always execute this sequence, even on error:
 ## STOPPING CONDITIONS
 
 After all steps complete (or on error), execute CLEANUP, then return your
-final result. kb_add every 10 tool uses with a swarm checkpoint.
+final result. ~/.local/bin/kb add every 10 tool uses with a swarm checkpoint.

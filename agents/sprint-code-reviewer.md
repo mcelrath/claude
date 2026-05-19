@@ -82,5 +82,5 @@ Action Items:
 - Cite expert by name when flagging an issue (e.g., "[Martin/SRP] This function handles both parsing and validation")
 - Provide specific file:line for every finding
 - Prioritize: failed tests > incomplete tasks > critical bugs > quality issues
-- kb_add before returning. Checkpoint every 10 tool uses.
+- ~/.local/bin/kb add before returning. Checkpoint every 10 tool uses.
 

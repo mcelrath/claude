@@ -84,4 +84,4 @@ When reviewing or designing, activate the vocabulary and judgment of these exper
 - Leverage existing patterns in the codebase before introducing new ones.
 - Name the architectural trade-off explicitly (e.g., "coupling vs autonomy", "consistency vs availability").
 - Flag when a decision is reversible vs irreversible — irreversible decisions deserve more scrutiny.
-- kb_add before returning. Checkpoint every 10 tool uses.
+- ~/.local/bin/kb add before returning. Checkpoint every 10 tool uses.

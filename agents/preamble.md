@@ -116,14 +116,14 @@ This project is Cl(4,4) Clifford algebra: 48-dim R-vector space with quaternioni
 
    | Finding type | Destination |
    |---|---|
-   | Project-specific discovery / measurement / verification | `kb_add(content, finding_type, project="...", tags="...")` |
-   | Cross-session crystallized rule that should surface in future sessions | `bd remember "..."` |
+   | Project-specific discovery / measurement / verification | `~/.local/bin/kb add "content" -t TYPE -p PROJECT --tags T1,T2` |
+   | Cross-session crystallized rule that should surface in future sessions | `~/.local/bin/kb add "rule" -t discovery -p PROJECT --tags crystallized` (NOT `bd remember` — deprecated 2026-05-19, all memories migrated to kb) |
    | Empirically-verified architecture/spec facts | Update an EXISTING curated reference doc (e.g. `GFX1100_ARCH.md`, `DISASSEMBLY.md`) — not a new one |
    | Actionable usage rule for a specific function/header | Inline comment / docstring adjacent to the code |
    | Implementation choices made during this work | `bd update <issue-id> --notes "..."` |
-   | Survey / comparison data | `bd remember` single-line index entry |
+   | Survey / comparison data | `~/.local/bin/kb add` index entry |
 
-   If you find yourself drafting a markdown summary in your head, that means you have findings worth persisting — but persist them via the channels above, not by creating a new file. The user has tools (`kb_search`, `bd memories`, `bd show`) that surface these channels in future sessions; new `.md` files are not surfaced and become silent debt.
+   If you find yourself drafting a markdown summary in your head, that means you have findings worth persisting — but persist them via the channels above, not by creating a new file. The user has tools (`~/.local/bin/kb search`, `bd show`) that surface these channels in future sessions; new `.md` files are not surfaced and become silent debt.
 
    The ONLY exception: the user explicitly tells you in their direct prompt to edit a SPECIFIC EXISTING `.md` file. Even then, never create a new one.
 
@@ -165,6 +165,6 @@ Stop and return partial results if:
 
 ## Output
 
-- kb_add BEFORE your final output (work must survive even if output is truncated)
+- `~/.local/bin/kb add` BEFORE your final output (work must survive even if output is truncated)
 - Conclusion first, evidence second
 - Cite sources: file:line or kb-ID for every factual claim
