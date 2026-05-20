@@ -108,35 +108,17 @@ This project is Cl(4,4) Clifford algebra: 48-dim R-vector space with quaternioni
 
 10a. **Proof catalogs**. For Lean theorem inventory or scope-assessment tasks, the auto-generated catalogs live at `~/Physics/claude/docs/reference/proofs.md` (full), `proofs_suspicious.md` (heuristic-flagged), and `mathlib-contributions.md` (our in-flight upstream Mathlib work on branch `ag` vs `upstream/master`). Regenerate via `python3 build_theorem_index.py` from `~/Physics/claude/`.
 
-11. **Use Read, not grep, for content claims**. When you must produce a count, list, or status of declarations in a source file (sorrys, axioms, theorem inventories, TODOs), use the Read tool on the full file. `grep` matches comments, docstrings, and prose discussion of the keyword — not actual proof obligations or declarations. Same for any inventory of code-vs-comment claims.
+11. **Use Read, not grep, for content claims** (counts/lists/inventories of declarations, sorrys, axioms, TODOs). grep matches comments/docstrings; only Read disambiguates.
 
 12. **Derivation-First Rule (DFR)**. When asked to identify or correlate a quantity to a known target (L-function, regulator, mass-spectrum value, anything): derive it via ONE chain of identified principles, compute ONCE, compare without retrofit. **Forbidden:** testing candidate families; "best-of-N" matches; mixing identified + unidentified factors; integer-pattern-matching dimensions to dim-of-some-Lie-group; ratios within "a few %" called "structural" without an explicit derivation chain. Negative result is valid — don't try alternate forms after a derivation gives non-matching values; that IS the answer. If a prompt directs you to "test candidates" / "search space of {X,Y,Z}" / "find best match": STOP. Restate as a single derivation and ask the dispatcher.
 
-13. **NEVER create new `.md` files.** This rule is absolute and applies even when the user or your prompt names a `.md` deliverable. The block-markdown-files hook will block the Write anyway, so you waste tool calls trying. Markdown proliferation across `kernels/`, `crates/`, `notes/`, etc. is an organizational hazard the user has explicitly flagged. **Route findings instead to one of:**
+13. **NEVER create new `.md` files.** The block-markdown-files hook blocks the Write anyway. Investigation reports MUST return inline to the dispatcher (and/or `kb add`); `*_INVESTIGATION.md` is hard-blocked unconditionally. For the destination matrix by content type, see `~/.claude/CLAUDE.md` section "Why .md creation is blocked". Existing .md files can be Edit'd / `git mv`'d freely.
 
-   | Finding type | Destination |
-   |---|---|
-   | Project-specific discovery / measurement / verification | `~/.local/bin/kb add "content" -t TYPE -p PROJECT --tags T1,T2` |
-   | Cross-session crystallized rule that should surface in future sessions | `~/.local/bin/kb add "rule" -t discovery -p PROJECT --tags crystallized` (NOT `bd remember` — deprecated 2026-05-19, all memories migrated to kb) |
-   | Empirically-verified architecture/spec facts | Update an EXISTING curated reference doc (e.g. `GFX1100_ARCH.md`, `DISASSEMBLY.md`) — not a new one |
-   | Actionable usage rule for a specific function/header | Inline comment / docstring adjacent to the code |
-   | Implementation choices made during this work | `bd update <issue-id> --notes "..."` |
-   | Survey / comparison data | `~/.local/bin/kb add` index entry |
-
-   If you find yourself drafting a markdown summary in your head, that means you have findings worth persisting — but persist them via the channels above, not by creating a new file. The user has tools (`~/.local/bin/kb search`, `bd show`) that surface these channels in future sessions; new `.md` files are not surfaced and become silent debt.
-
-   The ONLY exception: the user explicitly tells you in their direct prompt to edit a SPECIFIC EXISTING `.md` file. Even then, never create a new one.
+13a. **kb-down does NOT release the .md ban.** If `~/.local/bin/kb add` fails (ash:8081 unreachable, network error, anything), your report content stays in the inline `tool_result` you return to the dispatcher — the dispatcher persists later. Alternatively, write a queue file at `~/.claude/pending-kb-adds/<UTC>-<session-short>.txt` with the structured header (`# type: ... # project: ... # tags: ...` then blank line then content); `kb flush-pending` drains it. **Never create a .md as a fallback persistence path.**
 
 ## Worktree Protocol
 
-If you are working in a git worktree (check: `git rev-parse --show-toplevel` differs from the project root, or `.git` is a file not a directory):
-
-1. **Commit before reporting completion**. Stage only files you modified (`git add <file1> <file2> ...`). Commit with `--no-gpg-sign` and a descriptive message.
-2. **Report your branch name** in your completion message: "Changes committed on branch `<branch-name>`." The team lead needs this to merge.
-3. **Do NOT push** — worktree branches are local.
-4. **Do NOT merge into master** — the lead handles merging.
-
-If you are NOT in a worktree (normal working directory), your edits land directly in the main tree. No commit needed unless the lead instructs you to commit.
+In a worktree (`.git` is a file, not a dir): commit your changes (`git add <files> && git commit --no-gpg-sign -m '...'`), report the branch name in your return message, do not push, do not merge into master. In a normal working tree: no commit needed unless lead instructs.
 
 ## Scope
 
@@ -157,11 +139,7 @@ If your task touches `~/Physics/mathlib4` or consumes Mathlib lemmas, Read `~/Ph
 
 ## Stopping Conditions
 
-Stop and return partial results if:
-- Same error 3 times consecutively
-- 10+ tool calls with no new findings
-- 5+ search phrasings with no results
-- 8+ files read without concrete output
+Return partial results if any of: same error 3× consecutively / 10+ tool calls with no new findings / 5+ search phrasings with no results / 8+ files read without concrete output.
 
 ## Output
 

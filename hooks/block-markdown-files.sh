@@ -40,39 +40,45 @@ fi
 
 # --- 3. Reflex-pattern hard block (basename) — cannot escape via AskUserQuestion ---
 shopt -s nocasematch
-REFLEX_RX='^(summary|sprint_|progress_|plan_|analysis_|findings_|review_|investigation_|implementation_|notes_|results_|breakthrough|decisions_|todo|status_|update_|report_|recap|session_|completion|completed_|done_|observations_|changes|worklog|session_log).*\.md$|.*(_complete|_review|_summary|_notes|_status|_results|_progress|_recap|_findings|_analysis|_log)\.md$|.*_(v[0-9]+|old|draft|bak|backup)\.md$'
+# *_INVESTIGATION.md is hard-blocked: investigation reports must return inline
+# to the dispatching agent or land in kb, NEVER in a file. See CLAUDE.md
+# "Why .md creation is blocked" for the routing matrix.
+REFLEX_RX='^(summary|sprint_|progress_|plan_|analysis_|findings_|review_|investigation_|implementation_|notes_|results_|breakthrough|decisions_|todo|status_|update_|report_|recap|session_|completion|completed_|done_|observations_|changes|worklog|session_log).*\.md$|.*(_complete|_review|_summary|_notes|_status|_results|_progress|_recap|_findings|_analysis|_investigation|_log)\.md$|.*_(v[0-9]+|old|draft|bak|backup)\.md$'
 if [[ "$BASENAME" =~ $REFLEX_RX ]]; then
     cat >&2 <<EOF
 BLOCKED: '$BASENAME' matches a reflex-pattern filename. These are never genuinely requested by users.
 
-Status updates, summaries, reviews, plans, analyses, recaps, notes, observations belong in:
-  - your conversation response (the user reads it)
-  - a beads issue: bd create --title "..." --description "..."
-  - kb: ~/.local/bin/kb add "..." -t TYPE -p PROJECT --tags T1,T2
+Route content by type — see CLAUDE.md "Why .md creation is blocked":
+  finding / verification / measurement   ->  ~/.local/bin/kb add "..." -t discovery -p <PROJ> --tags ...
+  plan (multi-phase)                     ->  ~/.claude/plans/PLAN-<slug>.md (allowlisted, use Write)
+  cross-session checkpoint               ->  ~/.local/bin/kb add ... --tags session-checkpoint
+  task note                              ->  bd update <issue-id> --notes "..."
+  architecture / reference fact          ->  Edit an EXISTING doc under docs/reference/
+  agent's investigation report           ->  return INLINE to dispatcher (and/or kb add)
+  short summary for the user             ->  just write it in your reply
 
-Markdown files are NOT a scratch pad. This block is unconditional — even AskUserQuestion confirmation will not unblock a reflex-pattern name. If the content is legitimate, rename to a non-reflex filename.
+If kb is unreachable (ash:8081 down): use ~/.claude/pending-kb-adds/<UTC>-<session>.txt
+queue file; SessionStart + UserPromptSubmit hooks drain it via 'kb flush-pending'.
+DO NOT fall back to .md creation when kb is down.
+
+This block is unconditional — even AskUserQuestion confirmation will not unblock a
+reflex-pattern name. If the content is legitimate, route it per the table above.
 EOF
     exit 2
 fi
 shopt -u nocasematch
 
-# --- 4. AskUserQuestion gate (per-session AND session-agnostic) ---
-# Per-session flag set by md-asked-gate.sh
+# --- 4. AskUserQuestion gate (per-session, 1-hour timestamp window) ---
+# md-asked-gate.sh sets /tmp/claude-md-allow-${SESSION_ID} on AskUserQuestion.
+# Within 1 hour of that timestamp, .md creation is allowed.
+# The session-agnostic /tmp/claude-md-allow-any flag has been RETIRED (leaked
+# across worktree agents; produced false "agent escape" suspicions).
 FLAG="/tmp/claude-md-allow-${SESSION_ID}"
 if [ -e "$FLAG" ]; then
-    exit 0
-fi
-
-# Session-agnostic flag: accepted within 15 min of the last AskUserQuestion.
-# Handles two cases: (a) session_id propagation to PreToolUse differs from
-# PostToolUse in this harness build, (b) a single AskUserQuestion covers a
-# batch of related .md writes (user explicitly requested multiple files).
-ANY_FLAG=/tmp/claude-md-allow-any
-if [ -e "$ANY_FLAG" ]; then
     NOW=$(date +%s)
-    MTIME=$(stat -c %Y "$ANY_FLAG" 2>/dev/null || echo 0)
+    MTIME=$(stat -c %Y "$FLAG" 2>/dev/null || echo 0)
     AGE=$((NOW - MTIME))
-    if [ "$AGE" -lt 900 ]; then
+    if [ "$AGE" -lt 3600 ]; then
         exit 0
     fi
 fi
@@ -80,8 +86,23 @@ fi
 cat >&2 <<EOF
 BLOCKED: creating a new markdown file '$FILE_PATH'.
 
-Before creating any new markdown file, use AskUserQuestion to confirm with the user that they want it. AskUserQuestion is the canonical mechanism for capturing user intent; once you have called it this turn, the hook will allow the Write (for any number of .md files within the next 15 minutes).
+Route content by type — see CLAUDE.md "Why .md creation is blocked":
+  finding / verification / measurement   ->  ~/.local/bin/kb add "..." -t discovery -p <PROJ> --tags ...
+  plan (multi-phase)                     ->  ~/.claude/plans/PLAN-<slug>.md (allowlisted, use Write)
+  cross-session checkpoint               ->  ~/.local/bin/kb add ... --tags session-checkpoint
+  task note                              ->  bd update <issue-id> --notes "..."
+  architecture / reference fact          ->  Edit an EXISTING doc under docs/reference/
+  agent's investigation report           ->  return INLINE to dispatcher (and/or kb add)
+  short summary for the user             ->  just write it in your reply
 
-If the content is a status update, summary, review, analysis, plan, or recap: it does not belong in a markdown file at all. Put it in your conversation response (the user reads it), or in a beads issue (bd create), or in kb (~/.local/bin/kb add).
+If kb is unreachable (ash:8081 down): use ~/.claude/pending-kb-adds/<UTC>-<session>.txt
+queue file; SessionStart + UserPromptSubmit hooks drain it via 'kb flush-pending'.
+DO NOT fall back to .md creation when kb is down.
+
+If you have weighed all of the above and a NEW .md is genuinely required:
+  1. AskUserQuestion to confirm the exact path and filename with the user.
+  2. After the user answers, retry the Write within 1 hour.
+
+Existing .md files can be Edit'd freely (the novelty filter only blocks NEW files).
 EOF
 exit 2
