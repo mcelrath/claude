@@ -53,6 +53,35 @@ Use an agent team when 2+ phases are independent and touch different code sectio
 
 **Persistent memory**: `~/.local/bin/kb add "insight" -t discovery -p <project> --tags <topic>`. Retrieve with `~/.local/bin/kb search "<keyword>"`. Do NOT use `bd remember` / `bd memories` (deprecated 2026-05-19; the 158 historical entries were migrated to kb) and do NOT use MEMORY.md files (those also migrated).
 
+## Why .md creation is blocked
+
+Markdown files accumulate as silent debt — they are not surfaced by `kb_search` or `bd show`, and after a few sessions an `INVESTIGATION_*.md` or `*_AUDIT.md` becomes unfindable. The user has flagged this as the #1 organizational hazard. The hooks at `~/.claude/hooks/block-markdown-{files,via-bash}.sh` enforce the policy. **Hook blocks are FINAL** — do not rephrase, shell-escape, or work around them. Route content as follows:
+
+| Content type | Destination |
+|---|---|
+| Finding / verification / measurement | `~/.local/bin/kb add "..." -t discovery -p <PROJ> --tags T1,T2` |
+| Plan (multi-phase) | `~/.claude/plans/PLAN-<slug>.md` (allowlisted, use Write) |
+| Cross-session checkpoint | `~/.local/bin/kb add ... --tags session-checkpoint` |
+| Implementation note on a bd task | `bd update <id> --notes "..."` |
+| Architecture / reference fact | Edit an EXISTING doc under `docs/reference/` (do not create new) |
+| **Agent's investigation report** | **Return INLINE to dispatcher** (and/or `kb add`); NEVER a file. `*_INVESTIGATION.md` is hard-blocked. |
+| Short summary for the user | Just write it in your reply |
+
+**kb-down fallback** (when `ash:8081` embedding server is unreachable): write a queue file at `~/.claude/pending-kb-adds/<UTC-timestamp>-<session-short>.txt` with this format:
+
+```
+# type: discovery
+# project: algebraic-genesis
+# tags: t1,t2,t3
+# evidence: (optional)
+
+<content body>
+```
+
+The SessionStart + UserPromptSubmit hooks drain the queue automatically via `kb flush-pending` when the embedding server recovers. **DO NOT fall back to creating a .md file when kb is down** — that's the failure mode the queue exists to prevent.
+
+**Existing .md files**: Edit and `git mv` are ALWAYS allowed. The block fires only on NEW .md creation. The novelty filter intentionally excludes existing-file operations.
+
 ## Agent Dispatch
 
 **Default: answer yourself.** Agents parallelize, not outsource.
