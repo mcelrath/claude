@@ -149,6 +149,15 @@ kb-research agent before implementation. Enforced by hook.
 
 Before implementing ANY new function/struct/algorithm: `rg "similar_name"` across codebase; read *.md docs in directory; use Task/Explore agent if uncertain. USE existing code instead of reimplementing. This is your #1 failure mode.
 
+**Never trust text-grep (`grep`/`rg`) for structural audits.** `rg` finds string matches, not structural dependencies. Using text-grep to enumerate "what does this code path reach" is a systematic Claude failure mode. When planning ANY migration, refactor, or deletion:
+1. **Read the affected file(s) in full** — entire file, not just matching lines.
+2. **Read every upstream caller in full**, recursively until you hit the public API boundary.
+3. **Read every downstream callee in full**, recursively until you hit std/syscalls/external. Pay specific attention to indirect calls — trait methods, helper modules, kernel forwards, callback registries.
+4. **For breadth-after-Read, use `ast-grep`, not `rg`.** ast-grep matches AST patterns and is the right tool when you need to find "all calls of the form `obj.kernels.$X.forward($$$)`" or "all `match foo { Variant::X(..) => ... }`" — text-grep misses these. Examples: `ast-grep --lang rust 'self.kernels.$_.forward($$$)'`, `ast-grep --lang rust '$BUF.copy_from_host($$$)'`. Use `rg` ONLY for literal strings, error messages, env-var names, file paths — not for code-shape queries.
+5. **Only AFTER full Read + ast-grep enumeration** can you `rg` — and only to confirm the picture Read gave you, not to construct it.
+
+Canonical failure: a `rg "X.execute"` audit finds 6 call sites to migrate; a full Read of the parent function reveals a sibling helper using a completely different API (`obj.kernels.*.forward` + `memcpy_d2h`) reachable from the same entry point but invisible to text-grep. An `ast-grep --lang rust 'self.kernels.$_.forward($$$)'` would have found it. Migration ships, sibling path deadlocks on first user run. The cost of full Reads + ast-grep is real; the cost of a shipped regression is much higher.
+
 No mocks, stubs, or fake data.
 
 No backwards compatibility. No wrappers. No forwarding functions. No aliases. No dead code. DELETE wrong/superseded code — git history preserves it.
@@ -188,6 +197,7 @@ NEVER: "What would you like...", "Would you like me to...", "Should I..."
 | Acting on a haiku-survey recommendation that changes axiom count, critical path, or implementation scope | OUT-OF-SCOPE MODEL. Haiku is for true lookups; load-bearing structural claims require Sonnet+. |
 | Reviewing a plan by reading plan doc + code without first searching `proofs.md` | LEAN-BLIND REVIEW. The plan's premise may be superseded by a Lean theorem (operator origin, coupling constant, interaction order). A review that doesn't check Lean can approve a plan whose foundation is already proven wrong — or already proven right. |
 | Analyzing operator structure by reading Python source first | LEAN-BLIND ANALYSIS. The operator's origin, coupling value, and algebraic identity are axiomatized in Lean. Python implements; Lean proves. Check Lean first. |
+| Enumerating migration surface or refactor scope via `rg "X.method"` alone | GREP-BLIND AUDIT. Read affected files + upstream callers + downstream callees IN FULL first. For code-shape queries use `ast-grep --lang <lang> '<AST pattern>'`, not `rg`. Text-grep is for literal strings only. Sibling helpers using different APIs are invisible to text-grep but reachable from the same entry point — they ship as deadlocks. |
 
 # Background Bash Output — NEVER PIPE
 
