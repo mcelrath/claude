@@ -79,15 +79,19 @@ if [[ "$CMD" =~ (^|[[:space:]\;\&\|])(git[[:space:]]+mv|mv|cp)[[:space:]]+([^[:s
         SUSPECT_PATH="$DST"
     fi
 fi
-# (d) python -c / python3 -c with 'open(.., w)' or write_text on a .md path.
-if [ "$SUSPECT" = "0" ] && [[ "$CMD" =~ python3?[[:space:]]+-c[[:space:]]+[\'\"].*([\'\"][^\'\"]*\.md[\'\"]).*\b(open|write_text|write_bytes)\b ]]; then
-    SUSPECT=1
-    SUSPECT_PATH="${BASH_REMATCH[1]}"
-fi
-# Same pattern but with the operation BEFORE the filename (e.g. `open("x.md","w")`).
-if [ "$SUSPECT" = "0" ] && [[ "$CMD" =~ python3?[[:space:]]+-c[[:space:]]+[\'\"].*\b(open|write_text|write_bytes)\b.*([\'\"][^\'\"]*\.md[\'\"]) ]]; then
-    SUSPECT=1
-    SUSPECT_PATH="${BASH_REMATCH[2]}"
+# (d) python -c / python3 -c that mentions .md AND a file-write API.
+# Two-pass: (i) command contains `python -c` with a .md path AND a write API,
+# anywhere in the command. (ii) detect Path(...).write_text /
+# pathlib.write_text with a .md path.
+if [ "$SUSPECT" = "0" ]; then
+    if [[ "$CMD" =~ python3?[[:space:]]+-c[[:space:]] ]] \
+       && [[ "$CMD" == *.md* ]] \
+       && [[ "$CMD" =~ (open|write_text|write_bytes|writelines|Path[\(]) ]]; then
+        SUSPECT=1
+        # Extract first .md path token for diagnostic.
+        SUSPECT_PATH=$(echo "$CMD" | grep -oE "[^'\"[:space:]]+\.md" | head -1)
+        [ -z "$SUSPECT_PATH" ] && SUSPECT_PATH="<python-detected .md>"
+    fi
 fi
 
 [ "$SUSPECT" = "0" ] && exit 0
