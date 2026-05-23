@@ -264,24 +264,12 @@
             "type": "command"
           },
           {
-            "command": "$HOME/.claude/hooks/kb-search-reset.sh",
+            "command": "$HOME/.claude/hooks/session-init.sh",
             "type": "command"
           },
           {
             "command": "$HOME/.claude/hooks/kb-flush-pending.sh",
             "timeout": 2000,
-            "type": "command"
-          },
-          {
-            "command": "$HOME/.claude/hooks/history-isolation.sh",
-            "type": "command"
-          },
-          {
-            "command": "$HOME/.claude/hooks/build-status.sh",
-            "type": "command"
-          },
-          {
-            "command": "$HOME/.claude/hooks/lsp-setup.sh",
             "type": "command"
           },
           {
