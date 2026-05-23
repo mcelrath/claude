@@ -27,6 +27,22 @@ Create a beads epic with child tasks if ANY of these are true:
 
 Use an agent team when 2+ phases are independent and touch different code sections.
 
+## Pre-Response Self-Check (MANDATORY)
+
+Before emitting any plan / bridge message / review verdict / agent dispatch prompt, answer YES to all five:
+
+1. Did I run every required survey (Mathlib fork via loogle; theorem index; sibling CLAUDE.md)?
+2. Did I declare every algebraic symbol I use (Notation section first if >2 quantities)?
+3. Did I provide a derivation or citation for every quantitative claim?
+4. Did I surface contradictions instead of papering them over (silent term-drop = papering)?
+5. Did I re-read what I just wrote — does section A contradict section B in the SAME output?
+
+## Mathlib Fork Survey Discipline
+
+**Required preamble for every plan citing Mathlib lemmas** — auto-rejected by expert-review if missing: `## Mathlib fork survey / - grep -rn 'LemmaName' ~/Physics/mathlib4/Mathlib/: found at X.lean:NNN / - AnotherLemma: NOT FOUND`.
+
+Survey rules: (a) bare grep, NO `^theorem|^lemma` anchor — misses `protected lemma`; (b) search the WHOLE `~/Physics/mathlib4/Mathlib/` tree — content splits across directories; (c) try variant forms (`det_pos`, `det_nonneg`) before concluding gap exists; (d) cite EXACT `file:line`. **Preferred**: loogle at `~/Physics/loogle/` — catches prefix misses AND directory splits. Bare grep is fallback.
+
 ## Tiered Review
 
 "The first principle is that you must not fool yourself—and you are the easiest person to fool." (Feynman).
@@ -37,11 +53,7 @@ Use an agent team when 2+ phases are independent and touch different code sectio
 | **Light** | Issue triage, priority changes, closing issues | `Task(subagent_type="expert-review", model="sonnet", prompt="LIGHT REVIEW: epic=<id> project_root=<path>")` |
 | **None** | Creating issues, recording KB, reading/searching | Just do it |
 
-**Reviews are ALWAYS non-persistent.** Use `Task(subagent_type="expert-review", ...)` directly — NEVER `bd mol wisp mol-expert-review` (creates 6+ wisp-* tasks per review that never auto-close and pollute `bd ready` / `bd list`). Review verdicts return inline to the dispatching session; persistence is unwanted. Applies to all review types: full, light, implementation-review.
-
-**Escalation chain** (bounded depth): Depth 0: propose. Depth 1: light review. Depth 2: full review. Depth 3: STOP, escalate to user.
-
-**Do NOT use**: ExitPlanMode, EnterPlanMode, `.approved` marker files, `Mode: PLANNING/IMPLEMENTATION`, `bd mol wisp mol-expert-review`, `bd mol wisp mol-implementation-review`.
+**Reviews are ALWAYS non-persistent.** Use `Task(subagent_type="expert-review", ...)` directly — NEVER `bd mol wisp mol-expert-review`. Escalation: Depth 0 propose → 1 light review → 2 full review → 3 STOP, escalate to user. **Do NOT use**: ExitPlanMode, `.approved` marker files, `Mode: PLANNING/IMPLEMENTATION`.
 
 ## Session Management
 
@@ -55,32 +67,14 @@ Use an agent team when 2+ phases are independent and touch different code sectio
 
 ## Why .md creation is blocked
 
-Markdown files accumulate as silent debt — they are not surfaced by `kb_search` or `bd show`, and after a few sessions an `INVESTIGATION_*.md` or `*_AUDIT.md` becomes unfindable. The user has flagged this as the #1 organizational hazard. The hooks at `~/.claude/hooks/block-markdown-{files,via-bash}.sh` enforce the policy. **Hook blocks are FINAL** — do not rephrase, shell-escape, or work around them. Route content as follows:
+`INVESTIGATION_*.md` / `*_AUDIT.md` files are unfindable after a few sessions. Hooks enforce. **Hook blocks are FINAL.** Route content:
 
-| Content type | Destination |
-|---|---|
-| Finding / verification / measurement | `~/.local/bin/kb add "..." -t discovery -p <PROJ> --tags T1,T2` |
-| Plan (multi-phase) | `~/.claude/plans/PLAN-<slug>.md` (allowlisted, use Write) |
-| Cross-session checkpoint | `~/.local/bin/kb add ... --tags session-checkpoint` |
-| Implementation note on a bd task | `bd update <id> --notes "..."` |
-| Architecture / reference fact | Edit an EXISTING doc under `docs/reference/` (do not create new) |
-| **Agent's investigation report** | **Return INLINE to dispatcher** (and/or `kb add`); NEVER a file. `*_INVESTIGATION.md` is hard-blocked. |
-| Short summary for the user | Just write it in your reply |
+- Finding / checkpoint / agent report → `~/.local/bin/kb add` or INLINE to dispatcher
+- Plan (multi-phase) → `~/.claude/plans/PLAN-<slug>.md` (allowlisted)
+- bd task note → `bd update <id> --notes "..."`
+- Architecture reference → Edit EXISTING `docs/reference/` doc (do not create new)
 
-**kb-down fallback** (when `ash:8081` embedding server is unreachable): write a queue file at `~/.claude/pending-kb-adds/<UTC-timestamp>-<session-short>.txt` with this format:
-
-```
-# type: discovery
-# project: algebraic-genesis
-# tags: t1,t2,t3
-# evidence: (optional)
-
-<content body>
-```
-
-The SessionStart + UserPromptSubmit hooks drain the queue automatically via `kb flush-pending` when the embedding server recovers. **DO NOT fall back to creating a .md file when kb is down** — that's the failure mode the queue exists to prevent.
-
-**Existing .md files**: Edit and `git mv` are ALWAYS allowed. The block fires only on NEW .md creation. The novelty filter intentionally excludes existing-file operations.
+**kb-down fallback**: `~/.claude/pending-kb-adds/<UTC>-<session>.txt` with `# type:`, `# project:`, `# tags:` header; `kb flush-pending` drains. NEVER fall back to .md. **Existing .md files**: Edit and `git mv` always OK.
 
 ## Agent Dispatch
 
@@ -99,10 +93,10 @@ The SessionStart + UserPromptSubmit hooks drain the queue automatically via `kb 
 - Never pass `max_turns`; use STOPPING CONDITIONS in prompt instead
 - Every prompt: start with `Read ~/.claude/agents/preamble.md FIRST`
 - Include `~/.local/bin/kb add before returning` in every agent prompt (CLI; the MCP `kb_add` tool was removed 2026-05-19)
-- Structured JSON output with schema
-- Model defaults: Haiku for **true lookups only** (find a file, list a definition, retrieve a single fact); Sonnet for implementation; Opus lead only (max 1/batch). **Haiku is FORBIDDEN for any dispatch whose verdict would change implementation scope, retire axioms, alter the critical path, or recommend a structural refactor.** Load-bearing structural claims require Sonnet or Opus — haiku in survey/kb-research mode can confidently mislabel similar-named obligations (e.g., conflating "L-function identification" with "L-function zero-localization" because both involve the same character).
-- **VERIFY AGENT WORK (MANDATORY) — ALWAYS, for ALL agent output**: the dispatching Claude process MUST Read whatever the agent claims, regardless of whether the agent wrote code or just returned a recommendation. This applies to: (a) code-writing agents (Read the committed files; check sorry counts, axiom counts, signatures match the claim); (b) research/survey/planning agents (Read the cited theorem statements / source files / kb entries before acting on the recommendation); (c) any agent that returns a load-bearing claim (axiom retired, infrastructure available, scope reduced, blocker found). Agent summaries describe intent, not what landed. Negative results from agents in particular must be re-checked against the prompt — a "negative" often means the agent computed the wrong object. Positive results that change scope must be re-checked against the source — a "feasible" often means the agent matched labels, not statements.
-- **AGENTS MUST READ, NOT GREP (MANDATORY)**: when dispatching audit/inventory tasks (sorry counts, theorem inventories, file-content claims), the prompt MUST instruct the agent to **Read each required file in full** rather than `grep` for keywords. `grep sorry` matches comments, docstrings, and TODO notes — not actual proof obligations. Same for `grep axiom`, `grep TODO`, etc. The Lean attribute that matters is the proof body of `theorem`/`lemma` declarations, which only Read can disambiguate. Apply this whenever an agent's output is a count or list extracted from source files.
+- Structured JSON output with schema. For proof-work agents: split sorry counts into `axiomatized_phase_2b_targets` (intentional scaffolding) vs `accidental_sorrys` (real gaps) — headers reporting only total sorrys mislead reviewers.
+- Model defaults: Haiku for true lookups only; Sonnet for implementation; Opus lead only (max 1/batch). **Haiku is FORBIDDEN** for dispatches that change scope, retire axioms, or alter critical path — use Sonnet or Opus.
+- **VERIFY AGENT WORK (MANDATORY)**: Read whatever the agent claims — committed files, cited theorems, kb entries. Agent summaries describe intent, not what landed. Negative results must be re-checked; "feasible" often means label-matched, not statement-verified.
+- **AGENTS MUST READ, NOT GREP**: audit/inventory prompts MUST instruct the agent to Read each file in full. `grep sorry` matches comments — only Read disambiguates proof obligations.
 
 **Agent preamble**: `"CRITICAL: the naive implementation would be X — do NOT do that. Required: Y."` (agents have no conversation history)
 
@@ -143,9 +137,19 @@ The SessionStart + UserPromptSubmit hooks drain the queue automatically via `kb 
 
 **Hook blocks are FINAL.** If a hook blocks your tool call (exit 2), STOP. Do not rephrase, restructure, or use a different tool to do the same thing. Tell the user what was blocked and why.
 
-Lean proofs before analysis. For any structural claim (operator origin, symmetry, eigenvalue, factorization), search `proofs.md` before reading code. A 0-sorry theorem is proof; a sorry-bearing theorem is a contract. Code that contradicts a Lean theorem is wrong.
+## READ FILES IN FULL — NEVER DEFER READING (MANDATORY)
 
-kb-research agent before implementation. Enforced by hook.
+**If you cite, reference, or depend on a file/theorem/function in any output (plan, review, recommendation, scope assessment, agent dispatch prompt), you MUST have READ it in full FIRST.** No exceptions. Reading is not optional; it is a precondition to producing the output.
+
+**Banned phrases** (each is proof you skipped reading): "Verify X covers Y", "I should read X", "Assuming X exists", "Pending verification of X", "If X is as described in the name...". If you would write any of these — STOP, read the file first, then write.
+
+**Checklist before any plan / review / dispatch prompt**:
+- [ ] Every cited theorem / function / module → Read its definition; confirm signature (not just name)
+- [ ] Every Mathlib lemma → survey the fork first (see Mathlib Fork Survey Discipline above)
+- [ ] Every file path cited as "existing" → `ls` + Read confirms
+- [ ] Every "this covers Y" claim → Read the file; verify (not label-matched)
+
+**Enforcement**: any plan/review/dispatch lacking a "Files read in full:" preamble is incomplete. expert-review should reject on sight.
 
 Before implementing ANY new function/struct/algorithm: `rg "similar_name"` across codebase; read *.md docs in directory; use Task/Explore agent if uncertain. USE existing code instead of reimplementing. This is your #1 failure mode.
 
@@ -166,8 +170,6 @@ The cost of a 200-line Read is real; the cost of a shipped regression or a redun
 No mocks, stubs, or fake data.
 
 No backwards compatibility. No wrappers. No forwarding functions. No aliases. No dead code. DELETE wrong/superseded code — git history preserves it.
-
-Inline scripts: computation only. No comments, no docstrings, no print labels.
 
 No `git add -A`, `git add .`, `git reset --hard`, `git push --force`.
 
@@ -198,12 +200,17 @@ NEVER: "What would you like...", "Would you like me to...", "Should I..."
 | Hook blocks tool call, then rephrasing/splitting | Hook blocks are FINAL. STOP. |
 | Blending two contradictory patterns to satisfy both | CONFLICT AVERAGING. Pick one (newer/more tested), justify it, flag the other for cleanup. Don't satisfy both. |
 | Test asserts function returned *something* (truthy, non-null, has key) | INTENT-FREE TEST. Assert the *correct* value for a *stated reason*. A test that can't fail when business logic changes is wrong. |
-| Survey/research agent claims "axiom X can be retired by reusing template Y" | LABEL-MATCH MISTAKE. Read X's *statement* before dispatching implementation. Similar names / same character / shared kb refs ≠ same content. Identification (Mellin bridge / template) ≠ localization (Selberg / FE / zero-on-line). |
+| Survey/research agent claims "axiom X can be retired by reusing template Y" | LABEL-MATCH MISTAKE. Read X's *statement* before dispatching implementation. Similar names ≠ same content. |
 | Acting on a haiku-survey recommendation that changes axiom count, critical path, or implementation scope | OUT-OF-SCOPE MODEL. Haiku is for true lookups; load-bearing structural claims require Sonnet+. |
 | Reviewing a plan by reading plan doc + code without first searching `proofs.md` | LEAN-BLIND REVIEW. The plan's premise may be superseded by a Lean theorem (operator origin, coupling constant, interaction order). A review that doesn't check Lean can approve a plan whose foundation is already proven wrong — or already proven right. |
 | Analyzing operator structure by reading Python source first | LEAN-BLIND ANALYSIS. The operator's origin, coupling value, and algebraic identity are axiomatized in Lean. Python implements; Lean proves. Check Lean first. |
 | Enumerating migration surface or refactor scope via `rg "X.method"` alone | GREP-BLIND AUDIT. Read affected files + upstream callers + downstream callees IN FULL first. For code-shape queries use `ast-grep --lang <lang> '<AST pattern>'`, not `rg`. Text-grep is for literal strings only. Sibling helpers using different APIs are invisible to text-grep but reachable from the same entry point — they ship as deadlocks. |
 | `may already say` / `probably already covered` / `I think the doc has` / `the test likely covers` / `that function probably handles` | UNVERIFIED-COVERAGE HEDGE. The hedge proves you didn't Read. STOP and Read the relevant sections / files in full before making the claim. Hedges generalize beyond docs — they also appear when speculating about test coverage, function behavior, or call-graph reachability without verification. Hedge = STOP signal, not a softener you ship. |
+| "Verify X covers Y" / "I should read X" / "Pending verification" / "Assuming X is..." in output | DEFERRED READ. See "READ FILES IN FULL" above. Reading is YOUR job, not the user's. Read first; THEN write. |
+| Citing a Mathlib lemma by file:line without `grep`-ing `~/Physics/mathlib4/` first | HALLUCINATED CITATION. Survey the fork first (see Mathlib Fork Survey Discipline above). |
+| "try candidates A, B, C and pick whichever returns target" in a plan | DFR VIOLATION. Derive via ONE chain of identified principles, compute ONCE, compare. Best-of-N / numerology fires at plan-write time. |
+| Symbol k (or any symbol) used for two different quantities in same plan/message | NOTATION CONFLICT. Declare a Notation section first when >2 algebraic quantities are in play. |
+| Plan contradicts CLAUDE.md convention | CLAUDE.MD WINS. Surface the contradiction to dispatcher; do NOT silently propagate the plan's version. |
 
 # Background Bash Output — NEVER PIPE
 
@@ -213,19 +220,15 @@ NEVER: "What would you like...", "Would you like me to...", "Should I..."
 
 # Agent Bridge — Correct Usage
 
-`bridge send` is fast and synchronous — NEVER use `run_in_background=true` for it. Background sends leave zombie shell wrappers that accumulate (observed: 12 stale processes from one session).
+`bridge send` is synchronous — NEVER `run_in_background=true`. Body goes on stdin via heredoc (`bridge send all "subject" <<'EOF' ... EOF`), not as a quoted arg (exit 144 otherwise).
 
-`bridge watch <id>` is a single-shot blocker — launch it ONCE with `run_in_background=true`, then relaunch after every task-notification wake. Never stack multiple watchers; check `ps aux | grep "bridge watch"` before launching if unsure.
+`bridge watch <id>` is a single-shot blocker — launch ONCE with `run_in_background=true`, relaunch after every wake. Check `ps aux | grep "bridge watch"` before launching.
 
-`bridge send` body goes on stdin via heredoc, not as a quoted argument. Long quoted strings in the command line cause exit code 144 (message too large or hook-blocked). Pattern:
+After every compaction: `bridge recv` → `bridge announce` → `bridge watch <id>` in background. Ask peers "what did I miss?".
 
-```
-~/.agent-bridge/bridge send all "subject line" <<'EOF'
-body content here
-EOF
-```
+NEVER pipe `bridge recv`/`peek`/`tail`/`show` through `head`/`tail`/`awk`/`sed`. Read the FULL message.
 
-After every compaction or new session: run `bridge recv` to catch up, then `bridge announce` to re-register, then launch `bridge watch <id>` in background. Ask peers "adj resumed after compaction — what did I miss?" — claude-origin will respond with a bulleted catch-up.
+**Bridge derivation discipline**: quantitative scaling claims include a 2-3 line derivation OR numerical-source citation. Bridge messages propagate fast — not exempt from derivation discipline.
 
 # Build Waiting Protocol
 
@@ -241,43 +244,29 @@ Arch. pacman/yay. Python 3.13. rg/fd. git --no-gpg-sign.
 
 Use `bd` for ALL task and plan tracking. Never use markdown TODOs.
 
-**Session start**: if `.beads/` doesn't exist, run `bd init` then `bd setup claude`.
+**Session start**: if `.beads/` doesn't exist, run `bd init` then `bd setup claude`. Commands: `bd ready` (no-blocker work), `bd create --title="..."`, `bd update <id> --claim`, `bd close <id>`, `bd prime` (load context). Recovery: `bd doctor`.
 
-```
-bd ready                    # Show work with no blockers
-bd create --title="..." --type=task
-bd update <id> --claim
-bd close <id>
-bd prime                    # Load full workflow context
-```
+**TaskCreate reminder**: the harness emits a periodic "consider TaskCreate" system-reminder; ignore it — `bd` is the only correct task tracker for this project family. Hook fix to suppress when `.beads/` exists is separate follow-up work.
 
-**bd failure recovery**: `bd doctor` → check `ps aux | grep bd` → restore from `.beads/backup/`.
-
-**bd notes/description format**: use a single-line `--notes "..."` or `--description "..."` argument with plain text. **Hooks block** long heredocs (`<<EOF` > ~30 lines) AND writing `.md` files in `.beads/` or anywhere unrequested. For long content: keep notes concise (1-2 paragraphs of plain prose, no markdown tables, no bullet lists across many lines), or split into multiple `bd update --notes` calls (note: each replaces the prior — last one wins), or store the long content as a `~/.local/bin/kb add` entry and put the returned kb-id in the bd note. Don't write to `.md` files; don't try heredocs >30 lines.
+**bd notes format**: `--notes "..."` plain text only. Hooks block heredocs >30 lines AND `.md` writes in `.beads/`. For long content: use `kb add` and put the kb-id in the note. Each `--notes` call replaces the prior.
 
 # KB Access — CLI ONLY
 
-KB MCP server removed from `~/.claude.json` 2026-05-19. **All kb operations go through the CLI** (`~/.local/bin/kb`). Reason: sub-agent MCP tool propagation is racy in Claude Code (GitHub issues #14496 open, #13254 closed not-planned, #19964 docs); tools appear in inventory but calls fail with "No such tool available" intermittently. CLI is reliable, parallel-safe, foreground/background-agnostic, and matches the `bd` precedent.
+**All kb operations go through the CLI** (`~/.local/bin/kb`). MCP `mcp__knowledge-base__kb_add` is gone — do NOT use it.
 
 | Operation | Pattern |
 |-----------|---------|
 | kb add | `~/.local/bin/kb add "content" -t TYPE -p PROJECT -s SPRINT --tags T1,T2 -e EVIDENCE` |
-| kb search | `~/.local/bin/kb search "query" -p PROJECT` (or spawn `kb-research` agent for thorough multi-round) |
+| kb search | `~/.local/bin/kb search "query" -p PROJECT` (or spawn `kb-research` agent for 5-round search) |
 | kb get | `~/.local/bin/kb get kb-YYYYMMDD-HHMMSS-hash` |
 | kb list | `~/.local/bin/kb list -p PROJECT` |
 | kb correct | `~/.local/bin/kb correct <new-content> --supersedes-id <old-id> --correction-reason <reason>` |
 | kb stats | `~/.local/bin/kb stats` |
 | kb reembed | `~/.local/bin/kb reembed --force` (full re-embed after model change) |
 
-Tool returns `Added: kb-<YYYYMMDD>-<HHMMSS>-<hash>` on success; capture the id for cross-reference.
+`add` returns `Added: kb-<YYYYMMDD>-<HHMMSS>-<hash>` — capture the id. Tags taxonomy: proven|heuristic|open-problem, core-result|technique|detail.
 
-`add` returns the kb-id on its first line (`Added: kb-...`). Parse for downstream chaining.
-
-**Sub-agent dispatch prompts MUST** include the explicit CLI form (NOT `mcp__knowledge-base__kb_add` — that tool is gone from MCP and was racy anyway).
-
-Tags taxonomy: proven|heuristic|open-problem, core-result|technique|detail.
-
-**Project field for the two-repo Physics work**: use `algebraic-genesis` (canonical), or `secular-constraints` / `claude` for repo-specific work. Do NOT invent new project namespaces. (See bd `secular-constraints-adkh.4`.)
+**Project field**: use `algebraic-genesis` (canonical), or `secular-constraints` / `claude` for repo-specific work. Do NOT invent new project namespaces.
 
 # Jupyter Notebooks (Computation Only)
 
@@ -295,12 +284,8 @@ Check server: `query_notebook("test", "check_server", server_url="http://localho
 
 **Table format**: dashes + spaces only. NEVER box-drawing characters. Measure all content before rendering.
 
+**Notation discipline**: any plan / bridge message / agent prompt with >2 algebraic quantities declares a Notation section first (symbol → meaning, one line each). Reuse of the same symbol for two different meanings without explicit redefinition is a hard error.
+
 # "Not Found" Is Not "Open"
 
 Before declaring something "open": use kb-research (5 rounds); `rg "relevant_term" lib/`; trust code over comments.
-
-# Truth Hierarchy: Lean proofs > Code > Comments > KB
-
-Lean proofs (0-sorry) > test assertions > code > recent KB > comments > old KB.
-
-**Lean-first rule (MANDATORY)**: Before any analysis of a structural claim (operator identity, eigenvalue bound, symmetry, factorization, operator origin), search `~/Physics/claude/docs/reference/proofs.md` and `~/Physics/claude/proofs/` FIRST. A 0-sorry Lean theorem is the strongest possible evidence and supersedes code, comments, and KB. A theorem with sorry is still a contract — it constrains what the code MUST do even if not yet proven. Only after confirming no Lean proof exists should you fall back to code inspection.
