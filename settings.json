@@ -46,22 +46,12 @@
             "command": "$HOME/.claude/hooks/kb-search-track.sh",
             "timeout": 2000,
             "type": "command"
-          },
-          {
-            "command": "$HOME/.claude/hooks/agent-report-checklist.sh",
-            "timeout": 3000,
-            "type": "command"
           }
         ],
         "matcher": "Task"
       },
       {
         "hooks": [
-          {
-            "command": "$HOME/.claude/hooks/record-alternatives.sh",
-            "timeout": 2000,
-            "type": "command"
-          },
           {
             "command": "$HOME/.claude/hooks/incompleteness-scanner.sh",
             "timeout": 3000,
@@ -140,11 +130,6 @@
             "type": "command"
           },
           {
-            "command": "$HOME/.claude/hooks/canonical-results-check.sh",
-            "timeout": 2000,
-            "type": "command"
-          },
-          {
             "command": "$HOME/.claude/hooks/incompleteness-gate.sh",
             "timeout": 5000,
             "type": "command"
@@ -184,11 +169,6 @@
       },
       {
         "hooks": [
-          {
-            "command": "$HOME/.claude/hooks/dedupe-file-reads.sh",
-            "timeout": 1000,
-            "type": "command"
-          },
           {
             "command": "$HOME/.claude/hooks/quarantine-paths.sh",
             "timeout": 1000,
@@ -255,11 +235,6 @@
             "type": "command"
           },
           {
-            "command": "$HOME/.claude/hooks/canonical-results-check.sh",
-            "timeout": 2000,
-            "type": "command"
-          },
-          {
             "command": "$HOME/.claude/hooks/block-approximations.sh",
             "timeout": 3000,
             "type": "command"
@@ -320,10 +295,6 @@
           {
             "command": "$HOME/.claude/hooks/bridge-resume.sh",
             "timeout": 10000,
-            "type": "command"
-          },
-          {
-            "command": "$HOME/.claude/hooks/remind-patterns.sh",
             "type": "command"
           }
         ]
