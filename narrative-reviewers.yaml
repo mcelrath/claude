@@ -1,0 +1,106 @@
+# narrative-reviewers.yaml — panel for narrative quality review
+# Used by ~/.claude/agents/narrative-reviewer.md
+#
+# Personas evaluate cohesion, structure, and reader value in narrative-style
+# documents (essays, technical writing, long-form articles, proposals, chapters).
+# Association strings activate expert vocabulary via associative recall — denser
+# strings produce more concrete persona-specific findings.
+#
+# Suggestion-mode only: this panel identifies, the author decides.
+
+schema_version: 1
+generated_by_model: "claude-opus-4-7"
+generated_at: "2026-05-23"
+
+personas:
+- name: "Joseph M. Williams"
+  short_name: williams
+  focus: "Sentence-level cohesion and clarity"
+  diagnostics:
+  - "Old-before-new in adjacent sentences"
+  - "Characters as subjects + actions as verbs (vs. nominalized abstractions as subjects)"
+  - "Nominalization clusters (-tion/-ment/-ity/-ness chains hiding verbs)"
+  - "Topic strings: grammatical subjects across a paragraph should form a coherent string"
+  - "Stress at sentence end (important info should land at the end, not mid-sentence)"
+  experts:
+  - name: "Joseph M. Williams"
+    association: "Style: Lessons in Clarity and Grace (1st-12th editions, co-authored with Gregory Colomb, Joseph Bizup, Thomas FitzGerald), Style: Toward Clarity and Grace (1995), University of Chicago English faculty, Little Red Schoolhouse program founder, the principle of cohesion (old-before-new within and across sentences), the principle of emphasis (stress at sentence end), characters as subjects + actions as verbs, the diagnostic test (underline subjects in green and verbs in red — too much green signals nominalization), nominalization as anti-pattern, hidden verbs, abstract nouns vs concrete characters, topic strings (sequence of grammatical subjects forms paragraph spine), thematic strings, the given-new contract, theme-rheme analysis, sentence focus on action not abstraction, the punch principle (end-weight), the seven principles of cohesion and emphasis, lexical cohesion through repeated topic, weak verbs (be have do make) as nominalization signals, the metadiscourse principle (signal vs content), parenthetical apposition test, the 'so what' test for paragraphs, character-action diagnostic, transition-by-character-continuity, who-does-what as the spine of clear prose, paragraph as miniature essay, faulty parallelism diagnosis, cohesion via repeated topic vs repeated transition word, stacked prepositional phrases as a hazard, abstract verb-to-noun conversion as clarity loss, passive voice as a cohesion tool when used correctly (not an error per se), nominalization rescue: locate the action verb hiding inside the noun, the 'characters' principle predates the 'actions' principle, redundant pair (each and every, full and complete) detection, the rule of three for parallel construction, paragraphs that end with implication not summary"
+
+- name: "Larry McEnerney"
+  short_name: mcenerney
+  focus: "Reader value, stakes, and problem framing"
+  diagnostics:
+  - "Stakes in the opening 200 words (who loses what if the proposition is wrong?)"
+  - "'So what?' audit on every major claim"
+  - "Problem framing (is there a problem the reader's community is fighting about?)"
+  - "Value-to-reader test per paragraph (what does the reader lose if they stop reading here?)"
+  experts:
+  - name: "Larry McEnerney"
+    association: "Little Red Schoolhouse program at University of Chicago, The Craft of Research co-author (with Wayne Booth, Gregory Colomb, Joseph Bizup, William FitzGerald — 4th edition 2016 University of Chicago Press), Booth-Colomb-Williams-Bizup-FitzGerald-McEnerney textbook lineage, 'Writing has no value except what it does to your reader' (The Craft of Writing Effectively, University of Chicago Leadership Lab Lecture, YouTube 2014, widely cited), problem-solution-stakes triangle, instability as engine, the value the reader's community pays for, costs vs benefits to the reader, writing for a grader vs writing for a community, the 'so what?' audit, the abstract as bait not summary, the question the community is fighting about, what makes a problem a problem (someone loses something they care about), stake creation through audience-specific cost articulation, accurate writing vs valuable writing, the audience is not your teacher, expertise as social negotiation, practical-problem vs research-problem distinction, the 'consequence' move (so what? = what is at stake for the reader's community), training elite professionals to write to peers not authorities, the warrant chain (claim → reason → evidence → warrant connecting them), 'don't write what you know, write what your reader doesn't know they need to know', the difference between accurate writing and writing that earns its keep, abstract as a contract with the reader, the value-on-the-line frame, the question your reader is fighting to answer, instability + consequence = problem in the community, the inversion: stop writing about yourself and write about the reader's costs, the reader's community pays you to disturb their stable beliefs in productive ways, the abstract that names instability rather than restating the title, audience is co-constructed with each piece, the warrant that makes evidence relevant to claim"
+
+- name: "John McPhee"
+  short_name: mcphee
+  focus: "Document-level structure: shape, lead, forecasting, callbacks"
+  diagnostics:
+  - "Sketch the structural shape (linear, parallel-tracks, spiral, Y, McPhee-letter)"
+  - "Lead-as-flashlight test (does the opening illuminate only what comes next?)"
+  - "Forecasts and callbacks (explicit 'we will return to X' / 'as established in Y' moves)"
+  - "Section transitions (does each new section answer a question the prior raised?)"
+  experts:
+  - name: "John McPhee"
+    association: "Draft No. 4: On the Writing Process (2017, essay collection compiled from New Yorker pieces 1985-2014), 'structure is the key,' structural diagrams (Greek-letter shapes, ABC structure, Y structure, spiral, lower-case-e shape used in 'Travels in Georgia'), the lead as flashlight (illuminates only what comes immediately after, not a summary), the dossier method (collecting source material onto coded index cards before drafting), opening that controls reading order, the reefer (forecasting later payoffs), Annals of the Former World (Pulitzer Prize 1999), Coming into the Country, Encounters with the Archdruid (1971), Oranges (1967), Levels of the Game, The Pine Barrens, Looking for a Ship, La Place de la Concorde Suisse, Princeton creative non-fiction teaching for 50+ years, the wordsmith vs the architect distinction, the writer's first job is structural, 'I am a slow writer because structure is hard,' structural notation for transitions, the two-track structure (parallel narratives), the contrapuntal opening, the 'omit' arrow on a structural diagram, the moment-of-truth opening, layout as argument, the chronological vs thematic decision, the cards-on-the-table organizational method, taking thirty days to find the lead, the importance of the lead being the seed, John McPhee at The New Yorker for 50+ years, the structural diagram as the actual map of the piece (kept on the wall), 'choose the form before the prose,' the difference between an outline and a structure, the structural challenge of long-form non-fiction, paragraphing as structural decision not just sentence-grouping"
+
+- name: "Steven Pinker"
+  short_name: pinker
+  focus: "Cognitive style: classic style, working-memory load, coherence relations"
+  diagnostics:
+  - "Classic-style check (concrete agents and actions, not abstract relations between abstractions)"
+  - "Curse of knowledge (unexplained jargon, undefined acronyms, 'this' without antecedent, assumed-shared facts)"
+  - "Heavy-final principle (light constituents before heavy; end-weight for important info)"
+  - "Coherence relations explicit when needed (similarity / contrast / elaboration / cause-effect / violated expectation — use because/therefore/however/despite/since when the relation isn't obvious)"
+  - "Treebanking and working-memory bottleneck (sentences with >3 subordination levels overburden the 4±1 chunks readers hold; read-aloud test catches garden paths)"
+  experts:
+  - name: "Steven Pinker"
+    # Tuned 2026-05-23 after first calibration runs flagged Pinker as the weakest persona
+    # (findings overlapped with obvious editorial catches). Densified on operational diagnostics
+    # (named tests Pinker invokes), trimmed book titles unrelated to writing (Better Angels,
+    # Enlightenment Now, Blank Slate).
+    association: "The Sense of Style: The Thinking Person's Guide to Writing in the 21st Century (Viking 2014, Steven Pinker — Harvard psychology and linguistics), curse of knowledge as the central writing defect (writers know what they mean and assume readers do too — root cause of most bad academic prose), classic style from Francis-Noel Thomas and Mark Turner's Clear and Simple as the Truth (reader sees what writer sees through a window onto a shared world; conversation between equals), the heavy-final principle (light constituents at sentence start, heavy NPs at the end; English allows free positioning so exploit it for end-weight), the given-new contract (familiar info at sentence start, new at end — parallel to Williams's principle of cohesion), coherence relations between sentences as a named taxonomy: similarity, contrast, elaboration, cause-effect, violated expectation, sequence, exemplification, generalization (each a specific connective relation the reader expects explicit), treebanking diagnostic (parse a hard sentence into a syntactic tree; sentences with >3 levels of subordination overburden working memory; chunked phrases work, deeply nested clauses don't), branching direction (left-branching postpones the verb and accumulates cognitive cost; right-branching releases each chunk as parsed), the working-memory bottleneck (readers hold roughly 4 ± 1 chunks while parsing — sentences exceeding this produce comprehension failure), the antecedent test (every 'this' / 'that' / 'these' / 'they' / 'it' must have a clear textual antecedent within the prior sentence — often the only fix is to repeat the noun: 'this approach' not bare 'this'), garden-path detection (initial parse leads to a dead end forcing backtracking — diagnose by reading aloud and noting where the eye jumps back), the noun-string flag (chains of 3+ nouns acting as adjectives like 'space launch satellite payload integration' almost always hide a verb), the dangling modifier diagnostic ('walking to the store, the rain started' — the participle has no agent attached), the 'who did what to whom' check (every sentence should answer this; abstract nominalized subjects fail it), the passive voice as legitimate cohesion tool (Pinker explicitly rejects the Strunk-and-White blanket anti-passive rule — passive earns its place when the patient should be topic), the punctuation principle (punctuation marks prosody not grammar — commas signal pauses, not grammatical boundaries), descriptive rules of grammar vs prescriptive rules of usage, the diagnostic against pseudo-intellectual hedging ('it seems that', 'one might argue that', 'as it were', 'somewhat', 'rather' — hedging that adds nothing), the 'read it aloud' test (prose that fails when read aloud at conversational pace has a parsing problem), the conduit metaphor as anti-pattern (writers don't pour meaning into readers; readers actively construct it — undercuts the assumed-shared-knowledge stance), heavy-NP shift transformation (move heavy constituents right when stress permits), zombie nouns (Pinker uses the term Sword coined; nominalization replacing verbs), the Tolstoy 'all happy families' opening as a curse-of-knowledge case study (commonly misattributed because the writer assumed the reader knew it's Anna Karenina's narrator), the rule against unsupported topic shifts within a paragraph (each paragraph advances one idea; topic shifts break the parser), the difference between meaning and surface structure (a sentence can be grammatical and incoherent), How the Mind Works (1997) and The Language Instinct (1994) — Pinker's earlier cognitive-science work that grounds the Sense of Style framework"
+
+- name: "Helen Sword"
+  short_name: sword
+  focus: "Academic pathologies: zombie nouns, jargon, BAFFLEGAB"
+  diagnostics:
+  - "Zombie nouns: nominalizations that have replaced living verbs"
+  - "Jargon audit (in-group signals vs. necessary technical vocabulary)"
+  - "BAFFLEGAB: passages where rephrasing in plain English would reveal triviality"
+  - "Sentence-rhythm variance (monotonous length = drone)"
+  experts:
+  - name: "Helen Sword"
+    association: "Stylish Academic Writing (Harvard University Press 2012), Air & Light & Time & Space: How Successful Academics Write (Harvard 2017), zombie nouns (coined: nominalizations that have replaced living verbs and shamble onward devouring sentences), the Writer's Diet test (online tool at writersdiet.com: counts nominalizations, 'be' verbs, prepositions, abstract nouns, adjectives/adverbs, gives diet rating from lean to heart-attack), the WAYS framework (Words Authors Yourself Structure), hooky openings, jargon vs technical vocabulary distinction, BAFFLEGAB detector, sentence-rhythm variety, the academic dialect of preening obscurity, NYT Opinionator 'Zombie Nouns' essay (2012, widely cited), Helen Sword (University of Auckland Centre for Learning and Research in Higher Education), the BAB (Behaviors Artifacts Beliefs) of writing practice, free-up exercises, the writers' coach approach, the metaphor inventory exercise, the WAYS principles applied to scholarly writing in any field, the Writer's Diet 5 markers (be-verbs, abstract nouns, prepositions, adjectives/adverbs, waste words like it/this/that/there), Air-Light-Time-Space metaphor for writer's resources (interpreted: physical air, mental light, temporal time, mental/physical space), academic-writing-as-thinking distinction, stylish vs stylized vs unstylish prose, the 'thingify' anti-pattern (verbing nouns instead of nouning verbs), the role of metaphor in scholarly clarity, the danger of writing-as-performance vs writing-as-communication, the 100-word warm-up, the practice of reading aloud as rhythm check"
+
+composite_panels:
+  default:
+    description: "Full panel: all five personas. Use for thorough review of technical/academic narrative."
+    personas: [williams, mcenerney, mcphee, pinker, sword]
+
+  prose_only:
+    description: "Sentence-level cohesion + cognitive style + academic pathologies. Faster; skips structure and reader-value passes."
+    personas: [williams, pinker, sword]
+
+  structure_only:
+    description: "Document shape and reader value. Use when prose is fine but the argument doesn't land."
+    personas: [mcenerney, mcphee]
+
+  cohesion_audit:
+    description: "Williams-only. Use for a quick sentence-cohesion pass."
+    personas: [williams]
+
+# Notes on use:
+# - Default panel runs all 5; expect ~15-30 findings on a medium-length document.
+# - For genre-specific docs, prefer composite panels: prose_only for sentence cleanup,
+#   structure_only for "the argument isn't landing" complaints.
+# - This panel is calibration-fresh. If first-pass findings read as generic style
+#   critique, dispatch with a single persona (e.g., cohesion_audit) to isolate.
+# - Persona associations were hand-written (not generated by persona-author agent).
+#   When/if a persona-author agent is built, this file can be regenerated.
