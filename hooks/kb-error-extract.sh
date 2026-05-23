@@ -1,107 +1,72 @@
 #!/bin/bash
 # KB Error Extract Hook
-# Extracts error signatures from failed commands and searches for solutions
-# Uses local LLM for error extraction (set KB_EMBEDDING_URL to override)
+# Records error signatures from failed build/test commands to KB.
+# Only fires on build/test failures (not general command failures).
+# No external LLM — uses simple pattern extraction.
 
-KB_SCRIPT="${KB_SCRIPT:-$HOME/Projects/ai/kb/kb.py}"
-KB_VENV="${KB_VENV:-$HOME/Projects/ai/kb/.venv/bin/python}"
-KB_LLM_JUDGE="${KB_LLM_JUDGE:-$HOME/.local/bin/kb-llm-judge}"
+KB_CLI="${HOME}/.local/bin/kb"
+[[ ! -x "$KB_CLI" ]] && exit 0
 
-# Gracefully exit if KB tools not installed
-[[ ! -f "$KB_SCRIPT" || ! -f "$KB_VENV" ]] && exit 0
-
-# Read hook input from stdin
 INPUT=$(cat)
-
-# Extract tool result and exit code from JSON
 TOOL_NAME=$(echo "$INPUT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('tool_name',''))" 2>/dev/null) || exit 0
 EXIT_CODE=$(echo "$INPUT" | python3 -c "import sys,json; d=json.load(sys.stdin); r=d.get('tool_result',{}); print(r.get('exitCode', r.get('exit_code', 0)))" 2>/dev/null) || exit 0
 
-# Only process failed Bash commands
-if [[ "$TOOL_NAME" != "Bash" ]] || [[ "$EXIT_CODE" == "0" ]]; then
-    exit 0
-fi
+[[ "$TOOL_NAME" != "Bash" ]] && exit 0
+[[ "$EXIT_CODE" == "0" ]] && exit 0
 
-# Get the output from the failed command
+# Only fire on build/test commands
+COMMAND=$(echo "$INPUT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('tool_input',{}).get('command',''))" 2>/dev/null) || exit 0
+
+IS_BUILD_TEST=0
+echo "$COMMAND" | grep -qE '(make|ninja|cmake|cargo build|cargo test|lake build|pytest|python.*test_|python.*-m pytest|python.*-m unittest|g\+\+|gcc|clang|rustc|latexmk|pdflatex)' && IS_BUILD_TEST=1
+[[ "$IS_BUILD_TEST" == "0" ]] && exit 0
+
+# Extract error output (last 3000 chars of combined stdout+stderr)
 OUTPUT=$(echo "$INPUT" | python3 -c "
 import sys, json
 d = json.load(sys.stdin)
 r = d.get('tool_result', {})
 stdout = r.get('stdout', '') or ''
 stderr = r.get('stderr', '') or ''
-print(stdout[-5000:] + stderr[-5000:])
+combined = stdout[-1500:] + stderr[-1500:]
+print(combined)
 " 2>/dev/null) || exit 0
 
-# Skip if output too short
-if [[ ${#OUTPUT} -lt 50 ]]; then
-    exit 0
-fi
+[[ ${#OUTPUT} -lt 50 ]] && exit 0
 
-# Get project name from git root
+# Get project name
 if git rev-parse --show-toplevel &>/dev/null; then
     PROJECT=$(basename "$(git rev-parse --show-toplevel)")
 else
     PROJECT=$(basename "$PWD")
 fi
 
-# Set KB environment
-export KB_EMBEDDING_URL="${KB_EMBEDDING_URL:-http://localhost:8080/embedding}"
-export KB_EMBEDDING_DIM=4096
+# Extract first error line (simple pattern match, no LLM)
+ERROR_SIG=$(echo "$OUTPUT" | python3 -c "
+import sys, re
+lines = sys.stdin.readlines()
+patterns = [
+    r'^.*error\[.*\]:',       # rust
+    r'^.*Error:',              # generic
+    r'^.*error:',              # gcc/clang/lake
+    r'^FAILED',                # pytest
+    r'^E\s+',                  # pytest assertion
+    r'^.*\.lean:\d+:\d+: error',  # lean
+    r'^!.*Error',              # latex
+]
+for line in lines:
+    line = line.strip()
+    for p in patterns:
+        if re.search(p, line, re.IGNORECASE):
+            print(line[:200])
+            sys.exit(0)
+" 2>/dev/null)
 
-# Ask LLM to extract error signatures
-SYSTEM_PROMPT='Extract distinct error signatures from this build/command output.
-Output JSON: {"errors": [{"signature": "unique error message/pattern", "type": "build|runtime|test|link"}]}
-Rules:
-- Extract the core error message, not full paths or line numbers
-- Combine related errors into one signature
-- Max 5 most important errors
-- If no clear errors, return: {"errors": []}'
+if [[ -n "$ERROR_SIG" ]]; then
+    # Record to KB (fire-and-forget, 5s timeout)
+    timeout 5 "$KB_CLI" add "BUILD ERROR [$PROJECT]: $ERROR_SIG" \
+        -t failure -p "$PROJECT" --tags "build-error" 2>/dev/null && \
+        echo "KB: Recorded build error: ${ERROR_SIG:0:80}..."
+fi
 
-RESULT=$("$KB_LLM_JUDGE" "$SYSTEM_PROMPT" "$OUTPUT" 2>/dev/null) || exit 0
-
-# Process extracted errors
-echo "$RESULT" | python3 -c "
-import sys
-import json
-import subprocess
-
-try:
-    data = json.load(sys.stdin)
-    errors = data.get('errors', [])
-
-    if not errors:
-        sys.exit(0)
-
-    project = '$PROJECT'
-    kb_venv = '$KB_VENV'
-    kb_script = '$KB_SCRIPT'
-
-    for err in errors[:5]:
-        sig = err.get('signature', '')
-        etype = err.get('type', 'build')
-
-        if not sig or len(sig) < 10:
-            continue
-
-        # Record the error
-        cmd = [kb_venv, kb_script, 'error', 'add', sig, '-p', project]
-        if etype:
-            cmd.extend(['-t', etype])
-
-        try:
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
-            if result.returncode == 0:
-                error_id = result.stdout.strip().split()[-1]
-                print(f'KB: Recorded error [{etype}] {sig[:60]}...')
-
-                # Search for existing solutions
-                search_cmd = [kb_venv, kb_script, 'search', sig[:100], '-n', '3']
-                search_result = subprocess.run(search_cmd, capture_output=True, text=True, timeout=15)
-                if search_result.returncode == 0 and 'SUCCESS' in search_result.stdout:
-                    print(f'KB: Found potential solutions - run kb error get {error_id}')
-        except Exception:
-            pass
-
-except Exception as e:
-    pass
-"
+exit 0
