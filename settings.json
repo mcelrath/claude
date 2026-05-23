@@ -190,6 +190,11 @@
       {
         "hooks": [
           {
+            "command": "$HOME/.claude/hooks/prior-art-gate.sh",
+            "timeout": 2000,
+            "type": "command"
+          },
+          {
             "command": "$HOME/.claude/hooks/check-existing-code.sh",
             "timeout": 5000,
             "type": "command"

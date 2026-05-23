@@ -127,6 +127,18 @@ if echo "$CODE" | grep -qE 'sum\s*\(.*b\s*\*\*\s*2\s*\*.*\*\*\s*\(\s*-s\s*\)' 2>
 BLOCKED §GATEKEEPER.2: Bare spectral zeta sum Σ b² × (ε₀b)^(-s). Use zeta_regularized_mode_sum library."
 fi
 
+# §GATEKEEPER.1: External complex numbers in pre-Wick physics code
+if echo "$CODE" | grep -qE '\b1j\b|1\.0j|dtype\s*=\s*(np\.)?complex|dtype\s*=\s*complex128' 2>/dev/null; then
+    VIOLATIONS="$VIOLATIONS
+BLOCKED §GATEKEEPER.1: External complex number (1j / dtype=complex) in physics code. Cl(4,4) contains ℂ internally via J_A/J_B/J_C. Use cl44.complex_structures — no external i needed pre-Wick."
+fi
+
+# §GATEKEEPER.4: Bare Fock charges for classification
+if echo "$CODE" | grep -qE 'T3_L\s*=\s*\(N_0|bare_T3_L|bare_q|N=1.*leptons|N=3.*quarks' 2>/dev/null; then
+    VIOLATIONS="$VIOLATIONS
+BLOCKED §GATEKEEPER.4: Bare Fock charges for classification. Use cl44.charges.qem_operator(pairing='U_pairing') in weight basis. Bare Fock charges don't commute with τ²(M)."
+fi
+
 # Split mode sum in caller code
 if echo "$CODE" | grep -qE '\.finite_part|\.asymptotic_part|zeta_tail\s*\(' 2>/dev/null; then
     if [[ "$FILE" != *"zeta_regularized_mode_sum"* ]]; then
