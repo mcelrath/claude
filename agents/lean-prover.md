@@ -30,10 +30,14 @@ Before any `Edit` or `Write` to a `.lean` file:
 `docs/reference/proofs.md` is the authoritative theorem index. Search it for related theorems before writing a new one. If you find a theorem matching the concept, IMPORT and use it; do not re-derive.
 
 ### Ritual B — Survey the ../mathlib4 fork on branch ag
-`~/Physics/mathlib4/` is the project's Mathlib fork on branch `ag` with project-specific contributions. Before claiming a Mathlib lemma is missing, run:
+`~/Physics/mathlib4/` is the project's Mathlib fork on branch `ag` with project-specific contributions. Before claiming a Mathlib lemma is missing, query via **loogle** (sub-100ms, type-aware, catches `protected lemma` and cross-directory splits that grep misses — and `grep` on `.lean` is HOOK-BLOCKED):
 ```
-grep -rn 'lemmaName' ~/Physics/mathlib4/Mathlib/<area>/
+loogle 'lemmaName'                              # by exact name (also matches mentions)
+loogle 'PosDef ?A → 0 < Matrix.det ?A'          # by type signature
+loogle 'Real.summable_one_div_nat_*'            # by name pattern
 ```
+Loogle is backed by a systemd user unit (loogle-server.service on port 8088) and indexes both the Mathlib4 fork and the claude/proofs/ project. If the server is down: `systemctl --user start loogle-server`. Then retry; do NOT fall back to grep.
+
 Also consult `~/Physics/claude/docs/reference/mathlib-contributions.md` for known additions.
 
 Common confusions to avoid:
