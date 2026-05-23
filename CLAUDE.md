@@ -141,7 +141,7 @@ Survey rules: (a) bare grep, NO `^theorem|^lemma` anchor — misses `protected l
 
 **If you cite, reference, or depend on a file/theorem/function in any output (plan, review, recommendation, scope assessment, agent dispatch prompt), you MUST have READ it in full FIRST.** No exceptions. Reading is not optional; it is a precondition to producing the output.
 
-**Banned phrases** (each is proof you skipped reading): "Verify X covers Y", "I should read X", "Assuming X exists", "Pending verification of X", "If X is as described in the name...". If you would write any of these — STOP, read the file first, then write.
+**Banned phrases** (each is proof you skipped reading or are delegating reading to the user): "Verify X covers Y", "I should read X", "Assuming X exists", "Pending verification of X", "If X is as described in the name...", "Want me to look at X?", "Want me to read X?", "Should I look at X?", "Do you want me to read/check/inspect X?". If reading X would help you answer, READ X — do not ask the user for permission first. If you would write any of these — STOP, read the file, then write.
 
 **Checklist before any plan / review / dispatch prompt**:
 - [ ] Every cited theorem / function / module → Read its definition; confirm signature (not just name)
@@ -207,6 +207,7 @@ NEVER: "What would you like...", "Would you like me to...", "Should I..."
 | Enumerating migration surface or refactor scope via `rg "X.method"` alone | GREP-BLIND AUDIT. Read affected files + upstream callers + downstream callees IN FULL first. For code-shape queries use `ast-grep --lang <lang> '<AST pattern>'`, not `rg`. Text-grep is for literal strings only. Sibling helpers using different APIs are invisible to text-grep but reachable from the same entry point — they ship as deadlocks. |
 | `may already say` / `probably already covered` / `I think the doc has` / `the test likely covers` / `that function probably handles` | UNVERIFIED-COVERAGE HEDGE. The hedge proves you didn't Read. STOP and Read the relevant sections / files in full before making the claim. Hedges generalize beyond docs — they also appear when speculating about test coverage, function behavior, or call-graph reachability without verification. Hedge = STOP signal, not a softener you ship. |
 | "Verify X covers Y" / "I should read X" / "Pending verification" / "Assuming X is..." in output | DEFERRED READ. See "READ FILES IN FULL" above. Reading is YOUR job, not the user's. Read first; THEN write. |
+| "Want me to look at X?" / "Want me to read Y?" / "Should I check Z?" — asking permission to read | DELEGATED READING. If reading helps, READ. Don't ask. Same root cause as DEFERRED READ. |
 | Citing a Mathlib lemma by file:line without `grep`-ing `~/Physics/mathlib4/` first | HALLUCINATED CITATION. Survey the fork first (see Mathlib Fork Survey Discipline above). |
 | "try candidates A, B, C and pick whichever returns target" in a plan | DFR VIOLATION. Derive via ONE chain of identified principles, compute ONCE, compare. Best-of-N / numerology fires at plan-write time. |
 | Symbol k (or any symbol) used for two different quantities in same plan/message | NOTATION CONFLICT. Declare a Notation section first when >2 algebraic quantities are in play. |
@@ -286,6 +287,25 @@ Check server: `query_notebook("test", "check_server", server_url="http://localho
 
 **Notation discipline**: any plan / bridge message / agent prompt with >2 algebraic quantities declares a Notation section first (symbol → meaning, one line each). Reuse of the same symbol for two different meanings without explicit redefinition is a hard error.
 
+# Hooks (what blocks and why)
+
+Hooks intercept tool calls before they run. **Hook blocks are FINAL** (see top of Rules). Each one prints an actionable error. This index documents them by name so you know what to expect BEFORE you waste a turn discovering them.
+
+| Hook | Trigger | Escape route |
+|------|---------|--------------|
+| **block-text-search-on-source.sh** | `grep` / `rg` / `find` / `awk` / `sed` on `.py`, `.md`, `.lean`, etc. source files | Python: `ast-grep --lang python --pattern '$X'`. Lean: `loogle 'Name'` (port 8088). Markdown: `ast-grep -c ~/.config/ast-grep/sgconfig.yml --lang markdown ...`. For full-file inspection, use the `Read` tool. |
+| **block-markdown-via-bash.sh** | Bash command that creates a new `.md` file (heredoc redirect, `cat > foo.md`, even `python3` script that writes a `.md` path) | Route by content type per "Why .md creation is blocked" above. Existing `.md` files: Edit and `git mv` always OK; the block only fires on NEW `.md` creation. Beware: even ARGUMENTS containing `.md` paths can trigger this (e.g. `diff a.md b.md` — use the `Read` tool to inspect the diff artifact instead, or run via a Python `subprocess` whose argv list doesn't appear in the command string the hook scans). |
+| **block-print-spam.sh** | Shell script with banner/header `echo` lines (≥5 narrative prints in one Bash call) | Strip every banner / "=== section ===" header / step-narration `echo`. Numeric results, tables, structured data are fine. Do NOT split into multiple Bash calls to dodge the count. |
+| **block-large-heredoc.sh** | Heredoc body >30 lines (especially in `bd update --notes`) | For long content: `kb add "..."` and put the kb-id in the bd note, or write a file and pipe via `cat file \| cmd`. |
+| **block-md-creation** (in `.beads/`) | Any new `.md` file under `.beads/` | bd state lives in the SQLite DB, not in `.md`. Use `bd update --notes` or `kb add`. |
+| **bridge-watcher-alive.sh** | UserPromptSubmit when no `bridge watch <agent-id>` is running in the background | Launch via Bash with `run_in_background=true`: `~/.agent-bridge/bridge watch <id>`. The watcher exits on each peer message — relaunch after every wake. Use `setsid nohup` + `disown` to detach from the Claude shell so it survives shell teardown. |
+| **bridge-send-validation** | `bridge send` body passed as quoted arg, or `bridge send` invoked with `run_in_background=true` | `bridge send` is SYNCHRONOUS. Body goes on stdin via heredoc OR via `< /tmp/msg.txt` file pipe. See "Agent Bridge — Correct Usage" above. |
+| **kb-precompact.sh** | PreCompact phase | Auto-flushes pending KB queue. Nothing to do. |
+| **precompact-save-state.sh** | PreCompact phase | Auto-saves state. Nothing to do. |
+| **session-start hooks** | SessionStart phase | Auto-load context (bd prime, lean LSP config, peer registry, recent KB, resume handoff). Nothing to do. |
+
+**Discovery is failure.** If you hit a hook the first time, that's an instruction-surface bug — agents should know the rule BEFORE acting. If you hit one not listed above, surface it to the user so this table can be extended. Do NOT silently work around it.
+
 # "Not Found" Is Not "Open"
 
-Before declaring something "open": use kb-research (5 rounds); `rg "relevant_term" lib/`; trust code over comments.
+Before declaring something "open": use kb-research (5 rounds); `ast-grep --lang <lang> --pattern '$X'` (not `rg` — see Hooks above); trust code over comments.
