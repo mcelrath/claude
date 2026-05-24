@@ -158,6 +158,8 @@ Before implementing ANY new function/struct/algorithm: `rg "similar_name"` acros
 
 Canonical failure: a `rg "X.execute"` audit finds 6 call sites to migrate; a full Read of the parent function reveals a sibling helper using a completely different API (`obj.kernels.*.forward` + `memcpy_d2h`) reachable from the same entry point but invisible to text-grep. An `ast-grep --lang rust 'self.kernels.$_.forward($$$)'` would have found it. Migration ships, sibling path deadlocks on first user run. The cost of full Reads + ast-grep is real; the cost of a shipped regression is much higher.
 
+**Same rule applies to documentation coverage claims.** Before claiming a doc covers / does-not-cover topic X, Read the relevant TOC entries and Read in full each plausibly-related section. Prose uses different vocabulary than code symbols — `grep "atomic_store_n SYSTEM"` will not find a section titled "Persistent worker ack protocol" that documents the same hazard. Canonical workflow for any "is this in the doc?" question: Read the TOC → enumerate plausibly-related sections → Read each in full → only then claim coverage status. The cost of a 200-line Read is real; the cost of recommending a redundant edit (or missing an existing rule that contradicts your recommendation) is higher.
+
 No mocks, stubs, or fake data.
 
 No backwards compatibility. No wrappers. No forwarding functions. No aliases. No dead code. DELETE wrong/superseded code — git history preserves it.
@@ -198,6 +200,7 @@ NEVER: "What would you like...", "Would you like me to...", "Should I..."
 | Reviewing a plan by reading plan doc + code without first searching `proofs.md` | LEAN-BLIND REVIEW. The plan's premise may be superseded by a Lean theorem (operator origin, coupling constant, interaction order). A review that doesn't check Lean can approve a plan whose foundation is already proven wrong — or already proven right. |
 | Analyzing operator structure by reading Python source first | LEAN-BLIND ANALYSIS. The operator's origin, coupling value, and algebraic identity are axiomatized in Lean. Python implements; Lean proves. Check Lean first. |
 | Enumerating migration surface or refactor scope via `rg "X.method"` alone | GREP-BLIND AUDIT. Read affected files + upstream callers + downstream callees IN FULL first. For code-shape queries use `ast-grep --lang <lang> '<AST pattern>'`, not `rg`. Text-grep is for literal strings only. Sibling helpers using different APIs are invisible to text-grep but reachable from the same entry point — they ship as deadlocks. |
+| `may already say` / `probably already covered` / `I think the doc has` / `the test likely covers` / `that function probably handles` | UNVERIFIED-COVERAGE HEDGE. The hedge proves you didn't Read. STOP and Read the relevant sections / files in full before making the claim. Hedges generalize beyond docs — they also appear when speculating about test coverage, function behavior, or call-graph reachability without verification. Hedge = STOP signal, not a softener you ship. |
 
 # Background Bash Output — NEVER PIPE
 
