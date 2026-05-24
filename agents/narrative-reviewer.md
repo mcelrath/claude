@@ -26,27 +26,37 @@ Documents with a narrative thread: essays, long-form articles, technical proposa
 ```
 Task(subagent_type="narrative-reviewer", model="sonnet", run_in_background=True,
      prompt="REVIEW: document={path}
-             [panel=default|prose_only|structure_only|cohesion_audit|<persona-list>]
+             [project_root={path}]
+             [panel=default|full_editor|prose_polish|structure_only|cohesion_audit|technical_paper|public_facing|<persona-list>]
              [skeleton={path}]
              [response_structure=json|patches]
              [max_findings=N]")
 ```
 
 Defaults: `panel=default`, `response_structure=json`, `max_findings=20`.
+`project_root` defaults to the dispatcher's cwd if omitted.
 
 **All output is returned INLINE to the dispatching agent. This agent does NOT write to any file.** `response_structure` only controls how findings are structured in the inline reply (a JSON object the dispatcher can parse, or a sequence of unified-diff hunks the dispatcher can apply with `git apply`). Neither option produces a file artifact.
 
 ## Phase 0: Setup
 
-1. Parse prompt for `document`, `panel`, `skeleton`, `response_structure`, `max_findings`.
-2. Read `~/.claude/narrative-reviewers.yaml`. Resolve the panel name to a list of personas.
-3. **Read the document IN FULL.** Use `wc -w {path}` first to size it. Then:
+1. Parse prompt for `document`, `project_root`, `panel`, `skeleton`, `response_structure`, `max_findings`. If `project_root` omitted, default to the dispatcher's cwd (use Bash `pwd`).
+2. Read `~/.claude/narrative-reviewers.yaml`. Resolve the panel name to a list of editor personas. Note whether the panel has `project_extension: required` or `project_extension: optional`.
+3. **Load project SMEs from `<project_root>/reviewers.yaml`:**
+   - If the panel has `project_extension: required` (e.g. `technical_paper`) and `<project_root>/reviewers.yaml` does NOT exist → STOP and return an error inline:
+     `{"error": "missing_project_reviewers", "message": "Panel '{panel}' requires project SMEs. <project_root>/reviewers.yaml not found at {path}. Run /project-setup in {project_root} to generate it, then re-dispatch."}`
+   - If `<project_root>/reviewers.yaml` exists, Read it. Pull personas listed in its `composite_panels.default_review.personas` (or top N=3 if dispatcher passes `smes={n}`). Merge these SMEs into the same panel list as the editors. **All personas — editors and SMEs — run in one context window, sequentially, against one Read of the document.** Do not spawn separate Task teammates per persona.
+   - If `<project_root>/reviewers.yaml` exists but the panel has no `project_extension` directive, do NOT auto-merge SMEs. The user can still opt in by naming SMEs explicitly in the `panel=<persona-list>` argument.
+   - If the panel is `<persona-list>` and a name does not match any editor in `~/.claude/narrative-reviewers.yaml`, look it up in `<project_root>/reviewers.yaml` and use the project persona's `association` field.
+4. **Read the document IN FULL.** Use `wc -w {path}` first to size it. Then:
    - **If the document fits in one context window** (heuristic: ≤200,000 words, or ≤2MB of text), Read the whole file directly. Do NOT truncate, sample, or skim. The persona diagnostics (first-sentence reconstruction, paragraph-ending audit, structural shape, topic strings, callbacks/forecasts) all require the complete text to be valid.
    - **If the document exceeds the single-context budget**, dispatch one `narrative-reviewer-section` sub-agent per natural section (chapter, Part, or top-level heading). Each sub-agent reads its section IN FULL and returns per-persona findings for that section plus the section's first/last paragraphs (for cross-section continuity analysis). The lead agent then synthesizes findings and runs the cross-section deterministic diagnostics on the returned section-boundary text. See the **Sub-agent dispatch protocol** section below.
-4. Compute deterministic counts in Bash on the full file (cheap, do not LLM-estimate): word count (`wc -w`), paragraph count (count blank lines + 1), section count (count headings: `\section`, `## `, `# `, or document-specific markers).
-5. If `skeleton={path}` given, read it. Otherwise generate a 1-paragraph inline skeleton: document thesis, section themes, key promises the document makes to the reader. The skeleton MUST be derived from the full document, not the opening.
+5. Compute deterministic counts in Bash on the full file (cheap, do not LLM-estimate): word count (`wc -w`), paragraph count (count blank lines + 1), section count (count headings: `\section`, `## `, `# `, or document-specific markers).
+6. If `skeleton={path}` given, read it. Otherwise generate a 1-paragraph inline skeleton: document thesis, section themes, key promises the document makes to the reader. The skeleton MUST be derived from the full document, not the opening.
 
 ## Phase 1: Per-persona pass
+
+**Critical**: the document is in context from Phase 0. Iterate personas against the in-context text — do NOT re-Read the file for each persona. Editor personas and project SMEs (if any) run in the same single context window, sequentially.
 
 For each persona in the resolved panel:
 
@@ -215,7 +225,7 @@ Sub-agents do NOT recurse further. If a single section is itself >200K words, th
 
 ## Stopping conditions
 
-- Max 8 tool calls in single-context mode (Read, Bash for `wc -w`, no further agent spawns).
+- Max 10 tool calls in single-context mode (1 Read for narrative-reviewers.yaml, 1 Read for project reviewers.yaml if panel requires it, 1 Read for document, 1–2 Bash for `wc -w` and counts, 1 Bash for `kb add`, remainder reserved). No further agent spawns.
 - In sub-agent dispatch mode, max 12 tool calls for the lead (Bash sizing, parallel Task dispatches, synthesis). Each sub-agent has its own 8-call budget.
 - The document is ALWAYS read in full (directly or via sub-agents). NEVER truncate, sample, or skim.
 - ~/.local/bin/kb add a one-line review summary before returning.

@@ -79,22 +79,110 @@ personas:
   - name: "Helen Sword"
     association: "Stylish Academic Writing (Harvard University Press 2012), Air & Light & Time & Space: How Successful Academics Write (Harvard 2017), zombie nouns (coined: nominalizations that have replaced living verbs and shamble onward devouring sentences), the Writer's Diet test (online tool at writersdiet.com: counts nominalizations, 'be' verbs, prepositions, abstract nouns, adjectives/adverbs, gives diet rating from lean to heart-attack), the WAYS framework (Words Authors Yourself Structure), hooky openings, jargon vs technical vocabulary distinction, BAFFLEGAB detector, sentence-rhythm variety, the academic dialect of preening obscurity, NYT Opinionator 'Zombie Nouns' essay (2012, widely cited), Helen Sword (University of Auckland Centre for Learning and Research in Higher Education), the BAB (Behaviors Artifacts Beliefs) of writing practice, free-up exercises, the writers' coach approach, the metaphor inventory exercise, the WAYS principles applied to scholarly writing in any field, the Writer's Diet 5 markers (be-verbs, abstract nouns, prepositions, adjectives/adverbs, waste words like it/this/that/there), Air-Light-Time-Space metaphor for writer's resources (interpreted: physical air, mental light, temporal time, mental/physical space), academic-writing-as-thinking distinction, stylish vs stylized vs unstylish prose, the 'thingify' anti-pattern (verbing nouns instead of nouning verbs), the role of metaphor in scholarly clarity, the danger of writing-as-performance vs writing-as-communication, the 100-word warm-up, the practice of reading aloud as rhythm check"
 
+- name: "Randy Olson"
+  short_name: olson
+  focus: "Narrative logic: does each section reduce to And-But-Therefore?"
+  diagnostics:
+  - "ABT test per section: can the section be reduced to one A-B-T sentence? Failure = list of facts with no argument"
+  - "AAA pathology (And-And-And: pure agglomeration, no tension, no consequence)"
+  - "DHY pathology (Despite-However-Yet over-twisted: argument loses readers in qualifications)"
+  - "Narrative spine across sections: do successive sections form a B-T-B-T chain or just an A-A-A list?"
+  experts:
+  - name: "Randy Olson"
+    association: "Houston, We Have a Narrative: Why Science Needs Story (University of Chicago Press 2015), Don't Be Such a Scientist (Island Press 2009 / 2nd ed. 2018), Connection: Hollywood Storytelling Meets Critical Thinking (with Dorie Barton and Brian Palermo, 2013), the ABT framework (And-But-Therefore — the narrative spine reducing any story to three words: setup AND context, BUT tension or problem, THEREFORE consequence or resolution), the AAA failure mode (And-And-And: pure exposition with no tension — diagnostic for results-dumping ground prose common in scientific writing), the DHY failure mode (Despite-However-Yet: over-qualified argument that loses the reader in caveats), the Logline Maker exercise (one-sentence reduction of a paper or talk to ABT form), narrative training for scientists at NIH, USDA, NPS, Marine Biological Laboratory — Olson's Story Circles workshops, marine-biologist-turned-Hollywood-filmmaker biography (PhD Harvard 1984, then USC film school, Flock of Dodos documentary 2006), the four narrative levels (word, sentence, paragraph, whole work — ABT applies at all four), the WSP triangle (Word, Sentence, Paragraph) as fractal of narrative structure, the AND-BUT-THEREFORE template as Trey Parker / Matt Stone's South Park writing rule (Olson cites this lineage), the difference between exposition and narrative (exposition is AAA, narrative is ABT), narrative as the human universal of information transfer (Olson contrasts with bullet-point culture), the test 'where is the BUT?' applied to any abstract or section opening, scientific abstracts that fail the BUT test (most do — they read as a list of what was done), the consequence move ('THEREFORE we conclude X') as the payload reader retains, narrative-deficit hypothesis of why science communication fails to lay audiences, the singular narrative as the unit of memory (vs. the table of results), Story Circles Narrative Training (10-session in-person curriculum, also self-guided), narrative as a tool for thinking not just communicating (Olson echoes McEnerney's value-to-reader frame from a structural angle)"
+
+- name: "George Gopen"
+  short_name: gopen
+  focus: "Reader expectation theory: stress position, topic position, prosodic structure"
+  diagnostics:
+  - "Stress position audit: the strongest information should land at the period of each sentence (not mid-clause, not buried in a subordinate phrase)"
+  - "Topic position audit: the subject of each sentence sets what the sentence is about — flag when the topic position is occupied by a procedural placeholder ('It is important to note', 'There exist three cases')"
+  - "Backward links: every sentence's topic position should connect to material already in the reader's short-term memory from the prior sentence"
+  - "Subject-verb interruption: long noun phrases or parentheticals between subject and verb overload working memory; flag any separation >7 words"
+  experts:
+  - name: "George Gopen"
+    association: "The Sense of Structure: Writing from the Reader's Perspective (Pearson Longman 2004), Expectations: Teaching Writing from the Reader's Perspective (Pearson 2004), 'The Science of Scientific Writing' (American Scientist 1990, with Judith Swan — the single most influential essay on scientific prose pedagogy of the last 40 years, distributed in every major US science PhD program), reader expectation theory (readers are not passive receivers — they bring fixed structural expectations about WHERE information will appear and assign meaning accordingly), the stress position (the locus immediately before a full stop — readers grant it emphasis whether the writer intended it or not — so put the information that deserves emphasis there), the topic position (the grammatical subject — readers assume this names what the sentence is about — so put your topic there or you've lied to the reader), the linkage principle (topic-position of sentence N+1 should reach back to material already in the reader's mind from sentence N — usually material from sentence N's stress position), subject-verb separation as a cognitive cost (working memory holds the subject while parsing intervening material; long separations cause loss-of-thread), Duke University Department of English (Gopen's home), the consultancy model (Gopen taught reader-expectation workshops to law firms, biotech companies, federal agencies — calibrated on technical-professional audiences), the Whole Paragraph principle (the issue and the point of a paragraph occupy fixed structural positions — issue at the end of the topic sentence's stress position, point at the end of the closing sentence), the four-part structural sentence (subject — verb — complement — stress) as a unit, prose rhythm as semantic signal (where you slow, where you accelerate, where you pause — readers infer meaning from prosody), the Reader Expectation Approach (REA) as a formal pedagogy, applied to legal writing in Gopen's earlier work (The Common-Sense Approach to Legal Writing), Gopen's diagnostic question 'where does the reader expect the action?', the impossibility of writing without structural choices (every sentence is structurally something — passive vs active, simple vs subordinated — and each choice signals to the reader), the difference between what a sentence says and where it says it"
+
+- name: "Tim Skern"
+  short_name: skern
+  focus: "Plain-English scientific writing for journal articles"
+  diagnostics:
+  - "Concrete-first principle: define the object before its properties (a vector spinor — not 'the spinor of vector type')"
+  - "One idea per sentence (scientific sentences sustain one idea — chained clauses are paper-specific not author-specific)"
+  - "Active voice for results, passive for methods (Skern's calibrated convention for journal abstracts and discussions — passive for what was done, active for what was found)"
+  - "Acronym budget: introduce each acronym once, use only if it appears 3+ times; flag acronym soup"
+  - "Tense discipline: past simple for what you did, present for established facts, present perfect for the field's current state"
+  experts:
+  - name: "Tim Skern"
+    association: "Writing Scientific English: A Workbook (Facultas / UTB 2nd ed. 2011 / 3rd ed. 2019), Medical University of Vienna and Max F. Perutz Laboratories molecular biologist (Skern's day job — he is an active researcher writing under the conventions he teaches), Springer Nature workshops for non-native-English-speaking researchers (Vienna, Munich, Berlin, Prague), the workbook structure (60+ exercises calibrated against real published paragraphs from EMBO Journal, Cell, Nature, PNAS), the one-idea-per-sentence rule (Skern's central operational instruction; complex sentences with multiple coordinated clauses are a stylistic luxury technical writing cannot afford), the active-for-results passive-for-methods convention (calibrated by Skern from a corpus of high-impact journal articles — not a stylistic preference but an empirical observation), tense-and-voice tables for the IMRAD structure (Introduction-Methods-Results-Discussion has predictable tense patterns: present for the field, past for what you did, present for what your results show, present perfect for what is now known), the British vs American spelling decision tree, the acronym-introduction rule and the every-acronym-once principle, scientific writing for non-native speakers (Skern's primary audience; assumes the writer has a working scientific argument and needs to package it for a journal), reverse-engineering published abstracts (read 100 abstracts from your target journal, extract the IMRAD pattern, then write to that pattern — Skern's homework exercise), the Hedging Spectrum (calibrated levels of certainty: 'we show' / 'we observe' / 'our results suggest' / 'we propose' / 'it is possible that' — each appropriate to a different evidential warrant), Skern is preferred over Pinker / Sword in physics-paper contexts where (a) passive voice in methods is convention not defect, (b) nominalization of well-defined physical quantities is necessary not zombie, (c) sentence length variance is constrained by definitional density"
+
+- name: "Jeanne Fahnestock"
+  short_name: fahnestock
+  focus: "Rhetoric of science: stasis, accommodation, figures of argument"
+  diagnostics:
+  - "Stasis identification: is each claim a stasis-of-fact, stasis-of-definition, stasis-of-cause, stasis-of-value, or stasis-of-policy? Flag when the writer argues at the wrong stasis (e.g., defending a definition when the dispute is causal)"
+  - "Accommodation drift: technical claims weaken or distort as they move from primary literature → review → press → policy. Flag accommodation moves that change the claim, not just simplify"
+  - "Figures-of-argument inventory: antithesis (contrast structure), incrementum (rising chain), gradatio (each clause picks up the prior's stress word), ploche (strategic repetition for emphasis)"
+  - "Warranting moves: what licenses each move from evidence to claim? Flag implicit warrants — they are usually the load-bearing weakness of a scientific argument"
+  experts:
+  - name: "Jeanne Fahnestock"
+    association: "Rhetorical Figures in Science (Oxford University Press 1999, monograph treating antithesis, gradatio, incrementum, ploche, antimetabole as load-bearing devices in scientific argument from Darwin to Watson-Crick), Rhetorical Style: The Uses of Language in Persuasion (Oxford 2011), Accommodating Science (article in Written Communication 1986 — the foundational study of how scientific claims change as they move from journal article to popularization, coining the term 'accommodation' for the genre-shift that distorts), Department of English at University of Maryland College Park (Fahnestock's home), classical-stasis-theory revival (the Hermagoras / Hermogenes / Cicero / Quintilian framework: every dispute can be classified as conjectural [did it happen?], definitional [what is it?], qualitative [what kind?], translative [where should it be tried?] — Fahnestock applied this to scientific argument), stasis as a diagnostic for where an argument actually lives (a paper that argues definitions when the field disputes causes will be talking past its referees), accommodation theory (the four moves from primary scientific text to popular accommodation: removal of methodological qualification, conversion of correlation to causation, conversion of laboratory artifact to universal claim, elevation of tentative to established), the figures-of-argument program (rhetorical figures are not ornaments — they are micro-arguments that compress complex inferential structure into recognizable form: antithesis embodies a binary choice; incrementum a hierarchy; gradatio a chain of warranted inferences; ploche an insistence move), the genealogy of rhetorical-figure analysis from Aristotle through the Renaissance to modern stylistics (Fahnestock locates her work in this lineage), the difference between persuasion and demonstration in scientific argument (both are present in journal articles; pure demonstration is a myth), the warranting concept from Toulmin's Uses of Argument (1958) extended to scientific claims, antimetabole as the figure of chiastic reversal ('ask not what your country can do for you' — Fahnestock catalogues scientific instances), the scientific abstract as a rhetorical genre with predictable figure-of-argument moves, the move from primary genre to derivative genre as where claims get strengthened or distorted, Fahnestock's diagnostic 'at what stasis is this paper actually arguing?'"
+
+- name: "Carl Sagan / Brian Greene (composite science-communication archetype)"
+  short_name: sagan
+  focus: "Science communication for non-specialist readers: metaphor quality, stakes for general audience, wonder"
+  diagnostics:
+  - "Metaphor audit: every metaphor either clarifies or distorts. Flag metaphors that are (a) inaccurate, (b) load-bearing without justification, (c) ornamental"
+  - "Stakes for the lay reader: in any public-facing section (commercial impact, broader impacts, public-policy framing) — what does a non-specialist gain by understanding this?"
+  - "Concrete-image principle: prefer one vivid concrete image (a billion-year time scale rendered as a calendar year — Sagan's Cosmic Calendar) to abstract magnitude statements"
+  - "Wonder-vs-wonder-bait distinction: does the prose convey actual wonder grounded in the science, or generic awe-inflation ('mind-blowing', 'paradigm-shifting')?"
+  - "Useful only for documents with a public-facing or general-audience component (proposal commercial sections, grant broader-impacts, popular intros)"
+  experts:
+  - name: "Carl Sagan"
+    association: "Cosmos (PBS 1980 / book 1980), The Demon-Haunted World: Science as a Candle in the Dark (Random House 1995), Pale Blue Dot: A Vision of the Human Future in Space (Random House 1994), Contact (novel 1985, film 1997), the Cosmic Calendar (rendering 13.8 billion years of cosmic history as one calendar year — humans appear in the last 14 seconds of December 31 — Sagan's signature concrete-image-for-vast-magnitude device), the Pale Blue Dot photograph (Voyager 1, 1990, Earth as a single pixel from 6 billion km — Sagan's accompanying paragraph is a master class in scale-rendering), the baloney detection kit (Demon-Haunted World chapter — operational checklist for spotting unwarranted claims: independent confirmation, substantive debate, no argument from authority, multiple hypotheses, occam's razor, falsifiability — Sagan's pragmatic epistemology), 'extraordinary claims require extraordinary evidence' (the Sagan standard), the wonder-as-honest-response stance (wonder is the correct emotional response to actual cosmic facts; Sagan rejects both the cynical-deflation move and the new-age-inflation move), 'we are made of star-stuff' (the nucleosynthesis-as-human-origin trope, Sagan-coined), Cornell astronomy professor and Mariner / Viking / Voyager mission scientist (Sagan's day job underwrote his communication work — credibility flowed from primary science), the candle-in-the-dark metaphor for science amid pseudo-science, the four-hour-television-series structural model (Cosmos: 13 hours sustaining a single argument about cosmic history and human responsibility within it), the choice to use 'we' inclusively (the reader is co-investigator, not audience), Sagan's editorial discipline on metaphor (each metaphor is either accurate or removed — see The Demon-Haunted World on the 'fire of life' metaphor for biology, retained because mitochondrial respiration literally is controlled oxidation)"
+  - name: "Brian Greene"
+    association: "The Elegant Universe (W.W. Norton 1999, also PBS/NOVA 3-hour series 2003), The Fabric of the Cosmos (2004, also PBS series), The Hidden Reality (2011), Until the End of Time (2020), Columbia University string theory and World Science Festival (founded 2008 with Tracy Day, annual NYC science-festival), the dual-track explanation strategy (chapters of The Elegant Universe alternate between physical-intuition-via-analogy and footnoted technical detail — the analogy carries the argument, the footnote carries the math), the ant-on-a-garden-hose analogy for compactified dimensions (one of Greene's signature visualizations — extra dimensions appear small because we only see the unrolled large dimensions), Greene's treatment of relativity using slowed-down trains and elevators (Einstein's own thought-experiments rendered with twenty-first-century concreteness), the explicit acknowledgement of mathematical inaccessibility ('I cannot give you the equation here, but I can give you what the equation says' — Greene's repeated meta-move that grants the reader honest access without false simplification), the prefatory note about reading order (Greene's books include explicit guidance about which chapters to skim — calibrated reader-respect), the World Science Festival programming model (panel discussions, performances, large-audience demonstrations — Greene's institutional contribution to science communication), the visualization-via-NOVA-CGI style (Greene's PBS productions established a visual grammar for high-dimensional and high-energy physics that subsequent communicators adopted)"
+
 composite_panels:
   default:
-    description: "Full panel: all five personas. Use for thorough review of technical/academic narrative."
-    personas: [williams, mcenerney, mcphee, pinker, sword]
+    description: "Editor panel: structure + reader-value + cohesion. Use for any narrative document where polish is not the goal."
+    personas: [williams, mcenerney, mcphee, olson, gopen]
+
+  full_editor:
+    description: "All editor personas including prose polish. Use for late-stage drafts."
+    personas: [williams, mcenerney, mcphee, olson, gopen, pinker, sword, skern]
+
+  prose_polish:
+    description: "Prose polish only — sentence-level cohesion + cognitive style + academic pathologies + plain-English. For round-3+ polish passes on prose that is structurally settled."
+    personas: [williams, pinker, sword, skern]
 
   prose_only:
-    description: "Sentence-level cohesion + cognitive style + academic pathologies. Faster; skips structure and reader-value passes."
+    description: "Alias for prose_polish (kept for backward compatibility)."
     personas: [williams, pinker, sword]
 
   structure_only:
-    description: "Document shape and reader value. Use when prose is fine but the argument doesn't land."
-    personas: [mcenerney, mcphee]
+    description: "Document shape, reader value, narrative logic. Use when prose is fine but the argument doesn't land."
+    personas: [mcenerney, mcphee, olson]
 
   cohesion_audit:
-    description: "Williams-only. Use for a quick sentence-cohesion pass."
+    description: "Williams-only. Quick sentence-cohesion pass."
     personas: [williams]
+
+  technical_paper:
+    description: "Research-paper review. Editors (structure + reader-value + narrative logic) + plain-English. Domain-expert SMEs are pulled from <project_root>/reviewers.yaml by the agent at dispatch time (see project_extension below)."
+    personas: [williams, mcenerney, mcphee, olson, gopen, skern, fahnestock]
+    project_extension: required  # agent MUST also load project reviewers.yaml SMEs
+
+  public_facing:
+    description: "Documents with a general-audience component (commercial sections, broader-impacts, popular intros, press)."
+    personas: [williams, mcenerney, mcphee, olson, sagan, fahnestock]
+
+# Project-SME integration:
+# Several panels (technical_paper, optionally any panel with project_extension: optional)
+# require the agent to load <project_root>/reviewers.yaml and merge its personas as
+# SMEs into the same single-context review. If <project_root>/reviewers.yaml is
+# missing, the agent prompts the user to run /project-setup. See
+# ~/.claude/agents/narrative-reviewer.md for the merge protocol.
 
 # Notes on use:
 # - Default panel runs all 5; expect ~15-30 findings on a medium-length document.
