@@ -145,12 +145,16 @@ personas:
 
 composite_panels:
   default:
-    description: "Editor panel: structure + reader-value + cohesion. Use for any narrative document where polish is not the goal."
+    description: "Editor panel: structure + reader-value + cohesion. Auto-merges up to 2 project SMEs from <project_root>/reviewers.yaml if present (skipped silently if missing)."
     personas: [williams, mcenerney, mcphee, olson, gopen]
+    project_extension: optional  # pull up to project_smes (default 2) SMEs if reviewers.yaml exists
+    project_smes: 2
 
   full_editor:
-    description: "All editor personas including prose polish. Use for late-stage drafts."
+    description: "All editor personas including prose polish. Auto-merges up to 2 project SMEs if reviewers.yaml exists."
     personas: [williams, mcenerney, mcphee, olson, gopen, pinker, sword, skern]
+    project_extension: optional
+    project_smes: 2
 
   prose_polish:
     description: "Prose polish only — sentence-level cohesion + cognitive style + academic pathologies + plain-English. For round-3+ polish passes on prose that is structurally settled."

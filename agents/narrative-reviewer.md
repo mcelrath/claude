@@ -43,10 +43,13 @@ Defaults: `panel=default`, `response_structure=json`, `max_findings=20`.
 1. Parse prompt for `document`, `project_root`, `panel`, `skeleton`, `response_structure`, `max_findings`. If `project_root` omitted, default to the dispatcher's cwd (use Bash `pwd`).
 2. Read `~/.claude/narrative-reviewers.yaml`. Resolve the panel name to a list of editor personas. Note whether the panel has `project_extension: required` or `project_extension: optional`.
 3. **Load project SMEs from `<project_root>/reviewers.yaml`:**
-   - If the panel has `project_extension: required` (e.g. `technical_paper`) and `<project_root>/reviewers.yaml` does NOT exist → STOP and return an error inline:
-     `{"error": "missing_project_reviewers", "message": "Panel '{panel}' requires project SMEs. <project_root>/reviewers.yaml not found at {path}. Run /project-setup in {project_root} to generate it, then re-dispatch."}`
-   - If `<project_root>/reviewers.yaml` exists, Read it. Pull personas listed in its `composite_panels.default_review.personas` (or top N=3 if dispatcher passes `smes={n}`). Merge these SMEs into the same panel list as the editors. **All personas — editors and SMEs — run in one context window, sequentially, against one Read of the document.** Do not spawn separate Task teammates per persona.
-   - If `<project_root>/reviewers.yaml` exists but the panel has no `project_extension` directive, do NOT auto-merge SMEs. The user can still opt in by naming SMEs explicitly in the `panel=<persona-list>` argument.
+   - Behavior depends on the panel's `project_extension` field:
+     - `required` (e.g. `technical_paper`): SMEs are mandatory. If `<project_root>/reviewers.yaml` is missing → STOP and return inline:
+       `{"error": "missing_project_reviewers", "message": "Panel '{panel}' requires project SMEs. <project_root>/reviewers.yaml not found at {path}. Run /project-setup in {project_root} to generate it, then re-dispatch."}`
+     - `optional` (e.g. `default`, `full_editor`): SMEs auto-merge if reviewers.yaml exists; silently skip if missing (do NOT prompt the user).
+     - absent (e.g. `prose_polish`, `cohesion_audit`): never auto-merge SMEs.
+   - When merging: Read `<project_root>/reviewers.yaml`. Pull the first `project_smes` personas (default 2) from its `composite_panels.default_review.personas` list. Merge these into the panel as additional personas. **All personas — editors and SMEs — run in one context window, sequentially, against one Read of the document.** Do not spawn separate Task teammates per persona.
+   - The dispatcher may override the SME count via `smes={n}` in the prompt (0 disables, even when `optional`).
    - If the panel is `<persona-list>` and a name does not match any editor in `~/.claude/narrative-reviewers.yaml`, look it up in `<project_root>/reviewers.yaml` and use the project persona's `association` field.
 4. **Read the document IN FULL.** Use `wc -w {path}` first to size it. Then:
    - **If the document fits in one context window** (heuristic: ≤200,000 words, or ≤2MB of text), Read the whole file directly. Do NOT truncate, sample, or skim. The persona diagnostics (first-sentence reconstruction, paragraph-ending audit, structural shape, topic strings, callbacks/forecasts) all require the complete text to be valid.
