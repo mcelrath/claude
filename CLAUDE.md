@@ -51,7 +51,7 @@ Use an agent team when 2+ phases are independent and touch different code sectio
 
 **Before context loss**: `~/.local/bin/kb add "SESSION CHECKPOINT: ..." -t discovery -p <project> --tags session-checkpoint`
 
-**Persistent memory**: `~/.local/bin/kb add "insight" -t discovery -p <project> --tags <topic>`. Retrieve with `~/.local/bin/kb search "<keyword>"`. Do NOT use `bd remember` / `bd memories` (deprecated 2026-05-19; the 158 historical entries were migrated to kb) and do NOT use MEMORY.md files (those also migrated).
+**Persistent memory**: `~/.local/bin/kb add "insight" -t discovery -p <project> --tags <topic>`. Retrieve with `~/.local/bin/kb search "<keyword>"`. Do NOT use `bd remember` / `bd memories` and do NOT use MEMORY.md files.
 
 ## Why .md creation is blocked
 
@@ -255,7 +255,7 @@ bd prime                    # Load full workflow context
 
 **bd notes/description format**: use a single-line `--notes "..."` or `--description "..."` argument with plain text. **Hooks block** long heredocs (`<<EOF` > ~30 lines) AND writing `.md` files in `.beads/` or anywhere unrequested. For long content: keep notes concise (1-2 paragraphs of plain prose, no markdown tables, no bullet lists across many lines), or split into multiple `bd update --notes` calls (note: each replaces the prior — last one wins), or store the long content as a `~/.local/bin/kb add` entry and put the returned kb-id in the bd note. Don't write to `.md` files; don't try heredocs >30 lines.
 
-# KB Access — CLI ONLY (MCP DEPRECATED 2026-05-19)
+# KB Access — CLI ONLY
 
 KB MCP server removed from `~/.claude.json` 2026-05-19. **All kb operations go through the CLI** (`~/.local/bin/kb`). Reason: sub-agent MCP tool propagation is racy in Claude Code (GitHub issues #14496 open, #13254 closed not-planned, #19964 docs); tools appear in inventory but calls fail with "No such tool available" intermittently. CLI is reliable, parallel-safe, foreground/background-agnostic, and matches the `bd` precedent.
 
