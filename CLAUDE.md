@@ -149,16 +149,19 @@ kb-research agent before implementation. Enforced by hook.
 
 Before implementing ANY new function/struct/algorithm: `rg "similar_name"` across codebase; read *.md docs in directory; use Task/Explore agent if uncertain. USE existing code instead of reimplementing. This is your #1 failure mode.
 
-**Never trust text-grep (`grep`/`rg`) for structural audits.** `rg` finds string matches, not structural dependencies. Using text-grep to enumerate "what does this code path reach" is a systematic Claude failure mode. When planning ANY migration, refactor, or deletion:
-1. **Read the affected file(s) in full** — entire file, not just matching lines.
-2. **Read every upstream caller in full**, recursively until you hit the public API boundary.
-3. **Read every downstream callee in full**, recursively until you hit std/syscalls/external. Pay specific attention to indirect calls — trait methods, helper modules, kernel forwards, callback registries.
-4. **For breadth-after-Read, use `ast-grep`, not `rg`.** ast-grep matches AST patterns and is the right tool when you need to find "all calls of the form `obj.kernels.$X.forward($$$)`" or "all `match foo { Variant::X(..) => ... }`" — text-grep misses these. Examples: `ast-grep --lang rust 'self.kernels.$_.forward($$$)'`, `ast-grep --lang rust '$BUF.copy_from_host($$$)'`. Use `rg` ONLY for literal strings, error messages, env-var names, file paths — not for code-shape queries.
-5. **Only AFTER full Read + ast-grep enumeration** can you `rg` — and only to confirm the picture Read gave you, not to construct it.
+**Any claim about what a file/codebase/doc/test "covers", "reaches", "handles", or "does" must come from Read, not grep.** `grep`/`rg` finds string matches; it does NOT find structural dependencies, semantic coverage, or prose that discusses a topic in different vocabulary than your search terms. Using text-grep to answer coverage/structure/behavior questions is a systematic Claude failure mode that spans code (call-graph reachability, migration scope), docs (whether topic X is covered), and tests (whether behavior Y is asserted).
 
-Canonical failure: a `rg "X.execute"` audit finds 6 call sites to migrate; a full Read of the parent function reveals a sibling helper using a completely different API (`obj.kernels.*.forward` + `memcpy_d2h`) reachable from the same entry point but invisible to text-grep. An `ast-grep --lang rust 'self.kernels.$_.forward($$$)'` would have found it. Migration ships, sibling path deadlocks on first user run. The cost of full Reads + ast-grep is real; the cost of a shipped regression is much higher.
+Canonical workflow for any such claim:
+1. **Identify the source of truth** — the file(s), section(s), or test(s) that would settle the claim.
+2. **Read each in full** — not just matching lines. For code, recursively Read upstream callers (to public API boundary) and downstream callees (to std/syscalls/external), paying attention to indirect calls (trait methods, helper modules, callback registries). For docs, Read the TOC and every plausibly-related section. For tests, Read each test body, not just names.
+3. **For breadth-after-Read on code, use `ast-grep`, not `rg`.** ast-grep matches AST patterns: `ast-grep --lang rust 'self.kernels.$_.forward($$$)'` finds code-shape queries text-grep misses. Use `rg` ONLY for literal strings — error messages, env-var names, file paths.
+4. **Only AFTER full Read** can you `rg` — and only to confirm, not to construct.
 
-**Same rule applies to documentation coverage claims.** Before claiming a doc covers / does-not-cover topic X, Read the relevant TOC entries and Read in full each plausibly-related section. Prose uses different vocabulary than code symbols — `grep "atomic_store_n SYSTEM"` will not find a section titled "Persistent worker ack protocol" that documents the same hazard. Canonical workflow for any "is this in the doc?" question: Read the TOC → enumerate plausibly-related sections → Read each in full → only then claim coverage status. The cost of a 200-line Read is real; the cost of recommending a redundant edit (or missing an existing rule that contradicts your recommendation) is higher.
+Canonical code failure: `rg "X.execute"` audit finds 6 call sites to migrate; full Read reveals a sibling helper at the same entry point using `obj.kernels.*.forward` + `memcpy_d2h` — invisible to text-grep, deadlocks on first user run after migration ships.
+
+Canonical doc failure: `grep "atomic_store_n SYSTEM"` returns no hits; full Read of "Persistent worker ack protocol" reveals the same hazard documented under different vocabulary. Edit recommended would have duplicated an existing rule, or contradicted it.
+
+The cost of a 200-line Read is real; the cost of a shipped regression or a redundant/contradictory edit is higher.
 
 No mocks, stubs, or fake data.
 
