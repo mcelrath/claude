@@ -164,6 +164,25 @@ check "bd create 65 lines allow"   0 "$H" \
 check "short heredoc 5 lines allow" 0 "$H" \
     "$(j tool_name=Bash session_id="$SID" tool_input='{"command":"python3 <<E\nimport sys\nx=1\ny=2\nprint(x+y)\nE"}')"
 
+# ---------------------------------------------------------------------------
+echo "== block-followup-without-bd-id.sh =="
+H="$HOOKS/block-followup-without-bd-id.sh"
+# Pass: non-plan files untouched
+check "non-plan file untouched" 0 "$H" \
+    "$(j tool_name=Write tool_input='{"file_path":"/tmp/random.md","content":"out of scope: deferred to follow-up"}')"
+# Pass: plan with proper bd-IDs in Follow-ups section
+check "plan with bd-IDs ok" 0 "$H" \
+    "$(j tool_name=Write tool_input='{"file_path":"/home/mcelrath/.claude/plans/PLAN-fake.md","content":"## Follow-ups (in bd)\n\n- llamacpp-nuq6: Sync mmvq.cu to upstream\n- bd-1234: Audit something\n"}')"
+# Block: plan with free-text Out of scope bullets
+check "plan with bare out-of-scope blocked" 2 "$H" \
+    "$(j tool_name=Write tool_input='{"file_path":"/home/mcelrath/.claude/plans/PLAN-fake.md","content":"## Out of scope\n\n- Sync mmvq.cu to upstream: deferred to follow-up epic.\n- Audit Nemekath cherry: future work.\n"}')"
+# Block: Edit that adds an unanchored deferral
+check "Edit adding unanchored defer blocked" 2 "$H" \
+    "$(j tool_name=Edit tool_input='{"file_path":"/home/mcelrath/.claude/plans/PLAN-fake.md","new_string":"## Out of scope\n\n- Some deferred work: future epic.\n"}')"
+# Pass: Read on a plan (different tool) untouched
+check "Read on plan untouched" 0 "$H" \
+    "$(j tool_name=Read tool_input='{"file_path":"/home/mcelrath/.claude/plans/PLAN-fake.md"}')"
+
 # Cleanup
 rm -f /tmp/_hook_stdout.$$ /tmp/_hook_stderr.$$ /tmp/claude-md-allow-$SID
 rm -f /tmp/SUMMARY_FAKE.md /tmp/SPRINT_FAKE.md /tmp/__hook_selftest_*.md

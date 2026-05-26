@@ -44,7 +44,12 @@ while unfinished tasks remain:
 1. Verify all tasks closed: `bd list --status=open --parent=$ARGUMENTS`
 2. Run full test suite if one exists
 3. `bd close $ARGUMENTS`
-4. Report: what was done, what was committed, any issues found during verification
+4. **Surface follow-ups discovered during this epic.** Per CLAUDE.md "Follow-up Discipline (no orphan deferrals)", all deferred work should already be bd issues with `--deps=discovered-from:$ARGUMENTS`. Find and report them:
+   ```bash
+   bd dep list $ARGUMENTS --json | jq -r '.[] | select(.type | test("discovered"; "i")) | select(.status != "closed") | "  - \(.id): \(.title)"'
+   ```
+   If output is non-empty, include in the completion report under "**Follow-ups (open, discovered during this epic):**" and explicitly recommend "Suggest next: `bd show <id>` on these, or `/dispatch` the next priority one." Do NOT close the session without showing these.
+5. Report: what was done, what was committed, any issues found during verification, AND the follow-ups list from step 4.
 
 ## Critical Rules
 

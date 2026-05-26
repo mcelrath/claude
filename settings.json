@@ -235,6 +235,16 @@
       {
         "hooks": [
           {
+            "command": "$HOME/.claude/hooks/block-followup-without-bd-id.sh",
+            "timeout": 3000,
+            "type": "command"
+          }
+        ],
+        "matcher": "Write|Edit"
+      },
+      {
+        "hooks": [
+          {
             "command": "$HOME/.claude/hooks/block-presentation-cells.sh",
             "timeout": 5000,
             "type": "command"
@@ -278,6 +288,11 @@
           },
           {
             "command": "$HOME/.claude/hooks/session-start-resume.sh",
+            "type": "command"
+          },
+          {
+            "command": "$HOME/.claude/hooks/session-followups.sh",
+            "timeout": 5000,
             "type": "command"
           },
           {

@@ -33,6 +33,36 @@ Create a beads epic if: 3+ phases, 5+ files, work spans compaction, or multi-ses
 
 Reviews are non-persistent. Do NOT use ExitPlanMode, `.approved` markers, or `Mode:` fields.
 
+## Follow-up Discipline (no orphan deferrals)
+
+Plans frequently defer work as "Out of scope" / "Follow-up" / "Deferred to a future epic." That category is **write-only by default**: it goes into plan text, the plan ships, and nothing in the workflow ever reads it again. Sessions end, /dispatch closes the epic, the deferred work vanishes from awareness. This is a systematic failure mode — pieces deferred this way are repeatedly the load-bearing fix that gets rediscovered only after multiple symptom-patching attempts.
+
+**Rule**: every deferred / follow-up / out-of-scope item in a plan MUST be a real `bd` issue, created BEFORE the plan is submitted for review, with `--deps=discovered-from:<this-epic-id>`. The plan refers to follow-ups by bd-ID, never by free text.
+
+Plan section format:
+```
+## Follow-ups (in bd)
+
+- llamacpp-abcd: Sync mmvq.cu to upstream — discovered while removing TMAC
+- llamacpp-efgh: Audit Nemekath cherry inventory — surfaced during TMAC scope work
+```
+
+Never:
+```
+## Out of scope
+- Sync mmvq.cu to upstream: deferred to follow-up epic.   ← FORBIDDEN, no bd-ID
+```
+
+A bd-ID makes the work first-class: `bd ready` will surface it in future sessions, `bd list --status=open` keeps it visible, `discovered-from` links it back to its parent epic.
+
+**Reviewer obligation**: expert-review REJECTS any plan with a "Follow-up" / "Out of scope" / "Deferred" reference that lacks a `bd-XXX` / `<project>-XXXX` ID in the same line or the line immediately below. The plan author must create the bd issue first, then re-submit.
+
+**Dispatch obligation**: at epic completion, /dispatch runs `bd list --json | jq` to surface any open issues with `discovered-from:<this-epic>` and lists them in the completion report with explicit "next-step suggestions."
+
+**Session-start obligation**: every new session surfaces open follow-ups from epics closed in the last 30 days, so they cannot fall off the radar between sessions.
+
+A hook enforces the bd-ID requirement on `Write` to `~/.claude/plans/PLAN-*.md` (see `~/.claude/hooks/block-followup-without-bd-id.sh`).
+
 ## Mathlib Fork Survey Discipline
 
 Plans citing Mathlib lemmas must include: `## Mathlib fork survey / - loogle 'LemmaName': found at X.lean:NNN`. Use loogle at `~/Physics/loogle/` (port 8088). Bare grep is fallback. Search WHOLE `~/Physics/mathlib4/Mathlib/` tree; try variant forms before declaring gap.

@@ -40,6 +40,33 @@ Task(subagent_type="expert-review", model="haiku", run_in_background=True,
 8. For each reviewer in the panel, sequentially adopt their persona and review.
 9. Synthesize and return verdict JSON. Skip to Phase 4.
 
+### Follow-up Audit (BOTH modes, MANDATORY before any other review work)
+
+**Run this audit on the plan FIRST. If it produces blocking findings, you may return REJECTED without proceeding to persona review.**
+
+Scan the plan text for these trigger phrases (case-insensitive, word-boundary):
+- `out of scope` / `out-of-scope`
+- `follow-up` / `follow up` / `followup`
+- `deferred` / `defer to`
+- `future epic` / `future session` / `future work` / `future sprint`
+- `later epic` / `later session`
+- `next epic` / `next sprint`
+
+Allowed: a section heading like `## Follow-ups (in bd)`. The trigger words are explicitly contextualised by `(in bd)`.
+
+For every OTHER occurrence:
+- Look at that line and the following 3 lines for a bd-ID pattern (`<project>-<short>` like `llamacpp-abcd`, or `bd-<short>` like `bd-1234`)
+- If NO bd-ID is found in that window → record as a FOLLOW-UP-VIOLATION
+
+If FOLLOW-UP-VIOLATIONs exist, that is a DESIGN-BLOCKING finding by itself. Return:
+```json
+{"verdict": "REJECTED", "blocking_issues": ["Follow-up references without bd-ID at lines N, M, ..."], "guidance": "Per CLAUDE.md Follow-up Discipline, every deferred / out-of-scope / follow-up item must be a real bd issue created BEFORE plan submission, with --deps=discovered-from:<this-epic-id>. Replace each free-text bullet with a bd-ID reference, then re-submit."}
+```
+
+The plan author must run `bd create --type=task --priority=3 --deps=discovered-from:<this-epic-id> --title="..." --description="Discovered during <epic-id>: <why>"` for each deferred item, then edit the plan to reference the new bd-IDs.
+
+This audit prevents the load-bearing-deferral failure mode where a "follow-up epic" mentioned in plan text is never actually scheduled and bites later as a runtime regression nobody is tracking.
+
 ### FULL MODE: Phase 1 — Ephemeral Teams + Pre-Extraction (ALWAYS)
 
 **Reviews are ALWAYS non-persistent.** Do NOT use `bd mol wisp mol-expert-review` — it spawns 6+ wisp-* bd tasks that never auto-close and pollute `bd ready` / `bd list` (50+ accumulated in one project by 2026-05-11).
