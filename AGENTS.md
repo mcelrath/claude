@@ -123,28 +123,30 @@ For more details, see README.md and docs/QUICKSTART.md.
 
 ## Landing the Plane (Session Completion)
 
-**When ending a work session**, you MUST complete ALL steps below. Work is NOT complete until `git push` succeeds.
+**Applies ONLY when the user explicitly says they are stopping** (e.g. "good night", "let's call it", "I'm done for today"). Do NOT trigger this workflow because context is low, because compaction is approaching, or because you sense a "natural stopping point." Compaction is handled by the harness; it is not session completion. See CLAUDE.md "Don't propose pauses".
 
-**MANDATORY WORKFLOW:**
+When user has explicitly ended the session, complete the steps below.
 
-1. **File issues for remaining work** - Create issues for anything that needs follow-up
+**MANDATORY WORKFLOW (user-initiated only):**
+
+1. **File issues for remaining work** - Create issues for anything that needs follow-up (use `discovered-from:<epic>` per CLAUDE.md "Follow-up Discipline")
 2. **Run quality gates** (if code changed) - Tests, linters, builds
 3. **Update issue status** - Close finished work, update in-progress items
-4. **PUSH TO REMOTE** - This is MANDATORY:
+4. **Commit** (push is project-dependent):
    ```bash
-   git pull --rebase
-   bd dolt push
-   git push
-   git status  # MUST show "up to date with origin"
+   git add <files>
+   git commit --no-gpg-sign -m "..."
    ```
-5. **Clean up** - Clear stashes, prune remote branches
-6. **Verify** - All changes committed AND pushed
-7. **Hand off** - Provide context for next session
+   **Push only if the project's CLAUDE.md authorises it.** llama.cpp / braidinfer / exterior_algebra explicitly forbid `git push` — the user syncs from tardis at their own cadence. For those projects: commit, do NOT push. For other projects: follow that project's CLAUDE.md.
+5. **Clean up** - Clear stashes (only those you created), prune your own remote branches
+6. **Verify** - All work is in `bd` issues or commits; nothing is in plan text only
+7. **Hand off** - kb add a session-checkpoint with the in-flight state (project tag + `session-checkpoint` tag). Do NOT write a handoff.md — the harness manages handoff state.
 
 **CRITICAL RULES:**
-- Work is NOT complete until `git push` succeeds
-- NEVER stop before pushing - that leaves work stranded locally
-- NEVER say "ready to push when you are" - YOU must push
-- If push fails, resolve and retry until it succeeds
+- This workflow is gated on USER stopping, not Claude proposing to stop
+- Commit before saying done. Push only if the project authorises it.
+- NEVER say "ready to push when you are" — if push is authorised, YOU do it
+- If push fails (when authorised), resolve and retry until it succeeds
+- Compaction at 90%+ context is NOT session completion. See `~/.claude/hooks/context-monitor.sh` and CLAUDE.md "Don't propose pauses".
 
 <!-- END BEADS INTEGRATION -->

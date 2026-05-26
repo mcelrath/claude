@@ -107,22 +107,24 @@ if [[ $PERCENT -ge $BLOCK_THRESHOLD ]]; then
     "$CLAUDE_DIR/hooks/precompact-save-state.sh" >/dev/null 2>&1
 
     echo "BLOCKED: Context at ${PERCENT}% (${CONTEXT}/${LIMIT} tokens). Window: ${LIMIT}." >&2
-    echo "State saved. Type /clear to continue — beads + KB will restore context." >&2
+    echo "State saved. Type /clear to continue — beads + KB will restore context. The work continues; this is not a stopping point." >&2
     exit 2  # Block tool use
 
 elif [[ $PERCENT -ge $WRAPUP_THRESHOLD ]]; then
-    # At 90%: save checkpoint proactively and instruct Claude to wrap up
-    # Only run checkpoint once per session (marker file)
+    # At 90%: save a checkpoint and instruct Claude to checkpoint-and-continue,
+    # NOT to wrap up. Compaction is a window event handled by the harness; the
+    # work itself continues. See CLAUDE.md "Don't propose pauses".
+    # Only run checkpoint once per session (marker file).
     CHECKPOINT_MARKER="/tmp/claude-kb-state/${SESSION_ID}-checkpoint-saved"
     if [[ ! -f "$CHECKPOINT_MARKER" ]]; then
         "$CLAUDE_DIR/hooks/precompact-save-state.sh" >/dev/null 2>&1
         touch "$CHECKPOINT_MARKER"
     fi
-    echo "CONTEXT ${PERCENT}%: WRAP UP current task. ~/.local/bin/kb add any findings. Next tool call at ${BLOCK_THRESHOLD}% will be blocked."
-    echo "State auto-saved. When blocked, type /clear to continue seamlessly."
+    echo "CONTEXT ${PERCENT}%: kb add a checkpoint of in-flight state now, then continue the task. Compaction is automatic — do NOT propose stopping or 'next session'."
+    echo "State auto-saved. At ${BLOCK_THRESHOLD}% non-checkpoint tools are blocked until /clear."
 
 elif [[ $PERCENT -ge $WARN_THRESHOLD ]]; then
-    echo "CONTEXT: ${PERCENT}% (${CONTEXT}/${LIMIT}). Finish current task soon."
+    echo "CONTEXT: ${PERCENT}% (${CONTEXT}/${LIMIT}). Keep working; if a logical checkpoint comes up naturally, kb add it. Do NOT propose stopping."
 fi
 
 exit 0
