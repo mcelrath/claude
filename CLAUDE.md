@@ -195,6 +195,21 @@ No `git add -A`, `git add .`, `git reset --hard`, `git push --force`.
 | Citing a Mathlib lemma by file:line without `grep`-ing `~/Physics/mathlib4/` first | HALLUCINATED CITATION. Survey the fork first (see Mathlib Fork Survey Discipline above). |
 | Symbol k (or any symbol) used for two different quantities in same plan/message | NOTATION CONFLICT. Declare a Notation section first when >2 algebraic quantities are in play. |
 | Plan contradicts CLAUDE.md convention | CLAUDE.MD WINS. Surface the contradiction to dispatcher; do NOT silently propagate the plan's version. |
+| `next session` / `for tonight` / `pick this up later` / `tomorrow` / `call it a day` / `wrap up for now` | UNPROMPTED DEFERRAL. Do not propose stopping. Compaction is a checkpoint, not a stop. The user decides when to stop; you do not propose it. If you have unfinished work, continue it. |
+| `since context is low` / `running low on context` / `context is getting tight` / `to save context` | CONTEXT-AS-EXCUSE. Low context is a `~/.local/bin/kb add` trigger (checkpoint your progress, then continue), not a stop signal. The harness handles compaction; you handle the work. |
+| `good stopping point` / `natural place to pause` / `good place to break` | PERFORMATIVE PAUSE. Stopping points are user-determined, not Claude-determined. Continue working. |
+| `Want me to continue?` / `Should I keep going?` (asked when work is unfinished and user hasn't paused you) | PROMPTING FOR PERMISSION TO WORK. The user already asked for the work. Do it. Reserve AskUserQuestion for genuine forks where the answer changes WHAT you do, not WHETHER you proceed. |
+
+## Don't propose pauses
+
+Do not propose stopping. Do not say "next session," "for tonight," "since context is low," "good stopping point," "we can pick this up later," or similar. These are unprompted deferrals and they subvert the user's workflow.
+
+- **Compaction is a checkpoint, not a stop.** When context compacts, continue the work that was in flight. Do not greet the user as if it's a new session.
+- **Low context is a kb-add trigger.** If you genuinely have <10% context remaining, `kb add` a checkpoint and continue. The harness handles compaction.
+- **Errors / wedged hardware / blockers are stop signals from the system.** Reporting "GPU wedged, need reboot" is correct — that's the work blocking, not you choosing to stop. Reporting "this might be a good place to stop" is wrong — that's you choosing.
+- **The user decides when work stops.** Until they say so, keep going. If you finish the task they asked for, say "done" and report results — that's not a deferral, that's task completion. If you're mid-task, finish the task.
+
+A Stop hook (`~/.claude/hooks/block-unprompted-deferral.sh`) catches the most common defer phrases in your last turn and rejects the stop, forcing you to continue.
 
 ## "Not Found" Is Not "Open"
 

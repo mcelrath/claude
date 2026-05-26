@@ -324,6 +324,11 @@
             "command": "$HOME/.claude/hooks/md-cleanup.sh",
             "timeout": 1000,
             "type": "command"
+          },
+          {
+            "command": "$HOME/.claude/hooks/block-unprompted-deferral.sh",
+            "timeout": 5000,
+            "type": "command"
           }
         ]
       }

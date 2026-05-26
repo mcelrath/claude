@@ -183,9 +183,45 @@ check "Edit adding unanchored defer blocked" 2 "$H" \
 check "Read on plan untouched" 0 "$H" \
     "$(j tool_name=Read tool_input='{"file_path":"/home/mcelrath/.claude/plans/PLAN-fake.md"}')"
 
+# ---------------------------------------------------------------------------
+echo "== block-unprompted-deferral.sh =="
+H="$HOOKS/block-unprompted-deferral.sh"
+# Build small fixture transcripts
+T_DEFER="/tmp/__hook_selftest_t_defer_$$.jsonl"
+T_USR_STOP="/tmp/__hook_selftest_t_usrstop_$$.jsonl"
+T_NORMAL="/tmp/__hook_selftest_t_normal_$$.jsonl"
+cat > "$T_DEFER" <<'JL'
+{"type":"user","message":{"role":"user","content":[{"type":"text","text":"keep working on the bug"}]}}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"I made progress on the GEMV fix. Since context is getting low, this seems like a good stopping point — we can pick this up next session."}]}}
+JL
+cat > "$T_USR_STOP" <<'JL'
+{"type":"user","message":{"role":"user","content":[{"type":"text","text":"ok, good night, let's pick this up tomorrow"}]}}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"Good night. We can pick this up next session."}]}}
+JL
+cat > "$T_NORMAL" <<'JL'
+{"type":"user","message":{"role":"user","content":[{"type":"text","text":"run the build"}]}}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"Build complete: 430/430 targets, no errors."}]}}
+JL
+# Block: assistant proposed pause without user prompting
+check "unprompted defer blocked" 2 "$H" \
+    "$(j transcript_path="$T_DEFER" stop_hook_active=false session_id="$SID")"
+# Pass: user explicitly said good night
+check "user-said-stop allowed" 0 "$H" \
+    "$(j transcript_path="$T_USR_STOP" stop_hook_active=false session_id="$SID")"
+# Pass: normal task-complete report
+check "task-complete allowed" 0 "$H" \
+    "$(j transcript_path="$T_NORMAL" stop_hook_active=false session_id="$SID")"
+# Pass: loop-guard (stop_hook_active already true)
+check "loop-guard allows second stop" 0 "$H" \
+    "$(j transcript_path="$T_DEFER" stop_hook_active=true session_id="$SID")"
+# Pass: missing transcript path (defensive)
+check "missing transcript path allowed" 0 "$H" \
+    "$(j stop_hook_active=false session_id="$SID")"
+
 # Cleanup
 rm -f /tmp/_hook_stdout.$$ /tmp/_hook_stderr.$$ /tmp/claude-md-allow-$SID
 rm -f /tmp/SUMMARY_FAKE.md /tmp/SPRINT_FAKE.md /tmp/__hook_selftest_*.md
+rm -f "$T_DEFER" "$T_USR_STOP" "$T_NORMAL"
 
 echo
 echo "== Summary =="
