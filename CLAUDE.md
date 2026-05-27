@@ -135,7 +135,6 @@ If you cite, reference, or depend on a file/theorem/function, you MUST have READ
 
 Before implementing any new function: search codebase for similar names. USE existing code instead of reimplementing.
 
-<<<<<<< HEAD
 **Any claim about what a file/codebase/doc/test "covers", "reaches", "handles", or "does" must come from Read, not grep.** `grep`/`rg` finds string matches; it does NOT find structural dependencies, semantic coverage, or prose that discusses a topic in different vocabulary than your search terms. Using text-grep to answer coverage/structure/behavior questions is a systematic Claude failure mode that spans code (call-graph reachability, migration scope), docs (whether topic X is covered), and tests (whether behavior Y is asserted).
 
 Canonical workflow for any such claim:
@@ -157,9 +156,6 @@ No backwards compatibility. No wrappers. No forwarding functions. No aliases. No
 No mocks, stubs, or fake data.
 
 No backwards compatibility. No wrappers. No forwarding functions. No aliases. No dead code. DELETE wrong/superseded code — git history preserves it.
-=======
-No mocks, stubs, fake data, backwards compatibility wrappers, or dead code. DELETE superseded code.
->>>>>>> 04dc33e (CLAUDE.md + settings.json: 54% token reduction, 5 hooks removed)
 
 No `git add -A`, `git add .`, `git reset --hard`, `git push --force`.
 
