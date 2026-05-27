@@ -81,10 +81,11 @@ if [ "$EVENT" = "UserPromptSubmit" ]; then
     exit 0
 fi
 
-# PreToolUse: block (exit 2) only once per watcher death-cycle.
+# PreToolUse: warn (exit 0) — downgraded from exit 2 (block) per user request 2026-05-25.
+# The watcher exits after each message by design; blocking every tool call was disruptive.
 if [ -f "$SENTINEL" ]; then
     exit 0
 fi
 : > "$SENTINEL"
 echo "$MSG" >&2
-exit 2
+exit 0

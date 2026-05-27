@@ -100,6 +100,7 @@ Plans citing Mathlib lemmas must include: `## Mathlib fork survey / - loogle 'Le
 - Model defaults: Haiku lookups only; Sonnet implementation; Opus lead only (max 1/batch)
 - **VERIFY AGENT WORK**: Read what agents claim. Summaries describe intent, not what landed.
 - **AGENTS MUST READ, NOT GREP**: `grep sorry` matches comments; only Read disambiguates.
+- **HOOKS DO NOT FIRE FOR SUBAGENTS**: all PreToolUse hooks (block-text-search, block-approximations, etc.) only fire in the parent session. Agents can bypass them silently. Mitigations: (1) for Lean sorry/axiom counts, agents MUST use `lean-audit <path>` (not grep); (2) for source search, agents should use `ast-grep` or `Read`; (3) include explicit anti-pattern warnings in every agent prompt.
 
 **Agent preamble**: `"CRITICAL: the naive implementation would be X — do NOT do that. Required: Y."`
 
@@ -152,7 +153,6 @@ The cost of a 200-line Read is real; the cost of a shipped regression or a redun
 No mocks, stubs, or fake data.
 
 No backwards compatibility. No wrappers. No forwarding functions. No aliases. No dead code. DELETE wrong/superseded code — git history preserves it.
-||||||| parent of 04dc33e (CLAUDE.md + settings.json: 54% token reduction, 5 hooks removed)
 No mocks, stubs, or fake data.
 
 No backwards compatibility. No wrappers. No forwarding functions. No aliases. No dead code. DELETE wrong/superseded code — git history preserves it.
@@ -274,11 +274,29 @@ Hooks intercept tool calls. **Hook blocks are FINAL.** Each prints an actionable
 
 | Hook | Trigger | Escape route |
 |------|---------|--------------|
-| **block-text-search-on-source** | `grep`/`rg`/`find`/`awk`/`sed` on source files (.py, .lean, .md, etc.) | Python: `ast-grep --lang python --pattern '$X'`. Lean: `loogle 'Name'`. Markdown: `ast-grep -c ~/.config/ast-grep/sgconfig.yml --lang markdown ...`. Or use the `Read` tool. |
+| **block-text-search-on-source** | `grep`/`rg`/`find`/`awk`/`sed` on source files (.py, .lean, .md, etc.) | Python: `ast-grep --lang python --pattern '$X'`. Lean: `lean-audit <path>` (sorry/axiom counts) or `loogle 'Name'` (search). Markdown: `ast-grep -c ~/.config/ast-grep/sgconfig.yml --lang markdown ...`. Or use the `Read` tool. |
 | **block-markdown-via-bash** / **block-markdown-files** | Bash/Write creating new `.md` file | Route per ".md Creation Is Blocked" section below. |
 | **block-print-spam** | ≥3 banner/narration echo/print lines in one Bash call | Strip all banners. Do NOT split into multiple calls. |
 | **block-large-heredoc** | Heredoc body >30 lines to interpreter | Write to script file, then execute. |
 | **block-approximations** | `for b in range(`, `curve_fit`, `polyfit`, `lstsq`, bare exponential mode sums | Use `cl44.generating_functional` or `cl44.spectral_zeta`. Exact computation only. |
+
+## Lean Audit — `lean-audit`
+
+`lean-audit <file-or-dir>` is the ONLY correct way to count sorry/axiom in Lean files. It parses comments (nested `/- -/`, `--`) and only flags code-level occurrences. `grep sorry` matches comment text and WILL give wrong counts — this has caused multiple wrong review verdicts.
+
+```
+lean-audit <file.lean>          # source scan + deep (#print axioms) if oleans exist
+lean-audit <directory/>         # recursive, per-file
+lean-audit <path> --json        # programmatic output
+lean-audit <path> --no-deep     # skip #print axioms
+lean-audit <path> --no-warnings # only sorry/axiom/:=True (no native_decide etc.)
+```
+
+Deep mode auto-enables when `.olean` exists for a file: runs `#print axioms` via `lake env lean --stdin` to catch `sorryAx` transitively (even through `opaque`). Output shows `[deep]` tag per file.
+
+**Detects**: sorry, admit, axiom, := True, unsafeCoerce/Cast, implemented_by, native_decide, trustMe, trivial bodies, rfl-witness tautologies, type : True, ∃ _ True.
+
+**Hooks do NOT fire for subagents.** All agent prompts needing sorry counts MUST say: `"Use lean-audit <path> to count sorries — do NOT use grep/rg on .lean files."`
 
 # .md Creation Is Blocked
 
