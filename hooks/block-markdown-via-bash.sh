@@ -67,7 +67,10 @@ fi
 # (c) mv/cp/git-mv to a .md target — but only block if SOURCE doesn't exist
 # (i.e. genuinely creating a new .md), or if source exists and dest doesn't
 # match the source pattern (renaming non-.md content to .md).
-if [[ "$CMD" =~ (^|[[:space:]\;\&\|])(git[[:space:]]+mv|mv|cp)[[:space:]]+([^[:space:]]+)[[:space:]]+([^[:space:]]+\.md)([[:space:]]|$|\;|\&|\|) ]]; then
+if [[ "$CMD" =~ (^|[[:space:]\;\&\|])(git[[:space:]]+mv|mv|cp)[[:space:]]+([^[:space:]]+)[[:space:]]+([^[:space:]]+\.md)[[:space:]]*($|[\;\&\|]) ]]; then
+    # The .md must be the FINAL token (the destination). This excludes
+    # `cp X.md Y.txt` and `cp -f X.md Y.txt` (reading a .md, writing a .txt),
+    # which previously mis-parsed the .md SOURCE as a .md DEST.
     SRC="${BASH_REMATCH[3]}"
     DST="${BASH_REMATCH[4]}"
     # Existing-file move (the user wants this allowed): if SRC is an existing
@@ -84,9 +87,13 @@ fi
 # anywhere in the command. (ii) detect Path(...).write_text /
 # pathlib.write_text with a .md path.
 if [ "$SUSPECT" = "0" ]; then
+    # Only a WRITE indicator counts: write_text/write_bytes/writelines, or
+    # open(..., 'w'|'a'|'x'...). A bare open('x.md') / open('x.md','r') / .read()
+    # is a READ and is ALLOWED (reading markdown is fine, including archive/).
+    PY_WRITE_RE="(write_text|write_bytes|writelines|open\([^)]*,[[:space:]]*['\"][wax])"
     if [[ "$CMD" =~ python3?[[:space:]]+-c[[:space:]] ]] \
        && [[ "$CMD" == *.md* ]] \
-       && [[ "$CMD" =~ (open|write_text|write_bytes|writelines|Path[\(]) ]]; then
+       && [[ "$CMD" =~ $PY_WRITE_RE ]]; then
         SUSPECT=1
         # Extract first .md path token for diagnostic.
         SUSPECT_PATH=$(echo "$CMD" | grep -oE "[^'\"[:space:]]+\.md" | head -1)

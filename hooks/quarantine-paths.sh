@@ -11,7 +11,10 @@ TOOL_NAME=$(echo "$INPUT" | python3 -c "import sys,json; print(json.load(sys.std
 
 case "$TOOL_NAME" in
     Read)
-        PATH_ARG=$(echo "$INPUT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('tool_input',{}).get('file_path',''))" 2>/dev/null) || true
+        # READING is always allowed, including archive/ and scratch/. Only
+        # SEARCH/DISCOVERY (Grep/Glob) is gated, so agents don't FIND these
+        # historical paths by default but CAN read them when pointed at one.
+        exit 0
         ;;
     Grep)
         PATH_ARG=$(echo "$INPUT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('tool_input',{}).get('path',''))" 2>/dev/null) || true
