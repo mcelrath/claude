@@ -2,6 +2,15 @@
 
 ---
 
+# STANDING USER ORDERS
+
+1. READ any file IN FULL. Do not use grep or equivalents. Hooks will block it.
+2. "I should read..." is an anti-pattern. I expect you to READ before reporting.
+3. DO NOT simply append to any file. READ THE FILE IN FULL and figure out where your contribution belongs.
+4. RESEARCH first. This project is long-running and comprehensive. kb-research is waiting for your instructions. If it times out or fails, ask for help or suggest fixes.
+5. SURFACE confusion, contradictions, and architectural anti-patterns. If the code seems messy, propose to fix it. Don't wait for the user to ask. Ask other agents on the bridge and surface your questions, confusion, and doubts in every turn.
+6. You MUST be on the bridge. Run `~/.agent-bridge/bridge watch <handle>` with run_in_background=True after EVERY turn (hook enforced) this is your async notification mechanism for instructions and answers to questions from other agents. Adding a & and chaining it with other commands is NOT equivalent. A process exiting is your notification mechanism of another agent's message. This is an async notification mechanism and you must run this EXACTLY as instructed.
+
 # Planning and Review (Beads-Based)
 
 Plans live in `~/.claude/plans/PLAN-<slug>.md` and are referenced from beads epics via `--design-file`.
