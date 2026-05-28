@@ -11,6 +11,16 @@ Read this BEFORE starting your task. These rules prevent the failure modes that 
 
 This project is pure Cl(4,4) mathematics. Output is Cl(4,4)-intrinsic. Use canonical functions in cl44/; do not reimplement. Do not compare to external references.
 
+## HAM INVARIANT (no external i — PROVEN, and hooks do NOT protect you)
+
+In Cl(4,4) a physical observable that comes out **complex is a proof of error, not a result.** By the HAM theorem (`~/Physics/claude/HYPERCOMPLEX_ANALYSIS.tex` §5), Cl(4,4) is one of only 6 hypercomplex extensions supporting monogenic functions / a Cauchy–Riemann equation; an external `i` (Python `1j`, `dtype=complex`) BREAKS meromorphy. The `1j` block hook does NOT fire for sub-agents, so this rule is on you.
+
+- A complex mass / eigenvalue / pole means EITHER the `i` is an internal $J_X$ — identify the sector: vector $V_8\to J_A$, even-spinor $S^+\to J_B$, odd-spinor $S^-\to J_C$ (the fermion mass op `M_g5_odd_48` is odd-spinor $\to J_C$) — OR you are computing the wrong object (e.g. a pole of a non-normal operator like `det(γ̃·p + M)=0`).
+- **Never repair a complex observable by taking `.real` / `abs()` / dropping the imaginary part** — that is selective omission of an exact computation.
+- Observables (masses) are real spectral / channel-trace data `Tr(P_α f(M))` — e.g. `(4/3)·eig(MᵀM)` (PSD gram) — NOT complex poles. $J_X$ is the internal Wick rotation, the only legitimate "$i$".
+- Known external-`i` violations (do NOT copy): `self_consistent.py::_sector_gram_complex_np`, `h_chi` (these are the character-twist computation, separate from the aux-field calc).
+- Before any J-contraction, verify J is in the SAME basis as its partner (orthogonal-similarity arbiter; mixed weight-Q × Fock-J is the recurring trap).
+
 ## ALWAYS check the mathlib4 fork
 
 Before declaring any Mathlib infrastructure missing or any Lean theorem unprovable:

@@ -127,10 +127,23 @@ if echo "$CODE" | grep -qE 'sum\s*\(.*b\s*\*\*\s*2\s*\*.*\*\*\s*\(\s*-s\s*\)' 2>
 BLOCKED §GATEKEEPER.2: Bare spectral zeta sum Σ b² × (ε₀b)^(-s). Use zeta_regularized_mode_sum library."
 fi
 
-# §GATEKEEPER.1: External complex numbers in pre-Wick physics code
+# §GATEKEEPER.1: External complex numbers (HAM theorem — no external i pre-Wick).
+# WARNING (not a hard block): 1j is LEGITIMATE post-Wick (partition functions,
+# L-functions, resolvents — see CLAUDE.md Wick boundary). Pre-Wick (masses,
+# charges, M_full, J_X, mixings) it BREAKS meromorphy. The hook cannot tell
+# pre- from post-Wick, so it informs; the author must confirm the Wick side.
 if echo "$CODE" | grep -qE '\b1j\b|1\.0j|dtype\s*=\s*(np\.)?complex|dtype\s*=\s*complex128' 2>/dev/null; then
     VIOLATIONS="$VIOLATIONS
-BLOCKED §GATEKEEPER.1: External complex number (1j / dtype=complex) in physics code. Cl(4,4) contains ℂ internally via J_A/J_B/J_C. Use cl44.complex_structures — no external i needed pre-Wick."
+WARNING §GATEKEEPER.1 (HAM): external i (1j / dtype=complex) detected. PROVEN constraint: Cl(4,4) is one of 6 hypercomplex extensions supporting meromorphy; external i breaks the Cauchy-Riemann/monogenic structure. If this is PRE-Wick (mass/charge/mixing/M_full/J_X) it is a VIOLATION — use the internal per-sector J_X (V_8->J_A, S+->J_B, S-->J_C) instead. Only POST-Wick objects (partition functions, L-functions, resolvents) may carry external i. Known violations to NOT copy: self_consistent.py _sector_gram_complex_np, h_chi."
+fi
+
+# §GATEKEEPER.1b: taking real-part/modulus of complex eigenvalues = selective
+# omission of an exact computation (the 'complex observable repaired by .real' trap).
+if echo "$CODE" | grep -qE '(np\.linalg\.eig|scipy\.linalg\.eig|\.eigvals)\s*\(' 2>/dev/null; then
+    if echo "$CODE" | grep -qE '\.real\b|np\.abs\s*\(|np\.real\s*\(|\.imag\b' 2>/dev/null; then
+        VIOLATIONS="$VIOLATIONS
+WARNING §GATEKEEPER.1b (HAM): non-Hermitian eigenvalues (np.linalg.eig/eigvals) with .real/abs/.imag nearby. A complex eigenvalue for a physical REAL observable is a proof of error, not a result — do NOT repair it by taking real-part/modulus. Either the i is an internal J_X (identify the sector) or the operator is wrong (e.g. det of a non-normal op). Real observables come from PSD grams (np.linalg.eigvalsh) or channel-traces Tr(P_a f(M)), not non-normal spectra."
+    fi
 fi
 
 # §GATEKEEPER.4: Bare Fock charges for classification

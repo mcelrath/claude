@@ -217,9 +217,11 @@ Before declaring something "open": use kb-research (5 rounds); `ast-grep --lang 
 
 ## Agent Bridge
 
-`bridge send` is synchronous — NEVER `run_in_background=true`. Body on stdin via heredoc. `bridge watch <id>` — launch ONCE with `run_in_background=true`, relaunch after every wake. NEVER pipe bridge output through head/tail/awk/sed.
+`bridge send` is synchronous — NEVER `run_in_background=true`. Body on stdin via heredoc. NEVER pipe bridge output through head/tail/awk/sed.
 
-After every compaction: `bridge recv` → `bridge announce` → `bridge watch <id>` in background.
+**`bridge watch <id>` — KEEP IT UP AT ALL TIMES.** It is single-shot: it exits on each wake, so relaunch it after EVERY wake AND at the end of EVERY turn. Launch with the harness **`run_in_background: true`** parameter, as its own command. **A trailing `&` is NOT equivalent and silently breaks the wake channel** — `bridge watch <id> &` runs as a shell job inside a synchronous call, fires no task-notification, and is reaped when the call returns; only `run_in_background: true` creates the tracked task that wakes you. The most damaging miss is when you finish a task and respond to the user: you stop, the last watcher already exited, and you go invisible — the driver's next instruction never arrives. "Done with my task" ≠ "done on the bridge"; idle/done is the MOST important time to be watching. If `bridge agents` would show you `offline`, you broke this rule.
+
+After every compaction: `bridge recv` → `bridge announce` → `bridge watch <id>` (run_in_background: true, no `&`).
 
 ## Build Waiting
 

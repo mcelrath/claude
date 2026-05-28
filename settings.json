@@ -12,6 +12,7 @@
   "effortLevel": "low",
   "enabledPlugins": {
     "clangd-lsp@claude-plugins-official": true,
+    "claude-code-setup@claude-plugins-official": true,
     "lua-lsp@claude-plugins-official": true,
     "pyright-lsp@claude-plugins-official": false,
     "rust-analyzer-lsp@claude-plugins-official": true,
@@ -70,6 +71,11 @@
           {
             "command": "$HOME/.claude/hooks/bd-lifecycle.sh",
             "timeout": 5000,
+            "type": "command"
+          },
+          {
+            "command": "$HOME/.claude/hooks/kb-search-track.sh",
+            "timeout": 2000,
             "type": "command"
           }
         ],
@@ -161,6 +167,11 @@
           },
           {
             "command": "$HOME/.claude/hooks/bridge-watcher-alive.sh",
+            "timeout": 2000,
+            "type": "command"
+          },
+          {
+            "command": "$HOME/.claude/hooks/kb-search-track.sh",
             "timeout": 2000,
             "type": "command"
           }
@@ -327,6 +338,11 @@
           },
           {
             "command": "$HOME/.claude/hooks/block-unprompted-deferral.sh",
+            "timeout": 5000,
+            "type": "command"
+          },
+          {
+            "command": "$HOME/.claude/hooks/block-stop-without-bridge-watcher.sh",
             "timeout": 5000,
             "type": "command"
           }
@@ -588,5 +604,6 @@
     "type": "command"
   },
   "teammateMode": "auto",
-  "terminalProgressBarEnabled": false
+  "terminalProgressBarEnabled": false,
+  "tui": "fullscreen"
 }
