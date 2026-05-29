@@ -1,95 +1,42 @@
 #!/bin/bash
 # PreToolUse hook for Bash. Blocks text-search tools (grep, rg, etc.) on
-# source-code files. Redirects to loogle for .lean, ast-grep for general
+# source-code-file CONTENT. Redirects to loogle for .lean, ast-grep for general
 # source code, and purpose-built tools for xml/sql/csv/log/rst/tex.
+#
+# PIPELINE-AWARE (2026-05-29, user-directed): the decision is delegated to
+# _grep_pipeline_analyzer.py, which blocks only when a text-search stage reads
+# source-file CONTENT —
+#   (a) grep PAT file.py            (direct source-file argument)
+#   (b) cat file.py | grep PAT      (piped from a file-reader on a source file)
+#   plus find … -exec grep,  … | xargs grep  on source files.
+# It ALLOWS text-search piped from any non-file-reader command:
+#   bd show … | grep …   git log … | grep …   ls … | grep …   echo … | grep …
+# This removes the old "extension appears anywhere in the command" false
+# positives (command-output greps, `cd dir; bd … | grep`, .ext strings in
+# heredoc/message bodies) WITHOUT weakening the anti-shallow-read intent.
 #
 # NO BYPASS — per PLAN-hook-grep-replacement.md and user direction. If the
 # hook fires and the agent can't accomplish its task with ast-grep/loogle/
 # purpose-built tool, the agent MUST surface to the user.
 #
-# Detection covers:
-#   grep / rg / egrep / fgrep (any flags)
-#   find ... -exec grep / find ... -exec rg
-#   fd ... -x grep / fd ... -x rg
-#   find/fd ... | xargs grep / xargs rg
-#   awk '/PAT/' (search-print form)
-#   sed -n '/PAT/p' (search-print form)
-#   cat <file> | grep ... (pipe form, when <file> has a blocked extension)
-#
-# Allowed (text-search IS the right tool):
-#   .txt .ini .cfg .conf .lock
-#   any file under .lake/ build/ dist/ node_modules/ target/ .venv/ .cache/
+# Allowed (text-search IS the right tool): .txt .ini .cfg .conf .lock and any
+# file under .lake/ build/ dist/ node_modules/ target/ .venv/ .cache/ .git/
 
 INPUT=$(cat)
 TOOL_NAME=$(echo "$INPUT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('tool_name',''))" 2>/dev/null)
 [ "$TOOL_NAME" != "Bash" ] && exit 0
 
 CMD=$(echo "$INPUT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('tool_input',{}).get('command',''))" 2>/dev/null)
+[ -z "$CMD" ] && exit 0
 
-# (0) Exempt CLI tools where text-search words and file extensions appear in
-# message BODIES, not as actual file-search invocations. Anchored to the
-# LEADING command (before any `;`, `&&`, `||`, `|`). Same pattern as
-# block-markdown-via-bash.sh.
-LEADING=$(echo "$CMD" | awk -F'[;&|]' '{print $1}' | sed -E 's/^[[:space:]]*//')
-if [[ "$LEADING" =~ ^(bridge|~/\.agent-bridge/bridge|/home/mcelrath/\.agent-bridge/bridge)[[:space:]]+(send|announce|recv|tail|peek|watch)([[:space:]]|$) ]] \
-   || [[ "$LEADING" =~ ^(kb|~/\.local/bin/kb|/home/mcelrath/\.local/bin/kb)[[:space:]]+(add|correct|update|get|search|list|stats|reembed|delete|check|bulk-tag|bulk-consolidate|flush-pending)([[:space:]]|$) ]] \
-   || [[ "$LEADING" =~ ^bd[[:space:]]+(create|update|remember|show|close|note|memories|recall|search|dep|prime|stats|doctor)([[:space:]]|$) ]] \
-   || [[ "$LEADING" =~ ^(loogle|~/\.local/bin/loogle|/home/mcelrath/\.local/bin/loogle)([[:space:]]|$) ]] \
-   || [[ "$LEADING" =~ ^ast-grep([[:space:]]|$) ]] \
-   || [[ "$LEADING" =~ ^sg([[:space:]]|$) ]]; then
-    exit 0
-fi
+# Pipeline-aware verdict: source-file extension to block, or "ALLOW".
+DETECTED_EXT=$(python3 "$HOME/.claude/hooks/_grep_pipeline_analyzer.py" "$CMD" 2>/dev/null)
+[ -z "$DETECTED_EXT" ] && exit 0          # analyzer error → fail-open
+[ "$DETECTED_EXT" = "ALLOW" ] && exit 0
 
-# (1) Detect a text-search tool invocation in the command.
-USES_TEXT_SEARCH=0
-
-# grep/rg/egrep/fgrep as primary or piped command
-if [[ "$CMD" =~ (^|[[:space:]]|[\;\&\|])(grep|rg|ripgrep|egrep|fgrep)([[:space:]]|$) ]]; then
-    USES_TEXT_SEARCH=1
-fi
-# find ... -exec grep ... / find ... -exec rg ...
-if [[ "$CMD" =~ -exec[[:space:]]+(grep|rg|egrep|fgrep)([[:space:]]|$) ]]; then
-    USES_TEXT_SEARCH=1
-fi
-# pipe to xargs grep / xargs rg
-if [[ "$CMD" =~ xargs([[:space:]]+-[a-zA-Z0-9-]+)*[[:space:]]+(grep|rg|egrep|fgrep)([[:space:]]|$) ]]; then
-    USES_TEXT_SEARCH=1
-fi
-# fd ... -x grep
-if [[ "$CMD" =~ (^|[[:space:]]|[\;\&\|])fd([[:space:]]+[^\;\&\|]*)?[[:space:]]+-x[[:space:]]+(grep|rg|egrep|fgrep)([[:space:]]|$) ]]; then
-    USES_TEXT_SEARCH=1
-fi
-# awk '/PAT/' (regex search-print form)
-if [[ "$CMD" =~ (^|[[:space:]]|[\;\&\|])awk([[:space:]]+-[a-zA-Z][^[:space:]]*)*[[:space:]]+\'[^\']*/[^/]+/[^\']*\' ]]; then
-    USES_TEXT_SEARCH=1
-fi
-# sed -n '/PAT/p' (search-print form)
-if [[ "$CMD" =~ (^|[[:space:]]|[\;\&\|])sed([[:space:]]+-[a-zA-Z][^[:space:]]*)*[[:space:]]+\'[^\']*/[^/]+/p\' ]]; then
-    USES_TEXT_SEARCH=1
-fi
-
-[ "$USES_TEXT_SEARCH" = "0" ] && exit 0
-
-# (2) Exempt build/cache directory targets.
-# If the command exclusively targets paths under known build/cache dirs, allow.
-# This is a heuristic: we check if every extension-bearing token in the command
-# lives under a build/cache dir.
-if [[ "$CMD" =~ (\.lake/|/build/|/dist/|/node_modules/|/target/|/\.venv/|/\.cache/|/\.git/) ]] \
-   && ! [[ "$CMD" =~ \.lean([[:space:]\>\|\;\&\)\}\"]|$) ]] \
-   && ! [[ "$CMD" =~ /(lib|sections|proofs|tests|scripts)/ ]]; then
-    # Build/cache-dir only — allow.
-    exit 0
-fi
-
-# (3) Scan the command for a blocked file extension.
-# Returns the FIRST blocked extension found. Search categories in priority order:
-# .lean first (most specific), then source extensions, then purpose-built-tool extensions.
-
-# Source extensions (ast-grep BUILT-IN)
+# Categorize the detected extension for the right message.
 SOURCE_BUILTIN_EXTS=(c cc cpp cxx h hpp hh hxx ipp tpp cu cuh hip py pyi rs js mjs cjs jsx ts tsx go java kt kts swift scala rb sh bash zsh lua php dart ex exs hs html htm css scss json yaml yml)
-# Source extensions (ast-grep via sgconfig.yml custom langs)
 SOURCE_CUSTOM_EXTS=(md markdown toml)
-# Purpose-built tool extensions
 declare -A PURPOSE_BUILT_TOOL
 PURPOSE_BUILT_TOOL[xml]="xmlstarlet"
 PURPOSE_BUILT_TOOL[xsd]="xmlstarlet"
@@ -105,54 +52,24 @@ PURPOSE_BUILT_TOOL[rst]="pandoc"
 PURPOSE_BUILT_TOOL[tex]="pandoc"
 PURPOSE_BUILT_TOOL[latex]="pandoc"
 
-# Helper: check if extension appears as a FILE TOKEN in the command, not as
-# prose mentioning the extension. Requires a path-character (letter, digit,
-# /, _, -, ~, $) IMMEDIATELY before the dot; this distinguishes
-# "foo.py" (path: matches) from ".py files" (prose: skips). Glob form
-# "*.py" is also allowed.
-ext_present() {
-    local ext="$1"
-    # Pattern: (path-char | '*') . ext (boundary)
-    # Boundary chars: whitespace, redirect/pipe/semicolon, closing bracket,
-    # quote, end-of-string. NOT a letter/digit/underscore (which would mean
-    # ext is a prefix of a longer name like .pyc, .lean2).
-    [[ "$CMD" =~ ([A-Za-z0-9_/~$.+\-]|\*)\.${ext}([[:space:]\>\|\;\&\)\}\"\']|$) ]]
-}
-
-DETECTED_EXT=""
 DETECTED_CAT=""
-
-# Priority 1: .lean → loogle
-if ext_present "lean"; then
-    DETECTED_EXT="lean"
+if [ "$DETECTED_EXT" = "lean" ]; then
     DETECTED_CAT="LEAN"
 fi
-
-# Priority 2: source extensions (ast-grep)
-if [ -z "$DETECTED_EXT" ]; then
+if [ -z "$DETECTED_CAT" ]; then
     for ext in "${SOURCE_BUILTIN_EXTS[@]}" "${SOURCE_CUSTOM_EXTS[@]}"; do
-        if ext_present "$ext"; then
-            DETECTED_EXT="$ext"
+        if [ "$ext" = "$DETECTED_EXT" ]; then
             DETECTED_CAT="SOURCE"
             break
         fi
     done
 fi
-
-# Priority 3: purpose-built tool extensions
-if [ -z "$DETECTED_EXT" ]; then
-    for ext in "${!PURPOSE_BUILT_TOOL[@]}"; do
-        if ext_present "$ext"; then
-            DETECTED_EXT="$ext"
-            DETECTED_CAT="PURPOSE_BUILT"
-            break
-        fi
-    done
+if [ -z "$DETECTED_CAT" ] && [ -n "${PURPOSE_BUILT_TOOL[$DETECTED_EXT]}" ]; then
+    DETECTED_CAT="PURPOSE_BUILT"
 fi
+[ -z "$DETECTED_CAT" ] && exit 0          # unknown extension → fail-open
 
-[ -z "$DETECTED_EXT" ] && exit 0
-
-# (4) Emit the appropriate block message and exit 2.
+# Emit the appropriate block message and exit 2.
 
 if [ "$DETECTED_CAT" = "LEAN" ]; then
     cat >&2 <<'EOF'
@@ -183,7 +100,6 @@ EOF
 fi
 
 if [ "$DETECTED_CAT" = "SOURCE" ]; then
-    # Map extension → ast-grep --lang value
     LANG=""
     case "$DETECTED_EXT" in
         c|h)                              LANG="c" ;;
@@ -216,9 +132,11 @@ if [ "$DETECTED_CAT" = "SOURCE" ]; then
     esac
 
     cat >&2 <<EOF
-BLOCKED: text-search tools (grep/rg/etc) are not allowed on .${DETECTED_EXT}
-files. Source-code searches must use ast-grep, which parses the AST and
-finds STRUCTURAL patterns (not text).
+BLOCKED: text-search over .${DETECTED_EXT} file CONTENT (grep PAT file, or
+cat file | grep) is not allowed. Source-code searches must use ast-grep, which
+parses the AST and finds STRUCTURAL patterns (not text). (Grep of COMMAND
+OUTPUT — e.g. \`bd show … | grep\` — is allowed; this fired because a source
+file is being read into the search.)
 
 For .${DETECTED_EXT}: ast-grep --lang ${LANG}
 
@@ -233,6 +151,7 @@ Custom-language formats (markdown, toml) need the config flag:
 
 Pattern syntax: \$NAME = one identifier/expression; \$\$\$ = list (zero or more);
 \$_ = match-and-discard. See \`ast-grep --help\` or https://ast-grep.github.io/.
+Or just Read the file in full.
 
 If ast-grep cannot express your search, surface to the user — DO NOT fall
 back to grep/rg/find/awk. The instruction surface and/or tooling needs
@@ -271,9 +190,10 @@ if [ "$DETECTED_CAT" = "PURPOSE_BUILT" ]; then
     esac
 
     cat >&2 <<EOF
-BLOCKED: text-search tools (grep/rg/etc) are not allowed on .${DETECTED_EXT}
-files. Use the format's purpose-built tool (AST-aware where possible, more
-precise than text-search):
+BLOCKED: text-search over .${DETECTED_EXT} file CONTENT is not allowed. Use the
+format's purpose-built tool (AST-aware where possible, more precise than
+text-search). (Grep of COMMAND OUTPUT is allowed; this fired because a source
+file is being read into the search.)
 
 For .${DETECTED_EXT}: ${TOOL}
 
