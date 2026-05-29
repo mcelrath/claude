@@ -285,11 +285,18 @@ Hooks intercept tool calls. **Hook blocks are FINAL.** Each prints an actionable
 
 | Hook | Trigger | Escape route |
 |------|---------|--------------|
-| **block-text-search-on-source** | `grep`/`rg`/`find`/`awk`/`sed` on source files (.py, .lean, .md, etc.) | Python: `ast-grep --lang python --pattern '$X'`. Lean: `lean-audit <path>` (sorry/axiom counts) or `loogle 'Name'` (search). Markdown: `ast-grep -c ~/.config/ast-grep/sgconfig.yml --lang markdown ...`. Or use the `Read` tool. |
+| **block-text-search-on-source** | `grep`/`rg`/`find`/`awk`/`sed` on source files (.py, .lean, .md, etc.) | Python: `ast-grep --lang python --pattern '$X'`. Lean: `lean-audit <path>` (sorry/axiom counts), `loogle 'Qualified.Name'` (built-decl/type search), or `lean-search NAME`/`-u NAME`/`-i MODULE` (ALLOWED source-level locate/usages/importers — for unbuilt/sorry files or unknown qualified name). Markdown: `ast-grep -c ~/.config/ast-grep/sgconfig.yml --lang markdown ...`. Or use the `Read` tool. |
 | **block-markdown-via-bash** / **block-markdown-files** | Bash/Write creating new `.md` file | Route per ".md Creation Is Blocked" section below. |
 | **block-print-spam** | ≥3 banner/narration echo/print lines in one Bash call | Strip all banners. Do NOT split into multiple calls. |
 | **block-large-heredoc** | Heredoc body >30 lines to interpreter | Write to script file, then execute. |
 | **block-approximations** | `for b in range(`, `curve_fit`, `polyfit`, `lstsq`, bare exponential mode sums | Use `cl44.generating_functional` or `cl44.spectral_zeta`. Exact computation only. |
+
+## ast-grep gotcha — empty result is NOT "absent"
+
+`ast-grep` matches the AST **structurally**, so a pattern silently MISSES any node carrying a child the pattern omits → **false negatives**. An empty `ast-grep` result does NOT prove a symbol is absent, and trusting it risks a duplicate reimplementation (the "research before implementing" failure mode).
+
+- **Return annotations break the def pattern**: `def $F($$$): $$$` does NOT match a function with a return type — `def f(...) -> T:` has a `return_type` child the pattern has no slot for. Verified: `def fermion_masses($$$): $$$` → empty, though the function exists as `def fermion_masses(...) -> dict:`; `def $F($$$) -> $R: $$$` matches it. This codebase annotates returns heavily, so the plain pattern misses many defs.
+- **Robust def-search**: run BOTH `def $F($$$): $$$` and `def $F($$$) -> $R: $$$`, or locate a known name with `python3 -c "import inspect; from <mod> import <f>; print(inspect.getsourcelines(<f>)[1])"`. Never conclude "not found / no prior art" from a single empty plain-def `ast-grep`.
 
 ## Lean Audit — `lean-audit`
 
