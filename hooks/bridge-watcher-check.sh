@@ -1,20 +1,20 @@
 #!/bin/bash
-# Dual-event hook for bridge integration:
+# Dual-event hook for bridge integration (bridge-quiet design, 2026-05-29):
 #
-#   PreToolUse (Bash) — call `bridge recv` to drain any unread peer
-#     messages. If any, BLOCK the tool call (exit 2) with content in
-#     stderr; the block channel reliably surfaces. Claude re-issues
-#     the tool call; recv now returns empty; hook exits 0; tool proceeds.
-#     One-round-trip cost per bridge update batch. The bridge store IS
-#     the source of truth — no daemon/log needed.
+#   `bridge watch` is now the PRIMARY deliverer: on wake it renders message bodies
+#   to its task-output AND advances the cursor (drains, identical to `recv`). So this
+#   hook normally finds NOTHING and the tool proceeds with NO block.
 #
-#   UserPromptSubmit — same drain pattern but surface via stdout
-#     (UserPromptSubmit stdout is injected as system-reminder).
+#   PreToolUse (Bash) — `bridge recv` drains. Common case: empty (the watcher already
+#     drained) → exit 0, tool proceeds, no block. Non-empty ONLY for messages the
+#     watcher MISSED while it was DOWN; those are surfaced via the exit-2 block (the
+#     only reliable PreToolUse channel), framed as BRIDGE_WATCHER_DOWN + relaunch
+#     advice. So the hook only speaks up when the watcher isn't running.
 #
-# Why not use the daemon's watcher.log? In nohup mode the daemon
-# accumulates duplicate "unread_at_launch" wake headers without
-# advancing the bridge cursor, causing thrash. `bridge recv` reads
-# from the bridge store directly and advances the cursor atomically.
+#   UserPromptSubmit — same drain, surfaced via stdout (injected as system-reminder).
+#
+# The bridge store IS the source of truth. `bridge recv` advances the cursor
+# atomically; the watcher advances it identically (jq .id | tail -n1).
 
 if [ ! -x "$HOME/.agent-bridge/bridge" ]; then
     exit 0
@@ -49,7 +49,10 @@ UNREAD=$(AGENT_ID="$ID" "$HOME/.agent-bridge/bridge" recv 2>/dev/null)
 
 if [ "$EVENT" = "PreToolUse" ]; then
     cat >&2 <<EOF
-BRIDGE_UPDATE: new peer messages received. Re-issue your tool call after reading.
+BRIDGE_WATCHER_DOWN (missed messages): these arrived while no 'bridge watch' was
+running, so the watcher did not deliver them (they are now drained). Relaunch the
+watcher as its OWN Bash call (run_in_background=true, no '&') so future messages wake
+you via its task-output without blocking your tool calls.
 
 $UNREAD
 
