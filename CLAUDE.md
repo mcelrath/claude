@@ -120,6 +120,23 @@ Plans citing Mathlib lemmas must include: `## Mathlib fork survey / - loogle 'Le
 
 3+ parallel Opus agents: FORBIDDEN. Agent >10 min: likely stuck, kill. Agent reads >10 files without KB entry: scope too broad, kill. Mixed compute+theory prompt: SPLIT.
 
+### Rate-limit recovery — auto-`continue` resumed agents
+
+Subagents sometimes fail with `API Error: Server is temporarily limiting requests (not your usage limit) · Rate limited` — this is API-side throttling, not our quota. The agent returns with `status: completed` and a short result string containing "Rate limited", typically after only a handful of tool uses and well before doing real work.
+
+**Always resume rather than re-dispatch.** A new `Agent()` call starts fresh with zero memory of the prior run. `SendMessage(to=<agentId>, message="continue …")` resumes the agent from its prior transcript with full context — claimed bd tasks, files already read, partial work — all preserved.
+
+Pattern:
+1. Detect: agent task-notification result string contains "Rate limited" / "rate limit" / "temporarily limiting requests"
+2. Capture the agent's `agentId` from its original spawn result (`a...-...` format)
+3. `SendMessage(to=<agentId>, message="continue — you were rate-limited; pick up where you left off. <one-sentence reminder of the task scope + plan/bd-id reference>. If you've lost context: <terse re-statement of mission>. Prefer fewer tool calls if rate-limits persist (batch shell ops with && chaining; read each file once).")`
+4. Relaunch `bridge watch <handle>` per the Agent Bridge section
+5. End your turn; the resumed agent runs in background and notifies when done
+
+Do **not** re-dispatch via fresh `Agent()` for rate-limit failures — that loses any progress (bd task state, kb entries, partial code) the original agent made before the rate limit hit. Do re-dispatch if the failure is something OTHER than rate-limit (genuine error, agent gave up, etc.) — those are different failure modes.
+
+If an agent hits rate-limit repeatedly (3+ resumes without forward progress), pause and decide: either (a) wait a longer cooldown (5-10 min) before the next resume, or (b) do the work yourself in the main session if it's discrete enough to fit. The main session has its own quota; subagent quota appears to be separately throttled.
+
 ## Concurrent Edit Detection
 
 **Before every Edit/Write**: `git diff -- path/to/file.ext`. If changes you didn't make: **STOP** — concurrent edit detected, do NOT overwrite.
