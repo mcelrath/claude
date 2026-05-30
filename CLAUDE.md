@@ -283,6 +283,7 @@ Hooks intercept tool calls. **Hook blocks are FINAL.** Each prints an actionable
 | **block-approximations** | `for b in range(`, `curve_fit`, `polyfit`, `lstsq`, bare exponential mode sums | Use `cl44.generating_functional` or `cl44.spectral_zeta`. Exact computation only. |
 | **read-coverage-gate** | `Read` with `offset`/`limit` (partial read) of a source/doc file | **Sub-agents**: BLOCKED — read the WHOLE file (drop offset/limit; >2000-line files page top-down to EOF, no gaps — there are always side-concerns elsewhere in the same file). **Main session**: allowed, but gets read-dep-augment instead. Logs/data/non-source extensions: not gated. |
 | **read-dep-augment** | main-session partial `Read` of a source file (PostToolUse, never blocks) | Surfaces the in-file defs OUTSIDE your slice + cross-file producers/consumers, so a slice does not silently miss same-file side-concerns. |
+| **redirect-tmp-scripts** | Write/Bash creating a `.py`/`.sh`/`.lean` under system `/tmp` (or `/var/tmp`) | Scratch scripts go in the project's committed `./tmp/<topic>/` (version-controlled, ungated, promotable to `cl44/`), NOT system `/tmp` (lost on reboot). Reading `/tmp`, non-script `/tmp` files, and `/tmp/claude-*` outputs are NOT blocked. Fires for sub-agents. |
 
 ## ast-grep gotcha — empty result is NOT "absent"
 

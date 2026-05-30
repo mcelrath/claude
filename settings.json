@@ -184,6 +184,11 @@
             "command": "$HOME/.claude/hooks/kb-search-track.sh",
             "timeout": 2000,
             "type": "command"
+          },
+          {
+            "command": "$HOME/.claude/hooks/redirect-tmp-scripts.sh",
+            "timeout": 2000,
+            "type": "command"
           }
         ],
         "matcher": "Bash"
@@ -252,6 +257,11 @@
         "hooks": [
           {
             "command": "$HOME/.claude/hooks/block-markdown-files.sh",
+            "timeout": 2000,
+            "type": "command"
+          },
+          {
+            "command": "$HOME/.claude/hooks/redirect-tmp-scripts.sh",
             "timeout": 2000,
             "type": "command"
           }
