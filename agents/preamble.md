@@ -20,6 +20,7 @@ In Cl(4,4) a physical observable that comes out **complex is a proof of error, n
 - Observables (masses) are real spectral / channel-trace data `Tr(P_α f(M))` — e.g. `(4/3)·eig(MᵀM)` (PSD gram) — NOT complex poles. $J_X$ is the internal Wick rotation, the only legitimate "$i$".
 - Known external-`i` violations (do NOT copy): `self_consistent.py::_sector_gram_complex_np`, `h_chi` (these are the character-twist computation, separate from the aux-field calc).
 - Before any J-contraction, verify J is in the SAME basis as its partner (orthogonal-similarity arbiter; mixed weight-Q × Fock-J is the recurring trap).
+- **HAM ↔ polylog ladder: Cl(4,4) is the trilogarithm Li₃ (class-3 nilpotent).** The HAM dimension ladder (Ramakrishnan monodromy termination; `app_A_polylogarithms.tex` "Dimensional Constraints from Monodromy Structure" table): Li₁↔ℂ (dim 2, Cl(1,1)), Li₂↔split-ℍ (dim 4, Cl(2,2), Heisenberg H₃, class 2), **Li₃↔split-𝕆 (dim 8 = Cl(4,4)), nilpotency class 3** (= split-octonion Mal'cev class 3), Li₄↔dim 16 (where the ternary constraint terminates — octonions are the last; this IS the HAM theorem). For Cl(4,4) polylog / monodromy / Bogoliubov-sheet / partition-function work the relevant polylog is the **trilogarithm Li₃**; the dimension table maps each algebra to its polylog weight — match Cl(4,4) → Li₃ there.
 
 ## ALWAYS check the mathlib4 fork
 
@@ -72,6 +73,22 @@ Use these functions; do not reimplement saddle/SVD/extraction:
 | Cl(8,0) signed Fierz table | cl44.fierz_decomposition.fierz_table_signed_cl80() |
 | Q-sector projectors | cl44.canonical_operators.q_sector_projectors() |
 | Tree-level shift spectrum | cl44.tree_yukawa.tree_yukawa_spectrum() |
+| SM gauge / centralizer generators (su3_c, su2_L, u1_Y/N, Q_EM, J_A/B/C) | see "Centralizer / SM-gauge generators" below — DO NOT re-derive |
+
+## Centralizer / SM-gauge generators (lean-proven, multi-rotation — call the codified functions)
+
+The su(3)_c × su(2)_L × u(1)_Y × u(1)_N gauge generators, the complex structures J_A/B/C, and the centralizer decomposition are **codified and Lean-proven**. Their derivation chains through **multiple rotations** (Fock basis → `centralizer_weight_basis` P → `U_pairing_48` 48-lift → the canonical **`cartan_weight`** joint-Cartan frame) plus sign-canonical literals; the codified functions encapsulate all of it. Call them directly, contracted in the `cartan_weight` frame:
+
+| Generator | Canonical cl44 function | Lean |
+|-----------|-------------------------|------|
+| su(3)_c COLOR (splits lepton/quark, Casimir {0,16}) | `cl44.centralizer_jw.cij_jw(a,b)`, a,b∈{1,2,3} | `PatiSalamBreaking`, `ColorSU3Classification` |
+| su(2)_L weak | `cl44.gauge_algebra.su2_weak_48` | `SU2WeakFromCentralizer` |
+| Q_EM, T3_L, Y, T3_R, B−L, N | `cl44.gauge_algebra.cartan_charge_operators_48` | `Gauge48Charges`, `U4ResidualSM` |
+| complex structures J_A,J_B,J_C | `cl44.complex_structures.j_matrix_16` (Fock) / `j_matrices_48` (weight) | `SplitCompactJ`, `WickRotation`, `WickCartanCompact` |
+| Fock↔weight P, 48-lift | `cl44.centralizer.centralizer_weight_basis`, `cl44.gauge_algebra.U_pairing_48` | `UPairing48` |
+| canonical frame | `cl44.basis_types.CANONICAL_WEIGHT_FRAME` = `'cartan_weight'` | — |
+
+The lepton/quark COLOR su(3) is `cij_jw(a,b)`, a,b∈{1,2,3} (splits lepton-singlet/quark-triplet, Casimir {0,16}). The V₃ generation/pairing su(3) is `sm_color_su3_48` (uniform Casimir 4/3). The leptoquark coset is the 4 generators `{C02,C20,C03,C30}` — a CP³ = U(4)/(U(1)×U(3)) Hermitian-symmetric coset, an sl(2) triple with J'=ad(u(1)_N central H). Full context: the **project** CLAUDE.md section "CENTRALIZER DECOMPOSITION — CANONICAL ENTRY POINT", to read before centralizer/gauge work.
 
 ## Project mathematical framing (secular-constraints)
 
