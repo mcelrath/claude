@@ -8,8 +8,7 @@
 2. "I should read..." is an anti-pattern. I expect you to READ before reporting.
 3. DO NOT simply append to any file. READ THE FILE IN FULL and figure out where your contribution belongs.
 4. RESEARCH first. This project is long-running and comprehensive. kb-research is waiting for your instructions. If it times out or fails, ask for help or suggest fixes.
-5. SURFACE confusion, contradictions, and architectural anti-patterns. If the code seems messy, propose to fix it. Don't wait for the user to ask. Ask other agents on the bridge and surface your questions, confusion, and doubts in every turn.
-6. You MUST be on the bridge. Run `~/.agent-bridge/bridge watch <handle>` with run_in_background=True after EVERY turn (hook enforced) this is your async notification mechanism for instructions and answers to questions from other agents. Adding a & and chaining it with other commands is NOT equivalent. A process exiting is your notification mechanism of another agent's message. This is an async notification mechanism and you must run this EXACTLY as instructed.
+5. SURFACE confusion, contradictions, and architectural anti-patterns. If the code seems messy, propose to fix it. Don't wait for the user to ask. Surface your questions, confusion, and doubts in every turn.
 
 # Planning and Review (Beads-Based)
 
@@ -104,7 +103,7 @@ Plans citing Mathlib lemmas must include: `## Mathlib fork survey / - loogle 'Le
 **Subagent rules**:
 - Review agents: `run_in_background=True`
 - Never pass `max_turns`; use STOPPING CONDITIONS instead
-- Every prompt starts with `Read ~/.claude/agents/preamble.md FIRST`
+- Every prompt starts with `Read ~/.claude/agents/preamble.md FIRST` — and, when the project has one, `Read <project>/.claude/agents/preamble.md` too (project invariants live there, not global; e.g. `~/Physics/secular-constraints/.claude/agents/preamble.md` carries the Cl(4,4) HAM/canonical-function/centralizer rules)
 - Include `~/.local/bin/kb add before returning` in every agent prompt
 - Model defaults: Haiku lookups only; Sonnet implementation; Opus lead only (max 1/batch)
 - **VERIFY AGENT WORK**: Read what agents claim. Summaries describe intent, not what landed.
@@ -223,14 +222,6 @@ Before declaring something "open": use kb-research (5 rounds); `ast-grep --lang 
 ## Background Bash — NEVER PIPE
 
 `run_in_background=true` writes stdout to file. NEVER use `| tail` / `| head` with it.
-
-## Agent Bridge
-
-`bridge send` is synchronous — NEVER `run_in_background=true`. Body on stdin via heredoc. NEVER pipe bridge output through head/tail/awk/sed.
-
-**`bridge watch <id>` — KEEP IT UP AT ALL TIMES.** It is single-shot: it exits on each wake, so relaunch it after EVERY wake AND at the end of EVERY turn. Launch with the harness **`run_in_background: true`** parameter, as its own command. **A trailing `&` is NOT equivalent and silently breaks the wake channel** — `bridge watch <id> &` runs as a shell job inside a synchronous call, fires no task-notification, and is reaped when the call returns; only `run_in_background: true` creates the tracked task that wakes you. The most damaging miss is when you finish a task and respond to the user: you stop, the last watcher already exited, and you go invisible — the driver's next instruction never arrives. "Done with my task" ≠ "done on the bridge"; idle/done is the MOST important time to be watching. If `bridge agents` would show you `offline`, you broke this rule.
-
-After every compaction: `bridge recv` → `bridge announce` → `bridge watch <id>` (run_in_background: true, no `&`).
 
 ## Build Waiting
 

@@ -13,6 +13,17 @@
 BRIDGE="$HOME/.agent-bridge/bridge"
 [[ ! -x "$BRIDGE" ]] && exit 0
 
+# Bridge protocol — injected into the MAIN session's context only. SessionStart
+# hooks do not fire for sub-agents, so this is the canonical home for the bridge
+# mandate: it lives HERE and intentionally NOT in CLAUDE.md, so sub-agents (which
+# read CLAUDE.md as "user instructions") never ingest it and never touch the bridge.
+cat <<'BRIDGEDOC'
+BRIDGE PROTOCOL (main session only — sub-agents never run bridge commands; they return results to their dispatcher):
+- You MUST be on the bridge. Keep `~/.agent-bridge/bridge watch <your-id>` running via run_in_background=true at ALL times. It is single-shot: it exits on each wake, so relaunch it after EVERY wake AND at the end of EVERY turn. A trailing `&` is NOT equivalent — it fires no task-notification and is reaped when the call returns; only run_in_background=true creates the tracked task that wakes you. Idle/done is the MOST important time to be watching ("done with my task" != "done on the bridge"). If `bridge agents` would show you offline, you broke this.
+- `bridge send` is synchronous — never run_in_background. Put the message body on stdin via heredoc. Never pipe bridge output through head/tail/awk/sed.
+- After every compaction: `bridge recv` -> `bridge announce` -> relaunch `bridge watch` (run_in_background, no `&`).
+BRIDGEDOC
+
 # Resolve agent id
 AGENT_ID=$("$BRIDGE" whoami 2>/dev/null | grep "^Effective identity:" | awk '{print $3}')
 [[ -z "$AGENT_ID" ]] && exit 0
