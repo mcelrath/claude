@@ -24,8 +24,11 @@ import shlex
 BLOCKED = set((
     "c cc cpp cxx h hpp hh hxx ipp tpp cu cuh hip py pyi rs js mjs cjs jsx ts tsx "
     "go java kt kts swift scala rb sh bash zsh lua php dart ex exs hs html htm css "
-    "scss json yaml yml md markdown toml xml xsd xsl xslt plist svg sql csv tsv log "
+    "scss json yaml yml md markdown toml xml xsd xsl xslt plist svg sql csv tsv "
     "rst tex latex lean"
+    # NOTE: 'log' is intentionally NOT blocked -- log files are unstructured text
+    # and grep IS the right tool for them (user-directed 2026-05-30). .txt/.ini/
+    # .cfg/.conf/.lock are likewise grep-allowed (never in this set).
 ).split())
 
 READERS = {"cat", "head", "tail", "less", "more", "tac", "nl", "strings", "xxd", "od", "bat"}

@@ -108,7 +108,7 @@ Plans citing Mathlib lemmas must include: `## Mathlib fork survey / - loogle 'Le
 - Model defaults: Haiku lookups only; Sonnet implementation; Opus lead only (max 1/batch)
 - **VERIFY AGENT WORK**: Read what agents claim. Summaries describe intent, not what landed.
 - **AGENTS MUST READ, NOT GREP**: `grep sorry` matches comments; only Read disambiguates.
-- **HOOKS DO NOT FIRE FOR SUBAGENTS**: all PreToolUse hooks (block-text-search, block-approximations, etc.) only fire in the parent session. Agents can bypass them silently. Mitigations: (1) for Lean sorry/axiom counts, agents MUST use `lean-audit <path>` (not grep); (2) for source search, agents should use `ast-grep` or `Read`; (3) include explicit anti-pattern warnings in every agent prompt.
+- **HOOKS FIRE FOR SUBAGENTS** (Claude Code v2.1.145+; verified empirically on 2.1.154, 2026-05-30 — a sub-agent's `grep file.py` and partial `Read` were both blocked by the parent's PreToolUse hooks). PreToolUse/PostToolUse hooks DO fire for sub-agent tool calls; the hook input carries an `agent_id` field (present only for sub-agents) so a hook can scope behavior per origin. block-text-search, block-approximations, read-coverage-gate, etc. ENFORCE on agents — agents do NOT bypass them. settings.json hot-reloads (new hooks fire without restart). (The old "hooks don't fire for subagents" belief was true on ≤ v2.1.76 — GitHub #34692 — and is now false.) Still correct practice: agents use `lean-audit` for sorry/axiom counts and `ast-grep` for source-shape search (the right tools; grep-on-source is blocked for agents too), and the read-coverage-gate forces agents to read WHOLE files (partial/slice reads blocked via the agent_id branch).
 
 **Agent preamble**: `"CRITICAL: the naive implementation would be X — do NOT do that. Required: Y."`
 
@@ -281,6 +281,8 @@ Hooks intercept tool calls. **Hook blocks are FINAL.** Each prints an actionable
 | **block-print-spam** | ≥3 banner/narration echo/print lines in one Bash call | Strip all banners. Do NOT split into multiple calls. |
 | **block-large-heredoc** | Heredoc body >30 lines to interpreter | Write to script file, then execute. |
 | **block-approximations** | `for b in range(`, `curve_fit`, `polyfit`, `lstsq`, bare exponential mode sums | Use `cl44.generating_functional` or `cl44.spectral_zeta`. Exact computation only. |
+| **read-coverage-gate** | `Read` with `offset`/`limit` (partial read) of a source/doc file | **Sub-agents**: BLOCKED — read the WHOLE file (drop offset/limit; >2000-line files page top-down to EOF, no gaps — there are always side-concerns elsewhere in the same file). **Main session**: allowed, but gets read-dep-augment instead. Logs/data/non-source extensions: not gated. |
+| **read-dep-augment** | main-session partial `Read` of a source file (PostToolUse, never blocks) | Surfaces the in-file defs OUTSIDE your slice + cross-file producers/consumers, so a slice does not silently miss same-file side-concerns. |
 
 ## ast-grep gotcha — empty result is NOT "absent"
 
@@ -305,7 +307,7 @@ Deep mode auto-enables when `.olean` exists for a file: runs `#print axioms` via
 
 **Detects**: sorry, admit, axiom, := True, unsafeCoerce/Cast, implemented_by, native_decide, trustMe, trivial bodies, rfl-witness tautologies, type : True, ∃ _ True.
 
-**Hooks do NOT fire for subagents.** All agent prompts needing sorry counts MUST say: `"Use lean-audit <path> to count sorries — do NOT use grep/rg on .lean files."`
+**Hooks fire for subagents (v2.1.145+), and grep-on-`.lean` is blocked for them too — but `lean-audit` is the right tool regardless** (grep matches comment text → wrong counts; enforcement is not the only reason). Agent prompts needing sorry counts should still say: `"Use lean-audit <path> to count sorries — do NOT use grep/rg on .lean files."`
 
 # .md Creation Is Blocked
 

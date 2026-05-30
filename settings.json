@@ -80,6 +80,16 @@
           }
         ],
         "matcher": "Bash"
+      },
+      {
+        "hooks": [
+          {
+            "command": "$HOME/.claude/hooks/read-dep-augment.sh",
+            "timeout": 6000,
+            "type": "command"
+          }
+        ],
+        "matcher": "Read"
       }
     ],
     "PreCompact": [
@@ -183,6 +193,11 @@
           {
             "command": "$HOME/.claude/hooks/quarantine-paths.sh",
             "timeout": 1000,
+            "type": "command"
+          },
+          {
+            "command": "$HOME/.claude/hooks/read-coverage-gate.sh",
+            "timeout": 3000,
             "type": "command"
           }
         ],

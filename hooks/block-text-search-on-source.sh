@@ -47,7 +47,8 @@ PURPOSE_BUILT_TOOL[svg]="xmlstarlet"
 PURPOSE_BUILT_TOOL[sql]="sqlfluff"
 PURPOSE_BUILT_TOOL[csv]="miller"
 PURPOSE_BUILT_TOOL[tsv]="miller"
-PURPOSE_BUILT_TOOL[log]="lnav"
+# log intentionally omitted: grep IS the right tool for unstructured log files
+# (user-directed 2026-05-30); the analyzer no longer flags .log.
 PURPOSE_BUILT_TOOL[rst]="pandoc"
 PURPOSE_BUILT_TOOL[tex]="pandoc"
 PURPOSE_BUILT_TOOL[latex]="pandoc"
