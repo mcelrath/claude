@@ -5,11 +5,13 @@
 #   to its task-output AND advances the cursor (drains, identical to `recv`). So this
 #   hook normally finds NOTHING and the tool proceeds with NO block.
 #
-#   PreToolUse (Bash) — `bridge recv` drains. Common case: empty (the watcher already
-#     drained) → exit 0, tool proceeds, no block. Non-empty ONLY for messages the
-#     watcher MISSED while it was DOWN; those are surfaced via the exit-2 block (the
-#     only reliable PreToolUse channel), framed as BRIDGE_WATCHER_DOWN + relaunch
-#     advice. So the hook only speaks up when the watcher isn't running.
+#   PreToolUse (Bash) — NO-OP (exit 0, no drain, no block). Rationale (fix 2026-05-30):
+#     a PreToolUse hook that exits 2 BLOCKS the tool call AND the harness CANCELS the
+#     whole PARALLEL tool batch (sibling calls die). A peer message arriving between the
+#     single-shot watcher's exit and its relaunch used to trigger exactly that, nuking
+#     unrelated in-flight work. So PreToolUse never drains/blocks; the watcher
+#     (relaunched on every wake, forced at turn-end) + the UserPromptSubmit path below
+#     are the deliverers. No message is lost; no tool batch is ever cancelled.
 #
 #   UserPromptSubmit — same drain, surfaced via stdout (injected as system-reminder).
 #
@@ -23,6 +25,13 @@ fi
 INPUT=$(cat 2>/dev/null)
 EVENT=$(echo "$INPUT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('hook_event_name',''))" 2>/dev/null)
 SESSION_ID=$(echo "$INPUT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('session_id',''))" 2>/dev/null)
+
+# NON-BLOCKING on PreToolUse: a PreToolUse hook exit-2 blocks the call AND cancels the
+# whole parallel tool batch. NEVER do that for a bridge message — exit 0 immediately,
+# WITHOUT draining (so the message stays unread for the watcher to deliver). The watcher
+# is relaunched on every wake and forced at turn-end by block-stop-without-bridge-watcher,
+# so unread messages surface within the turn; tool batches are never cancelled.
+[ "$EVENT" = "PreToolUse" ] && exit 0
 
 # Identity resolution: trust SESSION_ID from Claude's hook input (authoritative,
 # unlike subprocess env/cwd). Look up agent in agents.json by session_id directly.
@@ -47,21 +56,8 @@ UNREAD=$(AGENT_ID="$ID" "$HOME/.agent-bridge/bridge" recv 2>/dev/null)
 # Empty → tool proceeds normally.
 [ -z "$UNREAD" ] && exit 0
 
-if [ "$EVENT" = "PreToolUse" ]; then
-    cat >&2 <<EOF
-BRIDGE_WATCHER_DOWN (missed messages): these arrived while no 'bridge watch' was
-running, so the watcher did not deliver them (they are now drained). Relaunch the
-watcher as its OWN Bash call (run_in_background=true, no '&') so future messages wake
-you via its task-output without blocking your tool calls.
-
-$UNREAD
-
-(end bridge messages)
-EOF
-    exit 2
-fi
-
-# UserPromptSubmit: stdout is injected as system-reminder.
+# Only UserPromptSubmit reaches here (PreToolUse exited above, non-blocking).
+# stdout is injected as a system-reminder — no block, no cancellation.
 echo "BRIDGE_UPDATE (new peer messages since last user prompt):"
 echo "$UNREAD"
 echo "(end bridge messages)"
