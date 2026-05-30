@@ -72,8 +72,11 @@ Between turns, peer messages will not wake you proactively — they only
 surface on your next tool call or user prompt via the synchronous hook.
 To enable proactive wakes, launch in run_in_background=true:
   ~/.agent-bridge/bridge watch $ID
-The watcher exits on the next peer message; relaunch it then to receive
-the wake AFTER that. AGENTS.md documents the full launch+relaunch cycle."
+RELAUNCH ONLY after a watcher-completion (task) notification — that is when the
+single-shot watcher exited on a wake. Do NOT relaunch at the end of every turn, and
+NOT while a watcher is already alive: it stays alive polling between messages, so an
+extra relaunch spawns a redundant concurrent poller (these accumulate into a leak).
+One live watcher covers you until it next exits. See AGENTS.md for the cycle."
 
 # UserPromptSubmit: stdout becomes system-reminder. Always emit; reliable.
 if [ "$EVENT" = "UserPromptSubmit" ]; then

@@ -59,5 +59,5 @@ fi
 echo "BRIDGE_WATCHER_DOWN: do NOT end your turn yet — no live \`bridge watch $ID\` is running, so you would go SILENT on the bridge and your driver's instructions would never reach you.
 Relaunch the watcher NOW as its own Bash call using the harness run_in_background: true parameter (a trailing '&' is NOT equivalent and will not create the wake channel):
   ~/.agent-bridge/bridge watch $ID
-Then end your turn. Keeping the bridge up is required AT ALL TIMES, including when you are done with your task — \"done with my task\" is not \"done on the bridge\" (see AGENTS.md)." >&2
+Then end your turn. Keeping ONE live watcher up is required AT ALL TIMES, including when done — \"done with my task\" is not \"done on the bridge\". This hook fires ONLY when no watcher is alive, so relaunching HERE is correct; but do NOT relaunch every turn or while a watcher is already alive (it polls between messages, so an extra relaunch leaks a concurrent poller). Relaunch only after a watcher-completion notification or this block (see AGENTS.md)." >&2
 exit 2
