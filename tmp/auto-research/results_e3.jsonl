@@ -1,0 +1,6 @@
+{"label": "braidinfer/read/0", "file_path": "/home/mcelrath/.claude/plans/PLAN-braidinfer.md", "_skip": "missing"}
+{"label": "braidinfer/read/1", "file_path": "/home/mcelrath/Projects/ai/braidinfer/crates/braidinfer-hip/build.rs", "file_size": 10153, "_skip": "too-large"}
+{"label": "exterior-algebra/read/0", "file_path": "/home/mcelrath/builds/linux-p2p/src/linux-7.0.9/drivers/gpu/drm/amd/amdgpu/gfx_v11_0.c", "file_size": 238276, "_skip": "too-large"}
+{"label": "exterior-algebra/read/1", "file_path": "/home/mcelrath/builds/linux-p2p/src/linux-7.0.9/drivers/gpu/drm/amd/amdgpu/mes_v11_0.c", "file_size": 100177, "_skip": "too-large"}
+{"label": "llama-cpp/read/0", "file_path": "/home/mcelrath/Projects/ai/llama.cpp/src/models/kimi-linear.cpp", "file_size": 20656, "_skip": "too-large"}
+{"label": "llama-cpp/read/1", "file_path": "/home/mcelrath/Projects/ai/llama.cpp/src/models/qwen35.cpp", "file_size": 24834, "_skip": "too-large"}
