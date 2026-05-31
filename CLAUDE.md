@@ -293,7 +293,7 @@ Hooks intercept tool calls. **Hook blocks are FINAL.** Each prints an actionable
 
 | Hook | Trigger | Escape route |
 |------|---------|--------------|
-| **block-text-search-on-source** | `grep`/`rg`/`find`/`awk`/`sed` on source files (.py, .lean, .md, etc.) | Python: `ast-grep --lang python --pattern '$X'`. Lean: `lean-audit <path>` (sorry/axiom counts), `loogle 'Qualified.Name'` (built-decl/type search), or `lean-search NAME`/`-u NAME`/`-i MODULE` (ALLOWED source-level locate/usages/importers — for unbuilt/sorry files or unknown qualified name). Markdown: `ast-grep -c ~/.config/ast-grep/sgconfig.yml --lang markdown ...`. Or use the `Read` tool. |
+| **block-text-search-on-source** | `grep`/`rg`/`find`/`awk`/`sed` on source files (.py, .lean, .md, etc.) | Python: `ast-grep --lang python --pattern '$X'`. Lean: `lean-audit <path>` (sorry/axiom counts), `loogle '"substr"'` (name-substring) / `loogle 'Qualified.Name'` / type-search — a bare file/namespace name errors `unknown identifier` (query-form, not absence), or `lean-search NAME`/`-u NAME`/`-i MODULE` (ALLOWED source-level locate/usages/importers — for unbuilt/sorry files or unknown qualified name). Markdown: `ast-grep -c ~/.config/ast-grep/sgconfig.yml --lang markdown ...`. Or use the `Read` tool. |
 | **block-markdown-via-bash** / **block-markdown-files** | Bash/Write creating new `.md` file | Route per ".md Creation Is Blocked" section below. |
 | **block-print-spam** | ≥3 banner/narration echo/print lines in one Bash call | Strip all banners. Do NOT split into multiple calls. |
 | **block-large-heredoc** | Heredoc body >30 lines to interpreter | Write to script file, then execute. |
