@@ -181,6 +181,11 @@
             "type": "command"
           },
           {
+            "command": "$HOME/.claude/hooks/block-bridge-watch-background.sh",
+            "timeout": 5000,
+            "type": "command"
+          },
+          {
             "command": "$HOME/.claude/hooks/kb-search-track.sh",
             "timeout": 2000,
             "type": "command"
