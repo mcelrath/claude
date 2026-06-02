@@ -90,6 +90,21 @@
           }
         ],
         "matcher": "Read"
+      },
+      {
+        "hooks": [
+          {
+            "command": "$HOME/.claude/hooks/git-asked-gate.sh",
+            "timeout": 1000,
+            "type": "command"
+          },
+          {
+            "command": "$HOME/.claude/hooks/md-asked-gate.sh",
+            "timeout": 1000,
+            "type": "command"
+          }
+        ],
+        "matcher": "AskUserQuestion"
       }
     ],
     "PreCompact": [
@@ -115,16 +130,6 @@
           }
         ],
         "matcher": ""
-      },
-      {
-        "hooks": [
-          {
-            "command": "$HOME/.claude/hooks/md-asked-gate.sh",
-            "timeout": 1000,
-            "type": "command"
-          }
-        ],
-        "matcher": "AskUserQuestion"
       }
     ],
     "PreToolUse": [
@@ -193,6 +198,15 @@
           {
             "command": "$HOME/.claude/hooks/redirect-tmp-scripts.sh",
             "timeout": 2000,
+            "type": "command"
+          },
+          {
+            "command": "$HOME/.claude/hooks/block-destructive-gpu-ops-in-agents.sh",
+            "type": "command"
+          },
+          {
+            "command": "$HOME/.claude/hooks/guard-destructive-git.sh",
+            "timeout": 5000,
             "type": "command"
           }
         ],

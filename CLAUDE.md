@@ -184,6 +184,16 @@ No backwards compatibility. No wrappers. No forwarding functions. No aliases. No
 
 No `git add -A`, `git add .`, `git reset --hard`, `git push --force`.
 
+## Destructive git operations — confirm with the human first
+
+`git stash drop`/`stash clear`, `reset --hard`/`--merge`, `clean -f`, `checkout -f`/`--force`, `switch --force`/`--discard-changes`, `worktree remove --force`, and whole-tree `checkout .`/`restore .` can ERASE uncommitted, stashed, or untracked work — content that is invisible to `git status` and unrecoverable past the gc window. A forensic audit of all sessions on this host found exactly one near-fatal data-loss incident, and it was this exact mechanism: a conflicted `git stash pop` "cleaned up" with `git checkout HEAD -- <files> && git stash drop` — destroying the ONLY copy of uncommitted work (recovered solely via `git fsck --dangling`).
+
+- **NEVER `git stash drop`/`stash clear` until the matching `git stash pop` exited 0 with NO conflict markers.** On a conflicted pop: resolve it, or `git stash branch <name>` to materialize the stash safely — never drop.
+- To set work aside, PREFER a throwaway commit (`git switch -c wip/<name> && git commit -am wip`) over `stash` — a commit is reachable and trivially recoverable; a dropped stash is not.
+- `git reset --hard` stays forbidden — use `git reset --soft <ref>` (keeps your files) or `git restore --staged <path>`.
+- Enforced by `guard-destructive-git.sh` (PreToolUse/Bash, per-command-segment token match): these verbs are BLOCKED unless you FIRST `AskUserQuestion` to confirm the specific discard with the human. That arms a 10-minute per-session bypass (`git-asked-gate.sh` on PostToolUse/AskUserQuestion). State exactly what will be lost — run `git status` / `git stash list` — before you ask.
+- Recover an already-lost tip/stash within the gc window: `git reflog`, `git fsck --lost-found`, `git fsck --dangling`.
+
 ## Decision Authority
 
 **You decide, then do it**: writing code, running tests, searching, recording KB. No "Should I proceed?"
@@ -301,6 +311,7 @@ Hooks intercept tool calls. **Hook blocks are FINAL.** Each prints an actionable
 | **read-coverage-gate** | `Read` with `offset`/`limit` (partial read) of a source/doc file | **Sub-agents**: BLOCKED — read the WHOLE file (drop offset/limit; >2000-line files page top-down to EOF, no gaps — there are always side-concerns elsewhere in the same file). **Main session**: allowed, but gets read-dep-augment instead. Logs/data/non-source extensions: not gated. |
 | **read-dep-augment** | main-session partial `Read` of a source file (PostToolUse, never blocks) | Surfaces the in-file defs OUTSIDE your slice + cross-file producers/consumers, so a slice does not silently miss same-file side-concerns. |
 | **redirect-tmp-scripts** | Write/Bash creating a `.py`/`.sh`/`.lean` under system `/tmp` (or `/var/tmp`) | Scratch scripts go in the project's committed `./tmp/<topic>/` (version-controlled, ungated, promotable to `cl44/`), NOT system `/tmp` (lost on reboot). Reading `/tmp`, non-script `/tmp` files, and `/tmp/claude-*` outputs are NOT blocked. Fires for sub-agents. |
+| **guard-destructive-git** | Bash running `git stash drop`/`clear`, `reset --hard`/`--merge`, `clean -f`, `checkout`/`switch --force`/`--discard-changes`, `worktree remove --force`, or whole-tree `checkout .`/`restore .` | BLOCKED — can erase uncommitted/stashed/untracked work. `AskUserQuestion` to confirm the SPECIFIC discard with the human (state what `git status`/`git stash list` shows); that arms a 10-min per-session bypass (`git-asked-gate.sh` on AskUserQuestion), then retry. Or take the safer path the block prints: `git switch -c wip/<name> && git commit -am wip`, `git stash branch <name>`, or `git reset --soft`. Named-path `checkout -- <file>` / `restore <file>` and `restore --staged .` are NOT blocked. |
 
 ## ast-grep gotcha — empty result is NOT "absent"
 
