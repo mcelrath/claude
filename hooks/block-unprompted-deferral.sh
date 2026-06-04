@@ -163,9 +163,26 @@ defer_read_rx = re.compile(
     r")"
 )
 
+# Self-congratulatory META-COMMENTARY on the USER's infrastructure (roles,
+# bridge, watcher, personas, hooks, the verification/proactive discipline,
+# "the architecture works / the role is operating / X survived compaction").
+# The user built it and KNOWS it works; praising it back wastes tokens. Report
+# WORK + RESULTS, never how-well-the-system-runs.
+defer_brag_rx = re.compile(
+    r"(?i)("
+    r"\b(?:the|this|your|our|my)\s+(?:bridge|watcher(?:\s+cycle)?|persona(?:\s+system)?|role|architect(?:ure)?|researcher|discipline|hook|hooks|pipeline|system|setup|workflow|orchestration|infrastructure|framework|proactive(?:\s+(?:mode|research|directive))?|verification(?:\s+discipline)?|basis(?:[-\s]discipline)?)\s+(?:is|are|was|were|now|'?s)?\s*(?:work(?:s|ing|ed)|paid?\s+off|paying\s+off|health(?:y|ier)|holding|operating|humming|solid|effective|robust|at\s+its\s+best|doing\s+its\s+job|in\s+action|as\s+designed|firing|kicking\s+in)\b|"
+    r"\bevery\s+(?:load-?bearing\s+)?(?:step|result|claim|piece|number|finding)\b[^.]{0,50}\b(?:verified|caught|checked|confirmed)\b[^.]{0,30}\b(?:rather\s+than|not\s+just|instead\s+of)\b|"
+    r"\b(?:worked|works|survived|persisted|held|re-?loaded)\s+(?:cleanly\s+)?across\s+compaction\b|"
+    r"\bthe\s+\w+(?:\s+\w+)?\s+(?:role|discipline|mode|system|arc|saga)\s+(?:is\s+)?(?:now\s+)?(?:working|operating|paying\s+off|at\s+its\s+best|in\s+full|firing|closed\s+and\s+verified|humming)\b|"
+    r"\b(?:latency-?hiding|the\s+proactive\s+(?:mode|directive))\s+(?:is\s+)?(?:work(?:s|ing)?|paid?\s+off|paying\s+off)\b|"
+    r"\bthis\s+is\s+the\s+(?:architect|researcher|verification-orchestrator)\s+(?:role|discipline)\s+(?:at\s+its\s+best|in\s+action|working|doing)\b"
+    r")"
+)
+
 m_pause = defer_rx.search(last_assistant_text)
 m_read = defer_read_rx.search(last_assistant_text)
-if not m_pause and not m_read:
+m_brag = defer_brag_rx.search(last_assistant_text)
+if not m_pause and not m_read and not m_brag:
     sys.exit(0)
 
 # Stop-signals from user (allow the stop if any recent user message contains these)
@@ -186,10 +203,13 @@ for utxt in recent_user_texts:
     if user_stop_rx.search(utxt):
         sys.exit(0)
 
-# Read-proposal takes priority (the stronger directive: always read).
+# Priority: read-proposal (always read) > brag (strip it) > pause.
 if m_read:
     m = m_read
     category = 'READ'
+elif m_brag:
+    m = m_brag
+    category = 'BRAG'
 else:
     m = m_pause
     category = 'PAUSE'
@@ -227,6 +247,24 @@ the scan), then report the VERIFIED result. Do NOT stop having only PROPOSED it.
 
 If reading X would help, READ X — do not ask permission, do not defer it to
 "next"/"later"/"queued". Execute the read/scan now and act on what it actually says.
+
+This hook fired once. It will not fire again for this stop attempt.
+EOF
+        exit 2
+    fi
+    if [ "$CATEGORY" = "BRAG" ]; then
+        cat >&2 <<EOF
+BLOCKED: your last response editorializes on how well the USER'S infrastructure works.
+
+Matched phrase: $MATCHED_PHRASE
+Context:        $MATCHED_EXCERPT
+
+The user built the roles / bridge / personas / hooks / verification discipline and
+KNOWS they work. Praising the architecture back ("the X is working / paid off / the
+role is operating / survived compaction / every step verified rather than banked") is
+self-congratulatory meta-commentary that wastes tokens. STRIP it. Report only the WORK
+and the RESULTS (what was computed, committed, found, sent) — not how-well-the-system-
+runs. Re-issue the response with the brag removed.
 
 This hook fired once. It will not fire again for this stop attempt.
 EOF
