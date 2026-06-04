@@ -19,7 +19,7 @@
     "typescript-lsp@claude-plugins-official": true
   },
   "env": {
-    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "100",
+    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "95",
     "CLAUDE_CODE_ATTRIBUTION_HEADER": "0",
     "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
     "CLAUDE_CODE_ENABLE_TELEMETRY": "0",
@@ -198,10 +198,6 @@
           {
             "command": "$HOME/.claude/hooks/redirect-tmp-scripts.sh",
             "timeout": 2000,
-            "type": "command"
-          },
-          {
-            "command": "$HOME/.claude/hooks/block-destructive-gpu-ops-in-agents.sh",
             "type": "command"
           },
           {
@@ -427,6 +423,7 @@
       "Task",
       "Glob",
       "Bash(ls:*)",
+      "Bash(ls *)",
       "Bash(find:*)",
       "Bash(fd:*)",
       "Bash(grep:*)",
@@ -607,7 +604,12 @@
       "mcp__jupyter__setup_notebook",
       "Edit",
       "Write",
-      "Read"
+      "Read",
+      "Bash(kb:*)",
+      "Bash(loogle:*)",
+      "Bash(bridge:*)",
+      "Bash(/home/mcelrath/.agent-bridge/bridge:*)",
+      "Bash(systemctl --user:*)"
     ],
     "defaultMode": "default",
     "deny": [

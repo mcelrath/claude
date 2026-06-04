@@ -129,8 +129,43 @@ defer_rx = re.compile(
     r")\b"
 )
 
-m = defer_rx.search(last_assistant_text)
-if not m:
+# Read/check-PROPOSAL language: the assistant proposing to read/verify
+# instead of just DOING it ("I should read X", "should I check Y", "want me
+# to look at Z", "I'll read it later", "probably already covers", "I haven't
+# read X but...", "I'll pre-scan/queue ..."). Per the user: a half-knowledge
+# "should I read X?" — the answer is ALWAYS yes; go read it. Aggressive on
+# purpose; a false block just means "read it now", which is never wrong here.
+defer_read_rx = re.compile(
+    r"(?i)("
+    r"\bi\s+should\s+(?:re-?)?(?:read|check|look\s+at|look\s+into|examine|review|inspect|consult|audit|verify|confirm)\b|"
+    r"\bshould\s+i\s+(?:re-?)?(?:read|check|look|examine|review|inspect|verify|dig)\b|"
+    r"\bwant\s+me\s+to\s+(?:re-?)?(?:read|look\s+at|look\s+into|check|examine|review|inspect|dig|verify|investigate)\b|"
+    r"\bdo\s+you\s+want\s+me\s+to\s+(?:read|check|look|examine|dig|verify)\b|"
+    r"\bshall\s+i\s+(?:read|check|look|examine|dig|verify)\b|"
+    r"\bi['']?(?:ll|d)\s+(?:re-?read|read|check|look\s+at|examine|review|inspect|verify|dig\s+up|scan|loogle|ast-?grep|pre-?scan|pre-?research)\b[^.]{0,80}\b(?:next|later|soon|shortly|after|before|once|when\s+i|to\s+confirm|to\s+verify)\b|"
+    r"\bi\s+(?:could|can|might|may|need\s+to)\s+(?:read|re-?read|check|look\s+at|examine|verify|confirm)\b|"
+    r"\bworth\s+(?:reading|re-?reading|checking|a\s+look|examining|verifying|confirming)\b|"
+    r"\bi\s+haven['']?t\s+(?:read|checked|looked\s+at|examined|verified|confirmed)\b|"
+    r"\b(?:probably|likely|i\s+think|i\s+believe|i\s+suspect|i\s+assume)\b[^.]{0,80}\b(?:already\s+)?(?:says?|covers?|covered|handles?|contains?)\b|"
+    r"\bqueu(?:e|ed|ing)\b[^.]{0,40}\b(?:read|research|scan|check|prior\s+art|item|step)|"
+    r"\bpre-?(?:scan|research)\b|"
+    r"\bi['']?ll\s+(?:queue|pre-?scan|pre-?research|dig\s+up)\b|"
+    # NEW (from chat-history mining): claim-hedged-on-no-read costumes.
+    r"\bwithout\s+(?:reading|having\s+read|checking|having\s+checked|opening|looking\s+at)\b|"
+    r"\bpresumabl[ey]\b|"
+    r"\bhaven['']?t\s+(?:actually\s+)?(?:read|verified|checked|looked\s+at|opened|confirmed)\b|"
+    r"\b(?:i['']?m|i\s+am)\s+(?:guessing|assuming)\b|"
+    r"\bflag(?:ged)?\s+(?:for|to)\s+(?:read|review|verify)\b|"
+    r"\bpending\s+(?:a|the)\s+(?:read|review|check)\b|"
+    r"\bif\s+you\s+want\s+me\s+to\s+(?:read|check|look|examine)\b|"
+    r"\bi['']?d\s+need\s+to\s+(?:read|check|verify|look)\b|"
+    r"\bi['']?ll\s+(?:come\s+back\s+to|revisit|circle\s+back)\b"
+    r")"
+)
+
+m_pause = defer_rx.search(last_assistant_text)
+m_read = defer_read_rx.search(last_assistant_text)
+if not m_pause and not m_read:
     sys.exit(0)
 
 # Stop-signals from user (allow the stop if any recent user message contains these)
@@ -151,13 +186,20 @@ for utxt in recent_user_texts:
     if user_stop_rx.search(utxt):
         sys.exit(0)
 
-# Found unprompted defer language. Print the offending phrase and exit 2.
+# Read-proposal takes priority (the stronger directive: always read).
+if m_read:
+    m = m_read
+    category = 'READ'
+else:
+    m = m_pause
+    category = 'PAUSE'
 phrase = m.group(0)
 # Take a small window around the match for context
-start = max(0, m.start() - 60)
-end = min(len(last_assistant_text), m.end() + 60)
+start = max(0, m.start() - 70)
+end = min(len(last_assistant_text), m.end() + 70)
 excerpt = last_assistant_text[start:end].strip().replace('\n', ' ')
 # Write structured output to stdout so the bash wrapper can capture it
+print(category)
 print(phrase)
 print('---')
 print(excerpt)
@@ -167,8 +209,29 @@ PY
 RC=$?
 
 if [ "$RC" -eq 2 ]; then
-    MATCHED_PHRASE=$(echo "$RESULT" | head -1)
-    MATCHED_EXCERPT=$(echo "$RESULT" | sed -n '3p')
+    CATEGORY=$(echo "$RESULT" | sed -n '1p')
+    MATCHED_PHRASE=$(echo "$RESULT" | sed -n '2p')
+    MATCHED_EXCERPT=$(echo "$RESULT" | sed -n '4p')
+    if [ "$CATEGORY" = "READ" ]; then
+        cat >&2 <<EOF
+BLOCKED: your last response PROPOSES reading/checking something instead of doing it.
+
+Matched phrase: $MATCHED_PHRASE
+Context:        $MATCHED_EXCERPT
+
+Per CLAUDE.md: "'I should read...' is an anti-pattern. READ before reporting."
+A half-knowledge "should I read X?" / "want me to look at X?" / "I'll check it
+later" / "probably already covers" — the answer is ALWAYS YES, and the read is
+ALWAYS now. Go READ the thing THIS turn (Read tool, loogle, ast-grep, or run
+the scan), then report the VERIFIED result. Do NOT stop having only PROPOSED it.
+
+If reading X would help, READ X — do not ask permission, do not defer it to
+"next"/"later"/"queued". Execute the read/scan now and act on what it actually says.
+
+This hook fired once. It will not fire again for this stop attempt.
+EOF
+        exit 2
+    fi
     cat >&2 <<EOF
 BLOCKED: your last response contains unprompted deferral language.
 
