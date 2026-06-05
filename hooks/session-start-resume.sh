@@ -144,8 +144,12 @@ KB_CHECKPOINT=""
 echo ""
 echo "RESUME INSTRUCTIONS:"
 [[ -f "$HANDOFF" ]] && echo "- Read $HANDOFF for full context"
-echo "- Run: bd ready  (find available work)"
-echo "- Run: bd list --status=in_progress  (your active work)"
+if [[ "$MY_BRIDGE_ID" != "unknown" ]]; then
+    echo "- Run: bd list --assignee=$MY_BRIDGE_ID --status=in_progress  (YOUR active work)"
+    echo "- Run: bd list --ready --no-assignee  (unassigned work — claim before working)"
+else
+    echo "- Run: bd list --status=in_progress  (all active work — identity unknown, run /persona first)"
+fi
 echo "- Run: ~/.local/bin/kb list -p \"$PROJECT\"  (recent findings; MCP kb_list removed 2026-05-19)"
 echo "- After resuming, run: rm $RESUME_FILE"
 echo "- Do NOT ask 'What would you like to work on?' — just continue."
