@@ -129,7 +129,44 @@ if ! echo "$SUMMARY" | python3 -c "import sys,json; json.load(sys.stdin)" 2>/dev
     SUMMARY='{"summary":"LLM unavailable","current_task":"unknown","next_steps":["~/.local/bin/kb list (CLI)"],"blockers":[]}'
 fi
 
+# Resolve bridge identity at save time:
+# AGENT_ID env → session-pin file → agents.json lookup by session_id → unknown
+_BRIDGE_ID=""
+_PERSONA_NAME=""
+if [[ -n "$AGENT_ID" ]]; then
+    _BRIDGE_ID="$AGENT_ID"
+elif [[ -n "$CLAUDE_SESSION_ID" ]]; then
+    _PIN_FILE="$PWD/.claude/.persona/session-$CLAUDE_SESSION_ID"
+    if [[ -f "$_PIN_FILE" ]]; then
+        _PERSONA_NAME=$(cat "$_PIN_FILE" 2>/dev/null | tr -d '[:space:]')
+        case "$_PERSONA_NAME" in
+            archie) _BRIDGE_ID="architect" ;;
+            tip)    _BRIDGE_ID="theorem-prover" ;;
+            pip)    _BRIDGE_ID="secular-constraints" ;;
+            pip3)   _BRIDGE_ID="pip3" ;;
+            emmy)   _BRIDGE_ID="emitter" ;;
+            *)      _BRIDGE_ID="$_PERSONA_NAME" ;;
+        esac
+    fi
+fi
+if [[ -z "$_BRIDGE_ID" && -n "$CLAUDE_SESSION_ID" && -f "$HOME/.agent-bridge/agents.json" ]]; then
+    _BRIDGE_ID=$(python3 -c "
+import json
+try:
+    d = json.load(open('$HOME/.agent-bridge/agents.json'))
+    sid = '$CLAUDE_SESSION_ID'
+    a = next((x for x in d.get('agents', []) if x.get('session_id','') in (sid, sid[:8])), None)
+    print(a['id'] if a else '')
+except: pass
+" 2>/dev/null)
+fi
+[[ -z "$_BRIDGE_ID" ]] && _BRIDGE_ID="unknown"
+
 cat > "$OUT_DIR/handoff.md.tmp" << EOF
+---
+bridge_id: ${_BRIDGE_ID}
+persona: ${_PERSONA_NAME:-${_BRIDGE_ID}}
+---
 # Session Handoff
 
 ## Session

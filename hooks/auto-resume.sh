@@ -22,19 +22,14 @@ fi
 source "$CLAUDE_DIR/hooks/lib/get_terminal_id.sh"
 TERM_ID=$(_get_terminal_id)
 
-# Terminal-specific resume file first
+# PTY-keyed resume file only (project-wide fallback removed: multi-agent cwd makes it unsafe)
 RESUME_FILE=""
 if [[ -n "$TERM_ID" ]]; then
     RESUME_FILE="$CLAUDE_DIR/sessions/resume-${PROJECT}-${TERM_ID}.txt"
 fi
 
-# Fallback to project-wide (safe only if single session per project)
-if [[ -z "$RESUME_FILE" || ! -f "$RESUME_FILE" ]]; then
-    RESUME_FILE="$CLAUDE_DIR/sessions/resume-${PROJECT}.txt"
-fi
-
 # Check if resume file exists
-if [[ ! -f "$RESUME_FILE" ]]; then
+if [[ -z "$RESUME_FILE" || ! -f "$RESUME_FILE" ]]; then
     exit 0  # No resume state, let normal processing happen
 fi
 
@@ -42,6 +37,60 @@ SESSION_ID=$(cat "$RESUME_FILE")
 HANDOFF="$CLAUDE_DIR/sessions/${SESSION_ID}/handoff.md"
 
 if [[ ! -f "$HANDOFF" ]]; then
+    exit 0
+fi
+
+# Phase 4: identity gate — resolve current session's bridge-id, compare to handoff's bridge_id
+_resolve_bridge_id_ar() {
+    local sid="$1"
+    local result=""
+    if [[ -n "$AGENT_ID" ]]; then
+        result="$AGENT_ID"
+    elif [[ -n "$sid" ]]; then
+        local pin_file="$PWD/.claude/.persona/session-$sid"
+        if [[ -f "$pin_file" ]]; then
+            local persona
+            persona=$(cat "$pin_file" 2>/dev/null | tr -d '[:space:]')
+            case "$persona" in
+                archie) result="architect" ;;
+                tip)    result="theorem-prover" ;;
+                pip)    result="secular-constraints" ;;
+                pip3)   result="pip3" ;;
+                emmy)   result="emitter" ;;
+                *)      result="$persona" ;;
+            esac
+        fi
+    fi
+    if [[ -z "$result" && -n "$sid" && -f "$HOME/.agent-bridge/agents.json" ]]; then
+        result=$(python3 -c "
+import json
+try:
+    d = json.load(open('$HOME/.agent-bridge/agents.json'))
+    sid = '$sid'
+    a = next((x for x in d.get('agents', []) if x.get('session_id','') in (sid, sid[:8])), None)
+    print(a['id'] if a else '')
+except: pass
+" 2>/dev/null)
+    fi
+    echo "${result:-unknown}"
+}
+
+MY_BRIDGE_ID=$(_resolve_bridge_id_ar "${CLAUDE_SESSION_ID:-}")
+
+HANDOFF_BRIDGE_ID=$(python3 -c "
+import re, sys
+try:
+    content = open('$HANDOFF').read()
+    m = re.match(r'^---\s*\nbridge_id:\s*(\S+)', content)
+    print(m.group(1) if m else 'legacy-unknown')
+except:
+    print('legacy-unknown')
+" 2>/dev/null)
+[[ -z "$HANDOFF_BRIDGE_ID" ]] && HANDOFF_BRIDGE_ID="legacy-unknown"
+
+# Gate: if bridge_id doesn't match, warn and inject nothing
+if [[ "$MY_BRIDGE_ID" == "unknown" || "$HANDOFF_BRIDGE_ID" == "unknown" || "$HANDOFF_BRIDGE_ID" == "legacy-unknown" || "$HANDOFF_BRIDGE_ID" != "$MY_BRIDGE_ID" ]]; then
+    echo "A handoff for ${HANDOFF_BRIDGE_ID} exists; your identity is ${MY_BRIDGE_ID}. Run /persona to pin identity; do not adopt other agents' work."
     exit 0
 fi
 
