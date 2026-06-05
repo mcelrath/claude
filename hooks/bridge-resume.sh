@@ -56,7 +56,8 @@ if [[ -z "$AGENT_ID" ]]; then
         REG_SID=$(python3 -c "
 import json
 try:
-    a = json.load(open('$HOME/.agent-bridge/agents.json')).get('$AGENT_ID', {})
+    d = json.load(open('$HOME/.agent-bridge/agents.json'))
+    a = next((x for x in d.get('agents', []) if x.get('id') == '$AGENT_ID'), {})
     print(a.get('session_id', ''))
 except: pass
 " 2>/dev/null)
@@ -75,24 +76,24 @@ if [[ -f "$AGENTS_JSON" ]]; then
     ROLE=$(python3 -c "
 import sys, json
 try:
-    agents = json.load(open('$AGENTS_JSON'))
-    a = agents.get('$AGENT_ID', {})
+    d = json.load(open('$AGENTS_JSON'))
+    a = next((x for x in d.get('agents', []) if x.get('id') == '$AGENT_ID'), {})
     print(a.get('role', ''))
 except: pass
 " 2>/dev/null)
     FOCUS=$(python3 -c "
 import sys, json
 try:
-    agents = json.load(open('$AGENTS_JSON'))
-    a = agents.get('$AGENT_ID', {})
+    d = json.load(open('$AGENTS_JSON'))
+    a = next((x for x in d.get('agents', []) if x.get('id') == '$AGENT_ID'), {})
     print(a.get('focus', ''))
 except: pass
 " 2>/dev/null)
     OFFERING=$(python3 -c "
 import sys, json
 try:
-    agents = json.load(open('$AGENTS_JSON'))
-    a = agents.get('$AGENT_ID', {})
+    d = json.load(open('$AGENTS_JSON'))
+    a = next((x for x in d.get('agents', []) if x.get('id') == '$AGENT_ID'), {})
     print(a.get('offering', ''))
 except: pass
 " 2>/dev/null)
