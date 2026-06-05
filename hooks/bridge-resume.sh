@@ -24,8 +24,49 @@ BRIDGE PROTOCOL (main session only — sub-agents never run bridge commands; the
 - After every compaction: `bridge recv` -> `bridge announce` -> relaunch `bridge watch` (run_in_background, no `&`).
 BRIDGEDOC
 
-# Resolve agent id
-AGENT_ID=$("$BRIDGE" whoami 2>/dev/null | grep "^Effective identity:" | awk '{print $3}')
+# Resolve agent id.
+# HIGHEST PRIORITY: the session-pinned persona marker (written by /persona).
+# whoami's cwd-fallback is UNSAFE in a shared-cwd repo: a fresh post-/clear
+# session matches no registry entry by session_id, and the cwd fallback then
+# adopts an arbitrary (often stale) registration — the 'hermes' identity-theft
+# bug (2026-06-05: two /clear'ed agents both resumed as hermes and re-announced
+# it with their new session ids).
+AGENT_ID=""
+if [[ -n "$CLAUDE_SESSION_ID" ]]; then
+    PIN_FILE="$PWD/.claude/.persona/session-$CLAUDE_SESSION_ID"
+    if [[ -f "$PIN_FILE" ]]; then
+        PERSONA=$(cat "$PIN_FILE" 2>/dev/null | tr -d '[:space:]')
+        case "$PERSONA" in
+            archie)  AGENT_ID="architect" ;;
+            tip)     AGENT_ID="theorem-prover" ;;
+            pip)     AGENT_ID="secular-constraints" ;;
+            pip3)    AGENT_ID="pip3" ;;
+            emmy)    AGENT_ID="emitter" ;;
+            *)       AGENT_ID="$PERSONA" ;;
+        esac
+    fi
+fi
+# Fallback: whoami — but REJECT a cwd-derived identity that has a DIFFERENT
+# session_id already registered (that registration belongs to another session;
+# adopting it is the theft). Accept whoami only if its registry session matches
+# ours or is absent.
+if [[ -z "$AGENT_ID" ]]; then
+    AGENT_ID=$("$BRIDGE" whoami 2>/dev/null | grep "^Effective identity:" | awk '{print $3}')
+    if [[ -n "$AGENT_ID" && -n "$CLAUDE_SESSION_ID" && -f "$HOME/.agent-bridge/agents.json" ]]; then
+        REG_SID=$(python3 -c "
+import json
+try:
+    a = json.load(open('$HOME/.agent-bridge/agents.json')).get('$AGENT_ID', {})
+    print(a.get('session_id', ''))
+except: pass
+" 2>/dev/null)
+        SHORT_SID="${CLAUDE_SESSION_ID:0:8}"
+        if [[ -n "$REG_SID" && "$REG_SID" != "$SHORT_SID" && "$REG_SID" != "$CLAUDE_SESSION_ID" ]]; then
+            echo "BRIDGE RESUME: whoami suggested '$AGENT_ID' but its registration belongs to session $REG_SID (mine: $SHORT_SID). REFUSING the cwd-fallback identity. Run /persona to pin, then announce."
+            exit 0
+        fi
+    fi
+fi
 [[ -z "$AGENT_ID" ]] && exit 0
 
 # Read current registry entry to get role/focus for re-announce
