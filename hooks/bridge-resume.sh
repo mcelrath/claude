@@ -99,7 +99,13 @@ except: pass
 " 2>/dev/null)
 fi
 
-# Re-announce to update session_id in registry (compaction changes session_id)
+# Re-announce to update session_id in registry (compaction changes session_id).
+# Pin-derived identity announces with --steal: after a /clear the old claude
+# process (and watcher) may still look LIVE under the prior session_id, so the
+# announce guard would refuse the rightful owner. The user-authorized pin is
+# the ownership proof.
+STEAL_FLAG=""
+[[ -n "${PERSONA:-}" ]] && STEAL_FLAG="--steal"
 if [[ -n "$ROLE" ]]; then
     "$BRIDGE" announce \
         --id "$AGENT_ID" \
@@ -107,6 +113,7 @@ if [[ -n "$ROLE" ]]; then
         --focus "${FOCUS:-resumed after compaction}" \
         --offering "${OFFERING:-}" \
         --directed "checking bridge for missed messages" \
+        $STEAL_FLAG \
         </dev/null 2>/dev/null
 fi
 
