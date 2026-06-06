@@ -217,7 +217,9 @@ No `git add -A`, `git add .`, `git reset --hard`, `git push --force`.
 
 ## Decision Authority
 
-**You decide, then do it**: writing code, running tests, searching, recording KB. No "Should I proceed?"
+**You decide, then do it**: writing code, running tests, searching, recording KB, **committing completed work + closing its beads**. No "Should I proceed?"
+
+**Commit + close completed work — ALWAYS, never ask.** The moment a unit of work is validated/complete (a green build of a finished feature, a passed soak), `git commit --no-gpg-sign` the specific files AND `bd close` its completed beads in the same motion, automatically. Do NOT ask "should I commit / bank this?" or present commit-and-close as an option — "bank" (commit + close completed beads, leaving genuine unfinished/design follow-ups as open bd issues) is the DEFAULT, not a decision to surface. Agents systematically leave completed beads open and skip committing — losing the audit trail and the on-disk checkpoint. Do not be one of them.
 
 **User decides**: claiming tasks, research direction, architectural choices with multiple valid options. Use `AskUserQuestion`. NEVER: "What would you like...", "Would you like me to...", "Should I..."
 
@@ -676,6 +678,19 @@ Hooks intercept tool calls. **Hook blocks are FINAL.** Each prints an actionable
 
 - **Return annotations break the def pattern**: `def $F($$$): $$$` does NOT match a function with a return type — `def f(...) -> T:` has a `return_type` child the pattern has no slot for. Verified: `def fermion_masses($$$): $$$` → empty, though the function exists as `def fermion_masses(...) -> dict:`; `def $F($$$) -> $R: $$$` matches it. This codebase annotates returns heavily, so the plain pattern misses many defs.
 - **Robust def-search**: run BOTH `def $F($$$): $$$` and `def $F($$$) -> $R: $$$`, or locate a known name with `python3 -c "import inspect; from <mod> import <f>; print(inspect.getsourcelines(<f>)[1])"`. Never conclude "not found / no prior art" from a single empty plain-def `ast-grep`.
+
+## Symbol usage-finding: use the LSP, never grep, and don't trust an empty ast-grep
+
+"Where is symbol X **defined / used / who-calls-it**" is a SEMANTIC question — answer it with the **LSP tool**, not ast-grep and not grep:
+- **ast-grep is structural** — a bare-identifier pattern matches only standalone identifier *expression* nodes, so it silently misses field accesses (`p2p.X[i]`), declarations (`X: T`), and type positions. This produced a wrong "the field is never set → the handoff is dormant" conclusion that nearly shipped a bigger-than-needed plan; `findReferences` then found 6 real uses across 3 files. ast-grep stays for code-SHAPE queries only.
+- **grep stays banned** (`block-text-search-on-source`) — it encourages shallow reading. Route through the LSP.
+
+LSP operations: `findReferences`, `goToDefinition`, `incomingCalls`/`outgoingCalls` (call graph), `workspaceSymbol` (find by name).
+
+### Reliable-use procedure (rust-analyzer indexes lazily — a cold query LIES)
+1. **Warm + gate.** rust-analyzer (the LSP plugin) indexes the whole workspace on first use — minutes on a big tree (it runs `cargo check`, incl. build.rs, internally). The SessionStart `rust-analyzer-prewarm.sh` hook backgrounds a `cargo check` to shrink that, but the in-memory index still builds on the first LSP-tool call. So before relying on the LSP, issue one cheap probe — `workspaceSymbol` for a known struct — and **retry until it returns**. "No symbols found / not indexed" means *wait and retry*, NEVER "absent".
+2. **Exact, current position.** LSP is line/col-based (1-based). After ANY edit the line numbers shift — re-Read (or use `documentSymbol`) to get the symbol's CURRENT line/col right before `findReferences`/`goToDefinition`. A stale position silently returns nothing.
+3. **Empty ≠ absent.** Only an empty `findReferences` taken AFTER warm-up AND at the correct position is a trustworthy "no usages." Confirm dead/unused code via the LSP at the right position — never via an empty ast-grep.
 
 ## Lean Audit — `lean-audit`
 

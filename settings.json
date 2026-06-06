@@ -426,6 +426,11 @@
             "command": "$HOME/.claude/hooks/bridge-resume.sh",
             "timeout": 10000,
             "type": "command"
+          },
+          {
+            "command": "$HOME/.claude/hooks/rust-analyzer-prewarm.sh",
+            "timeout": 5000,
+            "type": "command"
           }
         ]
       }
