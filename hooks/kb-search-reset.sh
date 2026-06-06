@@ -7,6 +7,8 @@ mkdir -p "$STATE_DIR"
 
 # Clean old files (older than 4 hours)
 find "$STATE_DIR" -name "*-searched" -mmin +240 -delete 2>/dev/null
+find "$STATE_DIR" -name "*-kb-seen" -mmin +240 -delete 2>/dev/null
+find "$STATE_DIR" -name "*-kb-gets" -mmin +240 -delete 2>/dev/null  # legacy name
 find "$STATE_DIR" -name "session-*" -mmin +240 -delete 2>/dev/null
 
 # Clean session files for PIDs that no longer exist
@@ -16,7 +18,11 @@ for f in "$STATE_DIR"/session-*; do
     if ! kill -0 "$pid" 2>/dev/null; then
         old_session_id=$(cat "$f" 2>/dev/null)
         rm -f "$f"
-        [[ -n "$old_session_id" ]] && rm -f "$STATE_DIR/${old_session_id}-searched"
+        if [[ -n "$old_session_id" ]]; then
+            rm -f "$STATE_DIR/${old_session_id}-searched"
+            rm -f "$STATE_DIR/${old_session_id}-kb-seen"
+            rm -f "$STATE_DIR/${old_session_id}-kb-gets"  # legacy name
+        fi
     fi
 done
 
