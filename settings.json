@@ -1,8 +1,4 @@
 {
-  "additionalDirectories": [
-    "/tmp",
-    "~/.claude/"
-  ],
   "attribution": {
     "commit": "",
     "pr": ""
@@ -145,6 +141,11 @@
       },
       {
         "hooks": [
+          {
+            "command": "python3 $HOME/.claude/hooks/allow-env-prefix.py",
+            "timeout": 3000,
+            "type": "command"
+          },
           {
             "command": "$HOME/.claude/hooks/block-print-spam.sh",
             "timeout": 5000,
@@ -416,7 +417,13 @@
       }
     ]
   },
+  "model": "sonnet",
   "permissions": {
+    "additionalDirectories": [
+      "/tmp",
+      "~/.claude/",
+      "/home/mcelrath/Physics"
+    ],
     "allow": [
       "Skill",
       "LSP",
@@ -430,21 +437,7 @@
       "Bash(rg:*)",
       "Bash(tree:*)",
       "Bash(xargs:*)",
-      "Bash(git status:*)",
-      "Bash(git diff:*)",
-      "Bash(git add:*)",
-      "Bash(git ls-tree:*)",
-      "Bash(git log:*)",
-      "Bash(git commit:*)",
-      "Bash(git branch:*)",
-      "Bash(git worktree:*)",
-      "Bash(git remote:*)",
-      "Bash(git fetch:*)",
-      "Bash(git checkout:*)",
-      "Bash(git stash:*)",
-      "Bash(git submodule:*)",
-      "Bash(git show:*)",
-      "Bash(git rev-parse:*)",
+      "Bash(git:*)",
       "Bash(pytest:*)",
       "Bash(python:*)",
       "Bash(python3:*)",
@@ -452,6 +445,7 @@
       "Bash(cd:*)",
       "Bash(cat >:*)",
       "Bash(PYTHONPATH=:*)",
+      "Bash(AGENT_ID=:*)",
       "Bash(pip show:*)",
       "Bash(pip install:*)",
       "Bash(cargo test:*)",
@@ -605,11 +599,40 @@
       "Edit",
       "Write",
       "Read",
+      "Edit(~/.claude/**)",
+      "Write(~/.claude/**)",
+      "Read(~/.claude/**)",
+      "Edit(//home/mcelrath/.claude/**)",
+      "Write(//home/mcelrath/.claude/**)",
+      "Read(//home/mcelrath/.claude/**)",
+      "Edit(../../.claude/**)",
+      "Write(../../.claude/**)",
+      "Edit(../.claude/**)",
+      "Write(../.claude/**)",
       "Bash(kb:*)",
       "Bash(loogle:*)",
       "Bash(bridge:*)",
       "Bash(/home/mcelrath/.agent-bridge/bridge:*)",
-      "Bash(systemctl --user:*)"
+      "Bash(~/.agent-bridge/bridge:*)",
+      "Bash(~/.local/bin/kb:*)",
+      "Bash(/home/mcelrath/.local/bin/kb:*)",
+      "Bash(~/.local/bin/bd:*)",
+      "Bash(/home/mcelrath/.local/bin/bd:*)",
+      "Bash(lean-audit:*)",
+      "Bash(lean-search:*)",
+      "Bash(lake:*)",
+      "Bash(~/.local/bin/loogle:*)",
+      "Bash(~/.local/bin/lean-search:*)",
+      "Bash(~/.local/bin/lean-audit:*)",
+      "Bash(bash:*)",
+      "Bash(disown:*)",
+      "Bash(setsid:*)",
+      "Bash(journalctl:*)",
+      "Bash(ssh ash:*)",
+      "Bash(ssh tardis:*)",
+      "Bash(systemctl --user:*)",
+      "Bash(flock:*)",
+      "Bash(nice:*)"
     ],
     "defaultMode": "default",
     "deny": [
@@ -636,13 +659,51 @@
       "Bash(kill:*)",
       "Bash(kill -9:*)",
       "Bash(pkill:*)",
-      "Bash(killall:*)",
-      "Bash(cat <<:*)"
+      "Bash(killall:*)"
     ]
   },
   "preferredNotifChannel": "terminal_bell",
   "prefersReducedMotion": true,
   "promptSuggestionEnabled": false,
+  "sandbox": {
+    "excludedCommands": [
+      "kb *",
+      "bd *",
+      "python3 *",
+      "loogle *",
+      "bridge *",
+      "~/.agent-bridge/bridge *",
+      "/home/mcelrath/.agent-bridge/bridge *",
+      "~/.local/bin/kb *",
+      "/home/mcelrath/.local/bin/kb *",
+      "build-manager *",
+      "lake *"
+    ],
+    "filesystem": {
+      "allowWrite": [
+        "/home/mcelrath/.agent-bridge",
+        "/home/mcelrath/.claude",
+        "/home/mcelrath/.local/share",
+        "/home/mcelrath/.local/state",
+        "/home/mcelrath/.cache",
+        "/home/mcelrath/.beads",
+        "/home/mcelrath/Physics"
+      ]
+    },
+    "network": {
+      "allowLocalBinding": true,
+      "allowedDomains": [
+        "localhost",
+        "127.0.0.1",
+        "127.0.1.1",
+        "ash",
+        "tardis",
+        "*.opentimestamps.org",
+        "*.eternitywall.com",
+        "*.catallaxy.com"
+      ]
+    }
+  },
   "skipDangerousModePermissionPrompt": true,
   "statusLine": {
     "command": "$HOME/.claude/bin/claude-statusline",

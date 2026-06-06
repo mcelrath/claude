@@ -29,7 +29,8 @@ try:
     d = json.load(sys.stdin)
     for model in d.get('data', []):
         meta = model.get('meta', {})
-        n_ctx = meta.get('n_ctx_train', 0)
+        # prefer the RUNNING context (n_ctx) over the training one
+        n_ctx = meta.get('n_ctx', 0) or meta.get('n_ctx_train', 0)
         if n_ctx > 0:
             print(n_ctx)
             break
@@ -52,6 +53,24 @@ except:
 " 2>/dev/null)
     fi
 
+    # Try ollama's native API (no /props, no n_ctx in /v1/models meta)
+    if [[ "${ctx:-0}" == "0" && -n "${2:-}" ]]; then
+        ctx=$(curl -s --connect-timeout 2 --max-time 5 "${base_url}/api/show" \
+              -d "{\"name\": \"$2\"}" 2>/dev/null | python3 -c "
+import sys, json
+try:
+    d = json.load(sys.stdin)
+    info = d.get('model_info', {})
+    for k, v in info.items():
+        if k.endswith('.context_length') and isinstance(v, int) and v > 0:
+            print(v); break
+    else:
+        print(0)
+except:
+    print(0)
+" 2>/dev/null)
+    fi
+
     if [[ "${ctx:-0}" != "0" && "$ctx" -gt 0 ]] 2>/dev/null; then
         mkdir -p /tmp/claude-kb-state
         echo "$ctx" > "$PROVIDER_CACHE"
@@ -66,6 +85,12 @@ except:
 #   claude_reported_size: value from Claude Code's statusline JSON (0 if not available)
 get_provider_context_window() {
     local claude_reported="${1:-0}"
+    local model_key="${2:-default}"
+
+    # Key the cache per model so a local-LLM query result can never be served
+    # to a different provider's session (the sonnet[1m]-got-262144 bug).
+    local model_slug=$(echo "$model_key" | tr -c 'A-Za-z0-9' '-' | cut -c1-48)
+    PROVIDER_CACHE="/tmp/claude-kb-state/provider-context-window-${model_slug}"
 
     # 1) If Claude Code reported a real value, trust it
     if [[ "$claude_reported" -gt 0 ]] 2>/dev/null; then
@@ -86,16 +111,19 @@ get_provider_context_window() {
     fi
 
     # 3) Query provider API
-    # Try LLM_URL from claude-env.sh (the local llama.cpp server)
-    local provider_url="${LLM_URL:-}"
-    if [[ -n "$provider_url" ]]; then
+    # Try LLM_URL from claude-env.sh (the local llama.cpp server), then
+    # the standard local endpoints (statusline runs in a hook env where
+    # LLM_URL may be unset; ollama default port as last probe)
+    local provider_url
+    for provider_url in "${LLM_URL:-}" "${ANTHROPIC_BASE_URL:-}" "http://localhost:8080" "http://localhost:11434"; do
+        [[ -z "$provider_url" ]] && continue
         local result
-        result=$(_query_provider_context "$provider_url")
+        result=$(_query_provider_context "$provider_url" "$model_key")
         if [[ "$result" -gt 0 ]] 2>/dev/null; then
             echo "$result"
             return 0
         fi
-    fi
+    done
 
     # 4) Env var override
     if [[ -n "${CLAUDE_CONTEXT_OVERRIDE:-}" && "${CLAUDE_CONTEXT_OVERRIDE}" -gt 0 ]] 2>/dev/null; then
