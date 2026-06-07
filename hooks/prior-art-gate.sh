@@ -1,4 +1,11 @@
 #!/bin/bash
+
+# --- EMBEDDING-DOWN gate (ash:8081): surface hard STOP instead of blind retrieval ---
+. "$HOME/.claude/hooks/lib/ash_health.sh" 2>/dev/null || true
+if command -v ash_down >/dev/null 2>&1 && ash_down; then
+  echo "$ASH_STOP_LINE" >&2
+fi
+
 # PreToolUse hook: Task and Edit/Write
 # Blocks Task dispatch (non-kb-research) unless kb-research was run this session.
 # Blocks Edit/Write to cl44/, proofs/, or .tex files unless kb search was run.
