@@ -128,8 +128,8 @@ if not ranked:
 seen_ids: set[str] = set()
 try:
     import sys as _sys
-    _sys.path.insert(0, os.path.expanduser('~/Projects/ai/kb'))
-    from kb.hooks._state import state_path
+    _sys.path.insert(0, os.path.expanduser('~/Projects/ai/kb/kb/hooks'))
+    from _state import state_path
     _seen_path = state_path('kb-seen')
     if _seen_path and os.path.exists(_seen_path):
         with open(_seen_path) as f:
@@ -222,7 +222,9 @@ except Exception:
 
 # --- Write shown IDs to session seen file (item 4 write side) ---
 try:
-    from kb.hooks._state import state_path as _state_path
+    import sys as _sys2
+    _sys2.path.insert(0, os.path.expanduser('~/Projects/ai/kb/kb/hooks'))
+    from _state import state_path as _state_path
     _seen_path = _state_path('kb-seen')
     if _seen_path:
         with open(_seen_path, 'a') as f:
