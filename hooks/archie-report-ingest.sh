@@ -127,28 +127,13 @@ if not ranked:
 # --- Load already-seen IDs from session state (item 4 read side) ---
 seen_ids: set[str] = set()
 try:
-    state_dir = '/tmp/claude-kb-state'
-    pid = os.getpid()
-    for _ in range(6):
-        try:
-            with open(f'/proc/{pid}/status') as f:
-                for line in f:
-                    if line.startswith('PPid:'):
-                        pid = int(line.split()[1])
-                        break
-                else:
-                    break
-        except OSError:
-            break
-        session_file = f'{state_dir}/session-{pid}'
-        if os.path.exists(session_file):
-            with open(session_file) as f:
-                session_id = f.read().strip()
-            seen_file = f'{state_dir}/{session_id}-kb-seen'
-            if os.path.exists(seen_file):
-                with open(seen_file) as f:
-                    seen_ids = {ln.strip() for ln in f if ln.strip().startswith('kb-')}
-            break
+    import sys as _sys
+    _sys.path.insert(0, os.path.expanduser('~/Projects/ai/kb'))
+    from kb.hooks._state import state_path
+    _seen_path = state_path('kb-seen')
+    if _seen_path and os.path.exists(_seen_path):
+        with open(_seen_path) as f:
+            seen_ids = {ln.strip() for ln in f if ln.strip().startswith('kb-')}
 except Exception:
     pass
 
@@ -224,30 +209,25 @@ for r in ranked:
 
 print('\n'.join(lines))
 
+# --- A1: canonical name match via shared CLI (deduped cross-hook) ---
+try:
+    import subprocess as _sp
+    _cli = os.path.expanduser('~/Projects/ai/kb/kb/hooks/_canonical_match_cli.py')
+    _result = _sp.run(['python3', _cli], input=report, capture_output=True, text=True, timeout=5)
+    if _result.stdout.strip():
+        print('')
+        print(_result.stdout.strip())
+except Exception:
+    pass
+
 # --- Write shown IDs to session seen file (item 4 write side) ---
 try:
-    state_dir = '/tmp/claude-kb-state'
-    pid = os.getpid()
-    for _ in range(6):
-        try:
-            with open(f'/proc/{pid}/status') as f:
-                for line in f:
-                    if line.startswith('PPid:'):
-                        pid = int(line.split()[1])
-                        break
-                else:
-                    break
-        except OSError:
-            break
-        session_file = f'{state_dir}/session-{pid}'
-        if os.path.exists(session_file):
-            with open(session_file) as f:
-                session_id = f.read().strip()
-            seen_file = f'{state_dir}/{session_id}-kb-seen'
-            with open(seen_file, 'a') as f:
-                for sid in shown_ids:
-                    f.write(sid + '\n')
-            break
+    from kb.hooks._state import state_path as _state_path
+    _seen_path = _state_path('kb-seen')
+    if _seen_path:
+        with open(_seen_path, 'a') as f:
+            for sid in shown_ids:
+                f.write(sid + '\n')
 except Exception:
     pass
 

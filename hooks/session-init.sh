@@ -23,6 +23,7 @@ fi
 
 # --- KB state cleanup (was kb-search-reset.sh) ---
 find "$STATE_DIR" -name "*-searched" -mmin +240 -delete 2>/dev/null
+find "$STATE_DIR" -name "*-hook-seen" -mmin +240 -delete 2>/dev/null
 find "$STATE_DIR" -name "session-*" -mmin +240 -delete 2>/dev/null
 for f in "$STATE_DIR"/session-*; do
     [[ -f "$f" ]] || continue
@@ -30,7 +31,7 @@ for f in "$STATE_DIR"/session-*; do
     if ! kill -0 "$pid" 2>/dev/null; then
         old_sid=$(cat "$f" 2>/dev/null)
         rm -f "$f"
-        [[ -n "$old_sid" ]] && rm -f "$STATE_DIR/${old_sid}-searched"
+        [[ -n "$old_sid" ]] && rm -f "$STATE_DIR/${old_sid}-searched" "$STATE_DIR/${old_sid}-hook-seen"
     fi
 done
 

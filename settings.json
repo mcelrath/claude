@@ -205,6 +205,11 @@
             "command": "$HOME/.claude/hooks/guard-destructive-git.sh",
             "timeout": 5000,
             "type": "command"
+          },
+          {
+            "command": "$HOME/.claude/hooks/dedupe-kb-get.sh",
+            "timeout": 2000,
+            "type": "command"
           }
         ],
         "matcher": "Bash"
@@ -239,11 +244,6 @@
           {
             "command": "$HOME/.claude/hooks/prior-art-gate.sh",
             "timeout": 2000,
-            "type": "command"
-          },
-          {
-            "command": "$HOME/.claude/hooks/check-existing-code.sh",
-            "timeout": 5000,
             "type": "command"
           },
           {
@@ -385,6 +385,17 @@
           {
             "command": "$HOME/.claude/hooks/block-stop-without-bridge-watcher.sh",
             "timeout": 5000,
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "command": "$HOME/.claude/hooks/archie-report-ingest.sh",
+            "timeout": 14000,
             "type": "command"
           }
         ]
@@ -572,6 +583,7 @@
       "Bash(yes:*)",
       "Bash(test:*)",
       "Bash([:*)",
+      "Bash((:*)",
       "Bash(zip:*)",
       "Bash(bzip2:*)",
       "Bash(xz:*)",
