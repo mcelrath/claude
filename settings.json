@@ -65,6 +65,11 @@
             "type": "command"
           },
           {
+            "command": "python3 $HOME/Projects/ai/kb/kb/hooks/lake_error_surface.py",
+            "timeout": 5000,
+            "type": "command"
+          },
+          {
             "command": "$HOME/.claude/hooks/bd-lifecycle.sh",
             "timeout": 5000,
             "type": "command"
@@ -82,6 +87,31 @@
           {
             "command": "$HOME/.claude/hooks/read-dep-augment.sh",
             "timeout": 6000,
+            "type": "command"
+          },
+          {
+            "command": "python3 $HOME/Projects/ai/kb/kb/hooks/symbol_surface.py",
+            "timeout": 5000,
+            "type": "command"
+          },
+          {
+            "command": "python3 $HOME/Projects/ai/kb/kb/hooks/lean_py_surface.py",
+            "timeout": 5000,
+            "type": "command"
+          },
+          {
+            "command": "python3 $HOME/Projects/ai/kb/kb/hooks/py_lean_surface.py",
+            "timeout": 5000,
+            "type": "command"
+          },
+          {
+            "command": "python3 $HOME/Projects/ai/kb/kb/hooks/python_tex_backref.py",
+            "timeout": 5000,
+            "type": "command"
+          },
+          {
+            "command": "python3 $HOME/Projects/ai/kb/kb/hooks/tex_stale_surface.py",
+            "timeout": 5000,
             "type": "command"
           }
         ],
@@ -134,6 +164,16 @@
           {
             "command": "$HOME/.claude/hooks/prior-art-gate.sh",
             "timeout": 2000,
+            "type": "command"
+          },
+          {
+            "command": "python3 $HOME/Projects/ai/kb/kb/hooks/compose_time_check.py",
+            "timeout": 5000,
+            "type": "command"
+          },
+          {
+            "command": "python3 $HOME/Projects/ai/kb/kb/hooks/open_issues_surface.py",
+            "timeout": 8000,
             "type": "command"
           }
         ],
@@ -210,6 +250,16 @@
             "command": "$HOME/.claude/hooks/dedupe-kb-get.sh",
             "timeout": 2000,
             "type": "command"
+          },
+          {
+            "command": "python3 $HOME/Projects/ai/kb/kb/hooks/compose_time_check.py",
+            "timeout": 5000,
+            "type": "command"
+          },
+          {
+            "command": "python3 $HOME/Projects/ai/kb/kb/hooks/open_issues_surface.py",
+            "timeout": 8000,
+            "type": "command"
           }
         ],
         "matcher": "Bash"
@@ -265,6 +315,21 @@
             "command": "$HOME/.claude/hooks/weak-claim-gate.sh",
             "timeout": 3000,
             "type": "command"
+          },
+          {
+            "command": "python3 $HOME/Projects/ai/kb/kb/hooks/check_symbols.py",
+            "timeout": 5000,
+            "type": "command"
+          },
+          {
+            "command": "python3 $HOME/Projects/ai/kb/kb/hooks/lean_write_guard.py",
+            "timeout": 5000,
+            "type": "command"
+          },
+          {
+            "command": "python3 $HOME/Projects/ai/kb/kb/hooks/tex_section_context.py",
+            "timeout": 5000,
+            "type": "command"
           }
         ],
         "matcher": "Edit|Write"
@@ -308,6 +373,15 @@
           }
         ],
         "matcher": "NotebookEdit|mcp__jupyter__modify_notebook_cells"
+      },
+      {
+        "hooks": [
+          {
+            "command": "python3 /home/mcelrath/.claude/hooks/auto-approve-readonly-bash.py",
+            "type": "command"
+          }
+        ],
+        "matcher": "Bash"
       }
     ],
     "SessionStart": [
@@ -385,6 +459,11 @@
           {
             "command": "$HOME/.claude/hooks/block-stop-without-bridge-watcher.sh",
             "timeout": 5000,
+            "type": "command"
+          },
+          {
+            "command": "$HOME/.claude/hooks/bridge-unread-stop.sh",
+            "timeout": 3000,
             "type": "command"
           }
         ]
@@ -644,7 +723,19 @@
       "Bash(ssh tardis:*)",
       "Bash(systemctl --user:*)",
       "Bash(flock:*)",
-      "Bash(nice:*)"
+      "Bash(nice:*)",
+      "Bash(./lake-locked:*)",
+      "Bash(lake env lean:*)",
+      "Bash(lake build:*)",
+      "Bash(~/.local/bin/kb add:*)",
+      "Bash(~/.local/bin/kb search:*)",
+      "Bash(~/.local/bin/kb get:*)",
+      "Bash(cd /home/mcelrath/Physics/claude/proofs:*)",
+      "Bash(/bin/ls:*)",
+      "Bash(cd ~/Physics/claude/proofs:*)",
+      "Bash(cd ~/Physics/secular-constraints:*)",
+      "Bash(cd /home/mcelrath/Physics/secular-constraints:*)",
+      "Bash(for:*)"
     ],
     "defaultMode": "default",
     "deny": [

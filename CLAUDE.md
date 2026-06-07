@@ -1,3 +1,10 @@
+# Project: Algebraic Genesis (tag: algebraic-genesis)
+
+## Canonical repositories for this project:
+- ~/Physics/secular-constraints/ math-framed branch of Algebraic Genesis (code in cliffird_common/, cl11/, cl22/, cl44/)
+- ~/Physics/mathlib4/ (ag git branch) mathlib contributions intended for upstream
+- ~/Physics/claude/ physics-framed repository for Algebraic Genesis (proofs in proofs/, tex in *.tex and sections/)
+
 # Global Development Rules
 
 ---
@@ -84,6 +91,20 @@ Plans citing Mathlib lemmas must include: `## Mathlib fork survey / - loogle 'Le
 **Before context loss**: `~/.local/bin/kb add "SESSION CHECKPOINT: ..." -t discovery -p <project> --tags session-checkpoint`
 
 **Persistent memory**: `~/.local/bin/kb add "insight" -t discovery -p <project> --tags <topic>`. Retrieve with `~/.local/bin/kb search "<keyword>"`. Do NOT use `bd remember` / `bd memories` and do NOT use MEMORY.md files.
+
+## Bridge Reply Discipline
+
+When sending a bridge message that requires a response, add `--needs-reply`:
+
+```
+bridge send <to> "<subject>" --needs-reply << 'EOF'
+body
+EOF
+```
+
+The Stop hook surfaces any unanswered `--needs-reply` messages as `BRIDGE_PENDING_REPLIES` before the session goes idle. Responders close the loop with `--reply <id>`. Check open items anytime with `bridge pending-replies`.
+
+Receipt (`bridge ack`) ≠ reply — ack means "I read it", reply means "I responded to it".
 
 ## Why .md creation is blocked
 
