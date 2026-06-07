@@ -75,6 +75,11 @@
             "type": "command"
           },
           {
+            "command": "python3 $HOME/Projects/ai/kb/kb/hooks/bd_close_reingest.py",
+            "timeout": 30000,
+            "type": "command"
+          },
+          {
             "command": "$HOME/.claude/hooks/kb-search-track.sh",
             "timeout": 2000,
             "type": "command"
