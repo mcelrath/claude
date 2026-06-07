@@ -21,7 +21,8 @@ fi
 
 MISSING=""
 [[ ! -f "reviewers.yaml" ]] && MISSING="${MISSING}reviewers.yaml "
-[[ ! -f "agent-preamble.md" ]] && MISSING="${MISSING}agent-preamble.md "
+# Accept either project-root agent-preamble.md OR the canonical .claude/agents/preamble.md location
+[[ ! -f "agent-preamble.md" && ! -f ".claude/agents/preamble.md" ]] && MISSING="${MISSING}agent-preamble.md "
 
 if [[ -n "$MISSING" ]]; then
     ACTIONS="${ACTIONS}Missing: ${MISSING}"

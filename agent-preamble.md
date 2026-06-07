@@ -1,6 +1,6 @@
 # Agent Preamble — Claude Code Config (claude)
 
-Read this BEFORE starting your task. Subagents do NOT see CLAUDE.md.
+Read this BEFORE starting your task. This is a condensed agent-targeted summary of the critical rules — read it first even though CLAUDE.md is also in your context.
 
 ## The Project
 

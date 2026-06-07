@@ -11,18 +11,6 @@ Read this BEFORE starting your task. These rules prevent the failure modes that 
 
 Project preambles live IN their project, not here. **If your working directory has a `.claude/agents/preamble.md`, Read it as well** — it carries project invariants the generic rules below do not cover. For **secular-constraints** (`~/Physics/secular-constraints/.claude/agents/preamble.md`): the HAM / no-external-`i` invariant, the Cl(4,4) canonical-function map, the centralizer / SM-gauge generators, the mathlib4-fork inventory, and the project mathematical framing.
 
-## Two-repo + archive search discipline (Algebraic Genesis — MANDATORY before any "absent / no-proof / missing" claim)
-
-Audit agents REPEATEDLY false-negatived solid, proven content (the cosmological-constant proof, J_A·J_B=J_C, all three gauge-coupling proofs were each wrongly declared "absent" — all exist). Rule 1 below is not enough on its own; this is the concrete procedure that makes it actionable. There are THREE corpora and you MUST search the right one the right way:
-
-- **Lean PROOFS** → `~/Physics/claude/proofs/` (deeply nested: a file may be at `proofs/X.lean` OR `proofs/HyperComplexAnalysis/Cl44/X.lean` or deeper — NEVER guess a top-level path; e.g. `CosmologicalConstant.lean` is under `HyperComplexAnalysis/Cl44/`, not `proofs/`). Find a FILE: `lean-search -f <Name>` (indexes file/module names) or `fd -e lean -i <name> ~/Physics/claude/proofs/`. Find a DECLARATION: `lean-search <decl>`. Status: `lean-audit <file>`.
-- **Python CODE** → `~/Physics/secular-constraints/{cl44,scripts,notebooks}` (tex `cl44/foo.py` resolves to `sc/cl44/foo.py`; `scripts/foo.py` → `sc/scripts/`). The claude repo's `cl44/` does NOT hold this code. Find: `fd <name> ~/Physics/secular-constraints/`.
-- **TEX** → `~/Physics/claude/*.tex` + `~/Physics/claude/sections/`.
-
-**ARCHIVE workaround (genuinely-missing items are usually HERE):** the `quarantine-paths.sh` hook blocks the Grep/Glob TOOLS on `archive/`+`scratch/`, and `block-text-search` blocks grep/rg — that is WHY you false-negative. BUT **Read is always allowed**, and **Bash `fd` + Read/python-read bypass the gate**. To search archive: `fd <pat> ~/Physics/claude/proofs/archive/ ~/Physics/claude/lib/archive/ ~/Physics/secular-constraints/archive/`, then `Read` the hits (or `python3 -c "print(open(p).read())"`). If a claim's ONLY support is in `archive/`, it was archived because it is WRONG / DEPRECATED / SUPERSEDED — say so (and the dependent tex is stale).
-
-**VERIFY NEGATIVES.** Before asserting "no proof / file missing / unsupported / conjectural," you MUST have: (a) `lean-search -f` AND `fd` across `proofs/` (all subdirs), (b) `fd` across `secular-constraints/{cl44,scripts,notebooks}`, (c) the archive workaround. A negative from one narrow search is INVALID and will be treated as a defect in your report.
-
 ## Epistemological Rules (MOST IMPORTANT)
 
 1. **"Not Found" ≠ "Doesn't Exist"**. If you search and find nothing, say "I found no evidence for X (searched: [queries])." Never say "X is open/untested/unknown."
