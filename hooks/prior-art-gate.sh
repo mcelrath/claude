@@ -61,18 +61,29 @@ if [[ "$TOOL_NAME" == "Edit" || "$TOOL_NAME" == "Write" ]]; then
 
     SEARCHED_FILE="$STATE_DIR/${SESSION_ID}-searched"
     if [[ ! -f "$SEARCHED_FILE" ]]; then
-        cat >&2 <<EOF
+        # .tex edits: advisory only (paper editors write prose; search is still recommended)
+        # cl44/*.py and proofs/*.lean: blocking (reimplementing existing work is silent corruption)
+        IS_CODE=0
+        case "$FILE_PATH" in
+            */cl44/*.py|*/proofs/*.lean) IS_CODE=1 ;;
+        esac
+        if [[ "$IS_CODE" == "1" ]]; then
+            cat >&2 <<EOF
 BLOCKED: Editing physics file without prior-art check this session.
   Target: $FILE_PATH
 
-Before editing cl44/, proofs/, or .tex files, run at least ONE of:
+Before editing cl44/ or proofs/ files, run at least ONE of:
   1. ~/.local/bin/kb search "<what you are implementing>"
   2. Task(subagent_type='kb-research', model='haiku', prompt='TOPIC: ...')
 
 This prevents reimplementing existing work or contradicting proven results.
 The search flag persists for the rest of the session after one search.
 EOF
-        exit 2
+            exit 2
+        else
+            # .tex: advisory — surface warning but allow the edit
+            echo '{"hookSpecificOutput":{"hookEventName":"PreToolUse","additionalContext":"[PRIOR-ART-ADVISORY: No KB search this session. Run ~/.local/bin/kb search \"<topic>\" to check for proven results before editing tex. One search clears this advisory for the rest of the session.]"}}'
+        fi
     fi
 fi
 
