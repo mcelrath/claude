@@ -55,7 +55,8 @@ esac
 
 # Check for claimed in-progress work.
 IN_PROGRESS=$(bd list --status=in_progress --assignee="$PERSONA" 2>/dev/null)
-[ -z "$IN_PROGRESS" ] && exit 0
+# bd outputs "No issues found" when empty — test for actual issue rows (lines starting with id characters)
+echo "$IN_PROGRESS" | grep -qE '^[a-z0-9]' || exit 0
 
 cat >&2 <<EOF
 BD_INPROGRESS_BLOCKED: $PERSONA has claimed in-progress bd work. Do not stop silently.
