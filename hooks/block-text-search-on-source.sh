@@ -192,8 +192,9 @@ if [ "$DETECTED_CAT" = "PURPOSE_BUILT" ]; then
   journalctl --grep PATTERN                # systemd logs"
             ;;
         pandoc)
-            EXAMPLE="  pandoc -t json file.${DETECTED_EXT} | jq '.blocks[]'
-  pandoc -t json file.${DETECTED_EXT} | jq 'recurse | objects | select(.t == \"Header\")'"
+            EXAMPLE="  tex-search 'pattern' file.${DETECTED_EXT}           # all lines incl. %% comments
+  tex-search -c 'pattern' file.${DETECTED_EXT}         # %% comment lines only (Lean/kb pointers)
+  pandoc -t json file.${DETECTED_EXT} | jq '.blocks[]' # prose/structure only (strips %% comments)"
             ;;
     esac
 

@@ -37,7 +37,7 @@ if [[ $CONV_LEN -gt 80000 ]]; then
 fi
 
 # Set KB environment
-export KB_EMBEDDING_URL="${KB_EMBEDDING_URL:-http://localhost:8080/embedding}"
+export KB_EMBEDDING_URL="${KB_EMBEDDING_URL:-http://ash:8081/embedding}"
 export KB_EMBEDDING_DIM=4096
 source "$(dirname "$0")/lib/claude-env.sh" 2>/dev/null || true
 export KB_LLM_URL="${KB_LLM_URL:-http://${LLM_HOST:-localhost}:${LLM_PORT:-8014}/completion}"

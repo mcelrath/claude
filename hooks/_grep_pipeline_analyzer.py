@@ -105,7 +105,31 @@ def first_source_arg(toks):
     return None
 
 
+_HEREDOC_RE = re.compile(
+    r'<<-?\s*["\']?(\w+)["\']?.*?\n.*?\n\1\n?',
+    re.DOTALL,
+)
+
+
+def strip_heredocs(cmd: str) -> str:
+    """Remove heredoc bodies (stdin data, not commands) before analysis.
+
+    A heredoc body can contain arbitrary text including source file names and
+    pipe characters, which the analyzer would otherwise misinterpret as command
+    structure.  Strip everything between the << marker line and the closing
+    sentinel.
+
+    Replaces the heredoc body with a placeholder so the surrounding command
+    structure (e.g. '2>&1' after the closing sentinel) is preserved.
+    """
+    # Match << 'EOF' or << EOF or <<- EOF, and everything up to and including
+    # the closing sentinel on its own line.
+    result = _HEREDOC_RE.sub(lambda m: f'<< {m.group(1)}_STRIPPED\n{m.group(1)}_STRIPPED\n', cmd)
+    return result
+
+
 def analyze(cmd):
+    cmd = strip_heredocs(cmd)
     stages = split_pipe_stages(cmd)
     parsed = [lead(s) for s in stages]
     for idx, (base, toks) in enumerate(parsed):
