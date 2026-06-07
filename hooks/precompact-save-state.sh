@@ -124,11 +124,6 @@ except:
     pass
 " 2>/dev/null)
 
-SUMMARY=$(python3 "$CLAUDE_DIR/hooks/lib/summarize_session.py" "$JSONL" "none" "$LLM_URL" 2>/dev/null)
-if ! echo "$SUMMARY" | python3 -c "import sys,json; json.load(sys.stdin)" 2>/dev/null; then
-    SUMMARY='{"summary":"LLM unavailable","current_task":"unknown","next_steps":["~/.local/bin/kb list (CLI)"],"blockers":[]}'
-fi
-
 # Resolve bridge identity at save time:
 # AGENT_ID env → session-pin file → agents.json lookup by session_id → unknown
 _BRIDGE_ID=""
@@ -185,11 +180,6 @@ ${TEAM_STATE}
 ## Expert Review
 ${REVIEW_SUMMARY:-No expert review this session}
 
-## State (LLM-summarized)
-\`\`\`json
-$SUMMARY
-\`\`\`
-
 ## Git Status
 Recent commits:
 ${GIT_LOG:-[no git history]}
@@ -206,12 +196,12 @@ ${KB_ADDED:-[none]}
 ## KB Queried (${KB_COUNT:-0} total, showing last 20)
 ${KB_IDS:-[none]}
 
-## Resume
-1. Read this handoff for context
-2. Run: bd ready (find available work)
-3. Run: bd list --status=in_progress (active work)
-4. ~/.local/bin/kb list -p "$PROJECT_NAME"  (session findings; MCP removed 2026-05-19)
-5. Continue from last user query — do NOT ask what to work on
+## Resume (RESUME PROTOCOL — execute IN ORDER)
+1. bridge recv ${_BRIDGE_ID}                                   # drain mail FIRST
+2. bd list --status=in_progress --assignee=${_BRIDGE_ID}      # claimed work FIRST
+3. git log --oneline -5                                        # sync the view
+4. ONLY IF 1-3 empty/clear: bd ready                          # unclaimed = FALLBACK
+5. ~/.local/bin/kb list -p "$PROJECT_NAME"  (session KB findings)
 EOF
 
 mv "$OUT_DIR/handoff.md.tmp" "$OUT_DIR/handoff.md"
