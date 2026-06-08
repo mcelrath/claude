@@ -235,6 +235,7 @@ Pulled from observed-good usage in this codebase. Use this table BEFORE writing 
 
 ## Project-specific tactics taught the hard way
 
+- **`(−1)^(ℕ-division expression)` goals → `unfold; norm_num`, NOT `decide`.** For grade-sign functions like `(−1 : ℤ)^(k*(k+1)/2)` evaluated at literal `k`, plain `decide` STALLS: `Nat.div` does not reduce definitionally in the kernel, so the `(−1)^…` literal never collapses. `unfold <def>; norm_num` evaluates the exponent and the power numerically and closes it. (Found on the 0dgg `CliffordConjugationUniqueness` grade-sign theorems — the dispatch said `decide`, the agent correctly switched to `norm_num`.) For pure `Finset.card`/equality goals with NO ℕ-division in an exponent, `decide` is still the right first reach.
 - **`compute_degree!`** closes `Polynomial.natDegree p = N` for concrete polynomials with literal coefficients — saved hours on `p_B_deg8.natDegree = 8`.
 - **`embedBlock_mul_same` / `embedBlock_mul_diff` + `embedBlock_one_sum`** is the Mat48 OOM-safe pattern: factor Mat48 → 3 × Mat16, prove per-block via Mat16 `native_decide`, sum via `embedBlock_one_sum`.
 - **`Matrix.map_mul` + `Matrix.map_one`** transport ℚ-level matrix identities to ℂ.
