@@ -127,6 +127,27 @@ When asked to verify a claim, the verifier of last resort is `lake build`. An ag
 
 - **Verify build, count sorries**: at task end, run `grep -c "^\s*sorry\s*$\|by sorry$" file.lean` and report the count. Do not claim "0 sorry" without this check.
 
+## STATEMENT INTEGRITY — the three soundness traps (PASS `lake build`, FAIL soundness)
+
+These three pass `lake build` AND `lean-audit` AND `#print axioms` — they are not build errors, they are **meaningless or false statements** that the coordinator catches only by READING the statement. All three were caught in real dispatched work (κ-GRH epic, 2026-06-07). Each is a TASK FAILURE. Before returning, self-audit against all three.
+
+### Trap 1 — `sorry`-as-a-Prop (a `sorry` in the statement TYPE, not the proof)
+`theorem foo : A ∧ B ∧ sorry := by refine ⟨_, _, ?_⟩; · sorry` — here the 3rd conjunct of the TYPE is `sorry`, which elaborates to `sorryAx Prop`: an opaque, meaningless proposition. The theorem asserts "A ∧ B ∧ (some unknown prop)". lean-audit counts it as a sorry but the STATEMENT says nothing.
+- **RULE**: `sorry` appears ONLY in PROOF position (`:= by ... sorry`), NEVER where a `Prop` is expected in a statement TYPE. Every conjunct / hypothesis / conclusion must be a fully-written real proposition.
+- **CHECK**: read your theorem's TYPE. Is there a `sorry` (or an undefined placeholder) anywhere in it? If a part of the statement isn't ready, state it as a separate `def <name> : Prop := <real statement>` (or an opaque landing-pad) and reference it — never inline `sorry` into a type.
+
+### Trap 2 — assuming the conclusion (circular conditional)
+`theorem loc (h : ∀ ρ, P ρ → Q ρ) (h2 : ∀ ρ, P ρ) : ∀ ρ, Q ρ` looks conditional, but if `h2`'s `P ρ` is **equivalent to the conclusion `Q ρ`** (e.g. via an already-proven `iff`), the theorem is `(conclusion) → (conclusion)`, proving nothing. Real case: `H_fano_hyp : ∀ ρ, sigma_FE ρ = ρ` was the conclusion in disguise — `sigma_FE ρ = ρ ↔ ρ.re = 1/2` is already proven, so assuming "all zeros σ-fixed" IS assuming GRH.
+- **RULE**: before stating a conditional theorem, check each hypothesis is NOT equivalent to (and does not trivially imply) the conclusion — especially via a lemma already in the file. A theorem whose hypothesis collapses to its conclusion is circular; it is NOT progress, and reporting it as "localization proven (given hypotheses)" is a hard fail.
+- **CHECK**: for each hypothesis `h`, ask "is `h` ⟺ the conclusion, via anything already proven?" If yes, the theorem is vacuous-circular. State instead an honest REDUCTION (`conclusion ↔ <genuinely-different condition>`) and LABEL it a reduction, not a derivation.
+
+### Trap 3 — `sorry` on a FALSE statement (soundness hole, not a contract)
+A `sorry`/contract is only legitimate on a TRUE (or genuinely-open) statement. A sorry on a FALSE Prop can never be honestly discharged, and if anyone "closes" it, soundness breaks. Real case: `H_fano := ∀ a b c, 8a − 4b − 8c = 0 → a=0∧b=0∧c=0` is FALSE (kernel is 2-D: a=1,b=2,c=0 satisfies the premise). The agent even wrote a remark admitting the 2-D kernel, yet stated the false Prop with a sorry.
+- **RULE**: before leaving any `sorry`-contract, SANITY-CHECK the statement is not false — find a witness, or a counterexample search (a 2-line `python3`/`#eval`). If you can construct a counterexample, the statement is FALSE — do NOT sorry it; restate the true intended claim.
+- **CHECK**: "can I find an input satisfying the hypotheses but violating the conclusion?" If yes, the statement is false. A `sorry` on it is FATAL (quarantine + report, never present as a contract).
+
+**One-line self-audit before returning**: for every theorem you wrote — (1) no `sorry` in any TYPE; (2) no hypothesis ⟺ the conclusion; (3) no `sorry` on a statement you can counterexample. Report explicitly: "statement-integrity: no sorry-as-Prop, no circular hypothesis, no sorry-on-false."
+
 ## STOPPING CONDITIONS
 
 - 6 `lake build` cycles without convergence → return with the cleanest partial result + precise blocker
@@ -225,7 +246,7 @@ Pulled from observed-good usage in this codebase. Use this table BEFORE writing 
 ## Quarantine / archival hygiene
 
 - A theorem you cannot fix is better quarantined than left as a buggy reference. Add `-- QUARANTINE: <reason>` on the immediately-preceding line; the theorem-index builder will skip it.
-- Files superseded by newer work move to `archive/proofs/<path>`. Always with `git mv`, keep history.
+- Files superseded by newer work move to `archive/` at the TOP LEVEL of the proofs tree (`~/Physics/claude/proofs/archive/`). Always with `git mv`, keep history. NEVER delete anything — always archive (user ruling 2026-06-07; see the repo CLAUDE.md "NEVER DELETE — ALWAYS ARCHIVE").
 - A theorem that proves the wrong thing (statement is mathematically false) is FATAL — quarantine immediately and file a bd task to rewrite.
 
 ## Failure-mode log (do not repeat)
