@@ -243,6 +243,14 @@ Pulled from observed-good usage in this codebase. Use this table BEFORE writing 
 - **`verticalLineIntegral_diff_eq_residues`** is the contour-shift residue lemma; takes 5 explicit hypotheses (integrability ×2, horizontal-decay ×2, eventually-residue).
 - **`differentiable_completedLFunction`** in `DirichletContinuation.lean` is 0/0 for nontrivial primitive characters; this is why chi_12 (and chi_-3, chi_-4) give trivial rectangle-boundary-integral = 0.
 
+## Documenting `decide` / `native_decide` results — name the witnesses
+
+When `decide`/`native_decide` closes a COUNTING or ENUMERATION goal (`Finset.card = N`, "exactly these elements satisfy P", a stabilizer/orbit size), the tactic gives you the truth but NOT the explanation. The strongest docstring NAMES the concrete witnesses and the reason for the count — compute them first, then write them down:
+
+- Get the actual members before writing the comment: `#eval (theFinset).toList` in a scratch block, or run the same enumeration in Python. E.g. "the 2 elements are (identity, signs (+,+,+)) and (reversal, signs (−,+,−))", then the one-line structural reason ("|8|=|−8|≠|−4| forces the magnitude-4 slot, so only identity or reversal survive").
+- This doubles as a discriminate check: if you cannot exhibit N concrete witnesses, the `N` in your statement may be wrong — the encoding bug surfaces here, not in `decide`.
+- A docstring that says "decide provides the ground truth" or "the tool says N but I can't see why" means the witnesses were never computed. The `#eval`/Python enumeration is cheap — run it and state the members. A correct `decide` proof with a confused docstring still ships a defect: the next reader trusts the prose.
+
 ## Quarantine / archival hygiene
 
 - A theorem you cannot fix is better quarantined than left as a buggy reference. Add `-- QUARANTINE: <reason>` on the immediately-preceding line; the theorem-index builder will skip it.
