@@ -16,7 +16,8 @@
 
 QUEUE_DIR="$HOME/.claude/pending-kb-adds"
 STAMP="/tmp/claude-kb-flush-last"
-HEALTH_URL="http://ash:8081/"
+# Derive the embedding-server base from its configured URL (default: ash:8081).
+HEALTH_URL=$(printf '%s' "${KB_EMBEDDING_URL:-http://ash:8081/embedding}" | sed -E 's|(https?://[^/]+).*|\1/|')
 RATE_LIMIT_SEC=300
 
 [ ! -d "$QUEUE_DIR" ] && exit 0

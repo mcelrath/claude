@@ -6,12 +6,21 @@ When either is down the corresponding surfacing goes BLIND and SILENT; agents
 then forge ahead / re-derive. ash_down() returns True if EITHER is unreachable
 and sets module global STOP_LINE naming which. Cached 60s in /tmp.
 """
-import os, time, urllib.request
+import os, re, time, urllib.request
 
 _CACHE = "/tmp/.kbinfra_health_cache"
 _TTL = 60
-_ENDPOINTS = {"ash:8081 (embeddings)": "http://ash:8081/",
-              "tardis:9510 (LLM)": "http://tardis:9510/"}
+
+def _base(url: str) -> str:
+    m = re.match(r"(https?://[^/]+)", url)
+    return (m.group(1) if m else url).rstrip("/") + "/"
+
+# Endpoints derive from the configured service URLs; defaults preserve the
+# original ash/tardis hosts.
+_EMB = _base(os.environ.get("KB_EMBEDDING_URL", "http://ash:8081/embedding"))
+_LLM = _base(os.environ.get("KB_LLM_URL", "http://tardis:9510/completion"))
+_ENDPOINTS = {f"{_EMB.split('://',1)[-1].rstrip('/')} (embeddings)": _EMB,
+              f"{_LLM.split('://',1)[-1].rstrip('/')} (LLM)": _LLM}
 
 STOP_LINE = ""
 

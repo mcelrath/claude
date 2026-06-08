@@ -7,8 +7,15 @@ ash_down() {
   if [ -f "$_KBINFRA_CACHE" ] && [ $(( $(date +%s) - $(stat -c %Y "$_KBINFRA_CACHE" 2>/dev/null || echo 0) )) -lt 60 ]; then
     down="$(cat "$_KBINFRA_CACHE")"
   else
-    curl -s -m2 -o /dev/null -w '%{http_code}' http://ash:8081/ 2>/dev/null | grep -q 200 || down="ash:8081(embeddings) "
-    curl -s -m2 -o /dev/null -w '%{http_code}' http://tardis:9510/ 2>/dev/null | grep -q 200 || down="${down}tardis:9510(LLM)"
+    # Derive the base (scheme://host:port) of each service from its configured
+    # URL; defaults preserve the original ash/tardis endpoints.
+    local _emb _llm _emb_base _llm_base
+    _emb="${KB_EMBEDDING_URL:-http://ash:8081/embedding}"
+    _llm="${KB_LLM_URL:-http://tardis:9510/completion}"
+    _emb_base=$(printf '%s' "$_emb" | sed -E 's|(https?://[^/]+).*|\1|')
+    _llm_base=$(printf '%s' "$_llm" | sed -E 's|(https?://[^/]+).*|\1|')
+    curl -s -m2 -o /dev/null -w '%{http_code}' "$_emb_base/" 2>/dev/null | grep -q 200 || down="${_emb_base#*://}(embeddings) "
+    curl -s -m2 -o /dev/null -w '%{http_code}' "$_llm_base/" 2>/dev/null | grep -q 200 || down="${down}${_llm_base#*://}(LLM)"
     echo "${down:-UP}" > "$_KBINFRA_CACHE"
   fi
   [ "$down" = "UP" ] && return 1
