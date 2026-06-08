@@ -37,18 +37,9 @@ if [[ "$LEADING" =~ ^(bridge|~/\.agent-bridge/bridge|/home/mcelrath/\.agent-brid
     exit 0
 fi
 
-# Honor the per-session timestamp flag (set by md-asked-gate.sh on
-# AskUserQuestion). 1-hour window. The session-agnostic /tmp/claude-md-allow-any
-# flag has been RETIRED.
-FLAG="/tmp/claude-md-allow-${SESSION_ID}"
-if [ -e "$FLAG" ]; then
-    NOW=$(date +%s)
-    MTIME=$(stat -c %Y "$FLAG" 2>/dev/null || echo 0)
-    AGE=$((NOW - MTIME))
-    if [ "$AGE" -lt 3600 ]; then
-        exit 0
-    fi
-fi
+# Honor the per-session AskUserQuestion allow-flag (shared helper — kb-bp4 P9).
+. "$HOME/.claude/hooks/lib/md_policy.sh" 2>/dev/null
+md_asked_flag_fresh "$SESSION_ID" && exit 0
 
 # Detection patterns that indicate .md CREATION (not edit of existing).
 SUSPECT=0

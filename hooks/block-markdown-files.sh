@@ -68,15 +68,8 @@ shopt -u nocasematch
 # Within 1 hour of that timestamp, .md creation is allowed.
 # The session-agnostic /tmp/claude-md-allow-any flag has been RETIRED (leaked
 # across worktree agents; produced false "agent escape" suspicions).
-FLAG="/tmp/claude-md-allow-${SESSION_ID}"
-if [ -e "$FLAG" ]; then
-    NOW=$(date +%s)
-    MTIME=$(stat -c %Y "$FLAG" 2>/dev/null || echo 0)
-    AGE=$((NOW - MTIME))
-    if [ "$AGE" -lt 3600 ]; then
-        exit 0
-    fi
-fi
+. "$HOME/.claude/hooks/lib/md_policy.sh" 2>/dev/null
+md_asked_flag_fresh "$SESSION_ID" && exit 0
 
 cat >&2 <<EOF
 BLOCKED: creating a new markdown file '$FILE_PATH'. The user doesn't want you polluting his filesystem with random markdown files that need to be triaged later. Acceptable operations are:
