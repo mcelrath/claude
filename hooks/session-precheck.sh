@@ -1,17 +1,33 @@
 #!/bin/bash
-# team-cleanup.sh - Reconnect or clean up teams on SessionStart
-#
-# On /clear: PPID stays the same, but session ID changes.
-# This hook runs BEFORE history-isolation.sh, so we can read the OLD
-# session ID from /tmp and the NEW one from hook input JSON.
-#
-# 1. Teams owned by our OLD session → update leadSessionId to NEW (reconnect)
-# 2. Teams owned by other live sessions → leave alone
-# 3. Teams owned by dead sessions → delete (orphan cleanup)
+# session-precheck.sh - SessionStart pre-init checks (kb-6jp consolidation).
+# Merges cleanup-stale-sessions.sh (multi-session warn) + team-cleanup.sh (team
+# reconnect/orphan-cleanup). MUST run BEFORE session-init.sh: the team logic reads
+# the OLD session id from /tmp/claude-kb-state/session-$PPID before session-init
+# overwrites it with the new one.
 source "$(dirname "$0")/lib/claude-env.sh"
 set -euo pipefail
 
 input=$(cat)
+
+# --- Multi-session warn (was cleanup-stale-sessions.sh) — WARNING ONLY ---
+SESSION_COUNT=$(pgrep -c -f "^claude " 2>/dev/null || echo "0")
+if [[ "$SESSION_COUNT" -gt 1 ]]; then
+    echo "NOTE: $SESSION_COUNT Claude sessions running on this machine."
+    if [ -x "$HOME/.agent-bridge/bridge" ]; then
+        echo "  Use the agent-bridge to coordinate. Quick start:"
+        echo "    $HOME/.agent-bridge/bridge agents        # see who's registered"
+        echo "    $HOME/.agent-bridge/bridge announce ...  # join the bridge"
+        echo "    $HOME/.agent-bridge/bridge tail          # read recent traffic"
+        echo "  Protocol: $HOME/.agent-bridge/AGENTS.md (or 'bridge onboard')."
+    fi
+fi
+
+# --- Team reconnect / orphan cleanup (was team-cleanup.sh) ---
+# On /clear: PPID stays the same, session id changes. We read the OLD session id
+# from /tmp (set by the prior session-init) and the NEW one from hook input JSON.
+#   1. Teams owned by our OLD session -> update leadSessionId to NEW (reconnect)
+#   2. Teams owned by other live sessions -> leave alone
+#   3. Teams owned by dead sessions -> delete (orphan cleanup)
 NEW_SESSION=$(echo "$input" | jq -r '.session_id // ""' 2>/dev/null)
 
 TEAMS_DIR="$CLAUDE_DIR/teams"

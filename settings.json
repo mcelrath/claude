@@ -308,11 +308,7 @@
             "type": "command"
           },
           {
-            "command": "$HOME/.claude/hooks/cleanup-stale-sessions.sh",
-            "type": "command"
-          },
-          {
-            "command": "$HOME/.claude/hooks/team-cleanup.sh",
+            "command": "$HOME/.claude/hooks/session-precheck.sh",
             "type": "command"
           },
           {
