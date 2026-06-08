@@ -35,15 +35,9 @@ AGENT_ID=""
 if [[ -n "$CLAUDE_SESSION_ID" ]]; then
     PIN_FILE="$PWD/.claude/.persona/session-$CLAUDE_SESSION_ID"
     if [[ -f "$PIN_FILE" ]]; then
+        # The persona name IS the bridge id (no mapping layer — kb-bp4 P7).
         PERSONA=$(cat "$PIN_FILE" 2>/dev/null | tr -d '[:space:]')
-        case "$PERSONA" in
-            archie)  AGENT_ID="architect" ;;
-            tip)     AGENT_ID="theorem-prover" ;;
-            pip)     AGENT_ID="secular-constraints" ;;
-            pip3)    AGENT_ID="pip3" ;;
-            emmy)    AGENT_ID="emitter" ;;
-            *)       AGENT_ID="$PERSONA" ;;
-        esac
+        AGENT_ID="$PERSONA"
     fi
 fi
 # Fallback: whoami — but REJECT a cwd-derived identity that has a DIFFERENT

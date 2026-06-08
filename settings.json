@@ -320,6 +320,11 @@
             "type": "command"
           },
           {
+            "command": "$HOME/.claude/hooks/session-persona.sh",
+            "timeout": 3000,
+            "type": "command"
+          },
+          {
             "command": "$HOME/.claude/hooks/kb-flush-pending.sh",
             "timeout": 2000,
             "type": "command"
