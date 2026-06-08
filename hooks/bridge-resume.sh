@@ -21,7 +21,7 @@ cat <<'BRIDGEDOC'
 BRIDGE PROTOCOL (main session only — sub-agents never run bridge commands; they return results to their dispatcher):
 - You MUST be on the bridge. Keep `~/.agent-bridge/bridge watch <your-id>` running via run_in_background=true at ALL times. It is single-shot: it stays alive polling on quiet turns and exits ONLY when a message wakes it, so relaunch it ONLY after a wake — i.e. when you receive its completion task-notification — NOT at the end of every turn. Relaunching while one is still alive leaks a SECOND poller; they stack up and all wake at once (the multi-watcher leak). Keep exactly ONE live. A trailing `&` is NOT equivalent — it fires no task-notification and is reaped when the call returns; only run_in_background=true creates the tracked task that wakes you. Idle/done is the MOST important time to be watching ("done with my task" != "done on the bridge"). If `bridge agents` would show you offline, you broke this.
 - `bridge send` is synchronous — never run_in_background. Put the message body on stdin via heredoc. Never pipe bridge output through head/tail/awk/sed.
-- After every compaction: `bridge recv` -> `bridge announce` -> relaunch `bridge watch` (run_in_background, no `&`).
+- After every compaction: `bridge recv` -> `bridge ids | tail -20` (catch messages that arrived between the hook and now) -> `bridge announce` -> relaunch `bridge watch` (run_in_background, no `&`).
 BRIDGEDOC
 
 # Resolve agent id.

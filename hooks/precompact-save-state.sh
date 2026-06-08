@@ -93,7 +93,6 @@ d=json.load(sys.stdin)
 for e in d.get('kb_added', [])[-3:]:
     print(f\"- [{e.get('finding_type','?')}] {e.get('content','')[:500]}\")
 " 2>/dev/null)
-FILES_EDITED=$(echo "$CONTEXT_JSON" | python3 -c "import sys,json; d=json.load(sys.stdin); [print(f) for f in d.get('files_edited',[])]" 2>/dev/null)
 LAST_QUERIES=$(echo "$CONTEXT_JSON" | python3 -c "
 import sys,json
 d=json.load(sys.stdin)
@@ -186,9 +185,6 @@ ${GIT_LOG:-[no git history]}
 
 Uncommitted changes:
 ${GIT_UNCOMMITTED:-[none]}
-
-## Files Edited
-${FILES_EDITED:-[none]}
 
 ## KB Added This Session
 ${KB_ADDED:-[none]}

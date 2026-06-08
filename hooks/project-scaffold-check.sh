@@ -34,3 +34,4 @@ if [[ -n "$MISSING" ]]; then
 fi
 
 [[ -n "$ACTIONS" ]] && echo "SCAFFOLD: $ACTIONS"
+exit 0

@@ -53,13 +53,8 @@ Route content by type — see CLAUDE.md "Why .md creation is blocked":
   plan (multi-phase)                     ->  ~/.claude/plans/PLAN-<slug>.md (allowlisted, use Write)
   cross-session checkpoint               ->  ~/.local/bin/kb add ... --tags session-checkpoint
   task note                              ->  bd update <issue-id> --notes "..."
-  architecture / reference fact          ->  Edit an EXISTING doc under docs/reference/
   agent's investigation report           ->  return INLINE to dispatcher (and/or kb add)
   short summary for the user             ->  just write it in your reply
-
-If kb is unreachable (ash:8081 down): use ~/.claude/pending-kb-adds/<UTC>-<session>.txt
-queue file; SessionStart + UserPromptSubmit hooks drain it via 'kb flush-pending'.
-DO NOT fall back to .md creation when kb is down.
 
 This block is unconditional — even AskUserQuestion confirmation will not unblock a
 reflex-pattern name. If the content is legitimate, route it per the table above.
@@ -84,20 +79,14 @@ if [ -e "$FLAG" ]; then
 fi
 
 cat >&2 <<EOF
-BLOCKED: creating a new markdown file '$FILE_PATH'.
+BLOCKED: creating a new markdown file '$FILE_PATH'. The user doesn't want you polluting his filesystem with random markdown files that need to be triaged later. Acceptable operations are:
 
-Route content by type — see CLAUDE.md "Why .md creation is blocked":
-  finding / verification / measurement   ->  ~/.local/bin/kb add "..." -t discovery -p <PROJ> --tags ...
+  finding / verification / measurement   ->  ~/.local/bin/kb add "..." -t discovery --tags ...
   plan (multi-phase)                     ->  ~/.claude/plans/PLAN-<slug>.md (allowlisted, use Write)
   cross-session checkpoint               ->  ~/.local/bin/kb add ... --tags session-checkpoint
   task note                              ->  bd update <issue-id> --notes "..."
-  architecture / reference fact          ->  Edit an EXISTING doc under docs/reference/
   agent's investigation report           ->  return INLINE to dispatcher (and/or kb add)
   short summary for the user             ->  just write it in your reply
-
-If kb is unreachable (ash:8081 down): use ~/.claude/pending-kb-adds/<UTC>-<session>.txt
-queue file; SessionStart + UserPromptSubmit hooks drain it via 'kb flush-pending'.
-DO NOT fall back to .md creation when kb is down.
 
 If you have weighed all of the above and a NEW .md is genuinely required:
   1. AskUserQuestion to confirm the exact path and filename with the user.

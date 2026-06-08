@@ -152,15 +152,6 @@
             "type": "command"
           }
         ]
-      },
-      {
-        "hooks": [
-          {
-            "command": "bd prime",
-            "type": "command"
-          }
-        ],
-        "matcher": ""
       }
     ],
     "PreToolUse": [
@@ -437,15 +428,6 @@
             "type": "command"
           }
         ]
-      },
-      {
-        "hooks": [
-          {
-            "command": "bd prime",
-            "type": "command"
-          }
-        ],
-        "matcher": ""
       }
     ],
     "Stop": [
@@ -512,7 +494,7 @@
       }
     ]
   },
-  "model": "sonnet",
+  "model": "claude-opus-4-8",
   "permissions": {
     "additionalDirectories": [
       "/tmp",
@@ -667,7 +649,6 @@
       "Bash(yes:*)",
       "Bash(test:*)",
       "Bash([:*)",
-      "Bash((:*)",
       "Bash(zip:*)",
       "Bash(bzip2:*)",
       "Bash(xz:*)",
@@ -740,9 +721,12 @@
       "Bash(cd ~/Physics/claude/proofs:*)",
       "Bash(cd ~/Physics/secular-constraints:*)",
       "Bash(cd /home/mcelrath/Physics/secular-constraints:*)",
-      "Bash(for:*)"
+      "Bash(for:*)",
+      "Bash(lake-check:*)",
+      "Bash(~/.local/bin/lake-check:*)",
+      "Bash(/home/mcelrath/.local/bin/lake-check:*)"
     ],
-    "defaultMode": "default",
+    "defaultMode": "acceptEdits",
     "deny": [
       "Grep",
       "Bash(find:*)-exec rm",

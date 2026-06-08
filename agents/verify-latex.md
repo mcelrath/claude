@@ -1,6 +1,6 @@
 ---
 name: verify-latex
-description: Validate citations in the 4 canonical tex papers (8D_PAPER, HYPERCOMPLEX_ANALYSIS, NUMBER_THEORY, rh) and sections/*.tex against the Lean theorem catalog, Python symbols, and kb-IDs. Read-only; reports a drift table.
+description: Validate citations in the canonical tex papers (8D_PAPER, HYPERCOMPLEX_ANALYSIS, NUMBER_THEORY, rh, PHENOMENOLOGY, 2D_PAPER, 4D_PAPER) and sections/*.tex against the Lean theorem catalog, Python symbols, and kb-IDs. Read-only; reports a drift table.
 tools: Read, Bash, Glob, Grep
 ---
 
@@ -8,7 +8,7 @@ Read ~/.claude/agents/preamble.md FIRST. READ-ONLY: never edit .tex; never creat
 
 ## Procedure
 
-1. **Scan set.** Glob `~/Physics/claude/{8D_PAPER,HYPERCOMPLEX_ANALYSIS,NUMBER_THEORY,rh}.tex` and transitively expand `\input` / `\include` to `sections/*.tex`. Build SCAN_SET.
+1. **Scan set.** Glob `~/Physics/claude/{8D_PAPER,HYPERCOMPLEX_ANALYSIS,NUMBER_THEORY,rh,PHENOMENOLOGY,2D_PAPER,4D_PAPER}.tex` and transitively expand `\input` / `\include` to `sections/*.tex`. Build SCAN_SET.
 
 2. **Extract citations** via regex (include %-commented lines):
    - Lean:   `\b([A-Z][\w/]*)\.lean(?:::|:\s+)([A-Za-z_]\w*)` and `...lean:(\d+)` and bare `...lean`

@@ -72,7 +72,7 @@ if echo "$CODE" | grep -qE 'for\s+b\s+in\s+range\s*\(' 2>/dev/null; then
     done)
     if [[ -n "$LARGE_RANGE" && "$FILE" != *"zeta_regularized_mode_sum"* ]]; then
         VIOLATIONS="$VIOLATIONS
-BLOCKED §GATEKEEPER.2: 'for b in range(...)' is a TRUNCATED mode sum. Use zeta_regularized_propagator_sum().total instead. Infinite sums are evaluated by analytic continuation, NEVER by truncation."
+BLOCKED §GATEKEEPER.2: 'for b in range(...)' is a TRUNCATED mode sum. Use zeta_regularized_propagator_sum().total instead. Infinite sums are evaluated by analytic continuation, NEVER by truncation. EVEN IF IT'S CONVERGENT we still want exact results through zeta regularization of the infinite sum."
     fi
 fi
 
@@ -80,7 +80,7 @@ fi
 if echo "$CODE" | grep -qE 'for\s+\w+\s+in\s+range\s*\(\s*(b_max|n_max|N_max|B_max|cutoff|n_modes)' 2>/dev/null; then
     if [[ "$FILE" != *"zeta_regularized_mode_sum"* ]]; then
         VIOLATIONS="$VIOLATIONS
-BLOCKED §GATEKEEPER.2: Mode sum with explicit cutoff (b_max/n_max/N_max). Use zeta_regularized_propagator_sum().total — no finite cutoff needed."
+BLOCKED §GATEKEEPER.2: Mode sum with explicit cutoff (b_max/n_max/N_max). Use zeta_regularized_propagator_sum().total — no finite cutoff needed. EVEN IF IT'S CONVERGENT we still want exact results through zeta regularization of the infinite sum."
     fi
 fi
 
