@@ -420,7 +420,8 @@
       "~/.claude/",
       "/home/mcelrath/Physics/claude",
       "/home/mcelrath/Physics/secular-constraints",
-      "/home/mcelrath/Physics/mathlib4"
+      "/home/mcelrath/Physics/mathlib4",
+      "/home/mcelrath/Projects/ai"
     ],
     "allow": [
       "Skill",
@@ -702,7 +703,8 @@
         "/home/mcelrath/.beads",
         "/home/mcelrath/Physics/claude",
         "/home/mcelrath/Physics/secular-constraints",
-        "/home/mcelrath/Physics/mathlib4"
+        "/home/mcelrath/Physics/mathlib4",
+        "/home/mcelrath/Projects/ai"
       ]
     },
     "network": {
