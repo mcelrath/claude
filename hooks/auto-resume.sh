@@ -49,16 +49,8 @@ _resolve_bridge_id_ar() {
     elif [[ -n "$sid" ]]; then
         local pin_file="$PWD/.claude/.persona/session-$sid"
         if [[ -f "$pin_file" ]]; then
-            local persona
-            persona=$(cat "$pin_file" 2>/dev/null | tr -d '[:space:]')
-            case "$persona" in
-                archie) result="architect" ;;
-                tip)    result="theorem-prover" ;;
-                pip)    result="secular-constraints" ;;
-                pip3)   result="pip3" ;;
-                emmy)   result="emitter" ;;
-                *)      result="$persona" ;;
-            esac
+            # The persona name IS the bridge id (no mapping layer — kb-bp4 P7).
+            result=$(cat "$pin_file" 2>/dev/null | tr -d '[:space:]')
         fi
     fi
     if [[ -z "$result" && -n "$sid" && -f "$HOME/.agent-bridge/agents.json" ]]; then
