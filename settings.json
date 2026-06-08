@@ -65,11 +65,6 @@
             "type": "command"
           },
           {
-            "command": "python3 $HOME/Projects/ai/kb/kb/hooks/lake_error_surface.py",
-            "timeout": 5000,
-            "type": "command"
-          },
-          {
             "command": "$HOME/.claude/hooks/bd-lifecycle.sh",
             "timeout": 5000,
             "type": "command"
@@ -77,11 +72,6 @@
           {
             "command": "$HOME/.claude/hooks/git-commit-check.sh",
             "timeout": 2000,
-            "type": "command"
-          },
-          {
-            "command": "python3 $HOME/Projects/ai/kb/kb/hooks/bd_close_reingest.py",
-            "timeout": 30000,
             "type": "command"
           },
           {
@@ -101,26 +91,6 @@
           },
           {
             "command": "python3 $HOME/Projects/ai/kb/kb/hooks/symbol_surface.py",
-            "timeout": 5000,
-            "type": "command"
-          },
-          {
-            "command": "python3 $HOME/Projects/ai/kb/kb/hooks/lean_py_surface.py",
-            "timeout": 5000,
-            "type": "command"
-          },
-          {
-            "command": "python3 $HOME/Projects/ai/kb/kb/hooks/py_lean_surface.py",
-            "timeout": 5000,
-            "type": "command"
-          },
-          {
-            "command": "python3 $HOME/Projects/ai/kb/kb/hooks/python_tex_backref.py",
-            "timeout": 5000,
-            "type": "command"
-          },
-          {
-            "command": "python3 $HOME/Projects/ai/kb/kb/hooks/tex_stale_surface.py",
             "timeout": 5000,
             "type": "command"
           }
@@ -268,11 +238,6 @@
       {
         "hooks": [
           {
-            "command": "$HOME/.claude/hooks/quarantine-paths.sh",
-            "timeout": 1000,
-            "type": "command"
-          },
-          {
             "command": "$HOME/.claude/hooks/read-coverage-gate.sh",
             "timeout": 3000,
             "type": "command"
@@ -283,53 +248,13 @@
       {
         "hooks": [
           {
-            "command": "$HOME/.claude/hooks/quarantine-paths.sh",
-            "timeout": 1000,
-            "type": "command"
-          }
-        ],
-        "matcher": "Grep|Glob"
-      },
-      {
-        "hooks": [
-          {
             "command": "$HOME/.claude/hooks/prior-art-gate.sh",
-            "timeout": 2000,
-            "type": "command"
-          },
-          {
-            "command": "$HOME/.claude/hooks/block-approximations.sh",
-            "timeout": 3000,
-            "type": "command"
-          },
-          {
-            "command": "$HOME/.claude/hooks/annotate-traces.sh",
-            "timeout": 2000,
-            "type": "command"
-          },
-          {
-            "command": "$HOME/.claude/hooks/block-scratch-imports.sh",
             "timeout": 2000,
             "type": "command"
           },
           {
             "command": "$HOME/.claude/hooks/weak-claim-gate.sh",
             "timeout": 3000,
-            "type": "command"
-          },
-          {
-            "command": "python3 $HOME/Projects/ai/kb/kb/hooks/check_symbols.py",
-            "timeout": 5000,
-            "type": "command"
-          },
-          {
-            "command": "python3 $HOME/Projects/ai/kb/kb/hooks/lean_write_guard.py",
-            "timeout": 5000,
-            "type": "command"
-          },
-          {
-            "command": "python3 $HOME/Projects/ai/kb/kb/hooks/tex_section_context.py",
-            "timeout": 5000,
             "type": "command"
           }
         ],
@@ -365,11 +290,6 @@
           {
             "command": "$HOME/.claude/hooks/block-presentation-cells.sh",
             "timeout": 5000,
-            "type": "command"
-          },
-          {
-            "command": "$HOME/.claude/hooks/block-approximations.sh",
-            "timeout": 3000,
             "type": "command"
           }
         ],
@@ -461,17 +381,6 @@
           {
             "command": "$HOME/.claude/hooks/bridge-unread-stop.sh",
             "timeout": 3000,
-            "type": "command"
-          }
-        ]
-      }
-    ],
-    "SubagentStop": [
-      {
-        "hooks": [
-          {
-            "command": "$HOME/.claude/hooks/archie-report-ingest.sh",
-            "timeout": 14000,
             "type": "command"
           }
         ]
