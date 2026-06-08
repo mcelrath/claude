@@ -27,6 +27,12 @@ fi
 
 # 2. Unanswered --needs-reply messages sent by me
 PENDING=$("$BRIDGE" pending-replies "$AGENT_ID" 2>/dev/null)
+# Guard: bridge builds lacking the `pending-replies` subcommand print the help
+# text to stdout (exit 0). That non-empty output was being reported as a phantom
+# BRIDGE_PENDING_REPLIES on every Stop. Treat any help-banner output as "none".
+case "$PENDING" in
+    *"bridge — message channel"*|*"LIFECYCLE"*|*"Usage:"*|*"usage:"*) PENDING="" ;;
+esac
 if [ -n "$PENDING" ]; then
     if [ -n "$OUTPUT" ]; then OUTPUT="${OUTPUT}
 "; fi

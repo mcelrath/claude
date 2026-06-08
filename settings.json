@@ -238,11 +238,6 @@
             "type": "command"
           },
           {
-            "command": "$HOME/.claude/hooks/guard-destructive-git.sh",
-            "timeout": 5000,
-            "type": "command"
-          },
-          {
             "command": "$HOME/.claude/hooks/dedupe-kb-get.sh",
             "timeout": 2000,
             "type": "command"
@@ -499,7 +494,7 @@
       }
     ]
   },
-  "model": "claude-opus-4-8",
+  "model": "sonnet",
   "permissions": {
     "additionalDirectories": [
       "/tmp",

@@ -17,6 +17,7 @@ telemetry/
 todos/
 backups/
 plugins/
+pending-kb-adds
 
 # Credentials and secrets (NEVER commit)
 .credentials.json
