@@ -18,9 +18,8 @@ RESUME_FILE=""
 [[ -z "$RESUME_FILE" || ! -f "$RESUME_FILE" ]] && exit 0
 
 SESSION_ID=$(cat "$RESUME_FILE")
-HANDOFF="$CLAUDE_DIR/sessions/${SESSION_ID}/handoff.md"
 
-# Phase 4: identity gate — resolve current session's bridge-id, compare to handoff's bridge_id
+# Resolve this session's bridge-id (used to scope in-progress beads to THIS agent).
 _resolve_bridge_id() {
     local sid="$1"
     local result=""
@@ -56,25 +55,6 @@ except: pass
 }
 
 MY_BRIDGE_ID=$(_resolve_bridge_id "${CLAUDE_SESSION_ID:-}")
-
-HANDOFF_BRIDGE_ID=""
-if [[ -f "$HANDOFF" ]]; then
-    HANDOFF_BRIDGE_ID=$(python3 -c "
-import re, sys
-content = open('$HANDOFF').read()
-m = re.match(r'^---\s*\nbridge_id:\s*(\S+)', content)
-print(m.group(1) if m else 'legacy-unknown')
-" 2>/dev/null)
-    [[ -z "$HANDOFF_BRIDGE_ID" ]] && HANDOFF_BRIDGE_ID="legacy-unknown"
-fi
-
-# Gate: if handoff exists but bridge_id doesn't match, warn and exit
-if [[ -f "$HANDOFF" && -n "$HANDOFF_BRIDGE_ID" ]]; then
-    if [[ "$MY_BRIDGE_ID" == "unknown" || "$HANDOFF_BRIDGE_ID" == "unknown" || "$HANDOFF_BRIDGE_ID" == "legacy-unknown" || "$HANDOFF_BRIDGE_ID" != "$MY_BRIDGE_ID" ]]; then
-        echo "A handoff for ${HANDOFF_BRIDGE_ID} exists; your identity is ${MY_BRIDGE_ID}. Run /persona to pin identity; do not adopt other agents' work."
-        exit 0
-    fi
-fi
 
 # Show recent KB findings
 KB_VENV="${KB_VENV:-$HOME/Projects/ai/kb/.venv/bin/python}"
@@ -132,18 +112,12 @@ except:
 fi
 
 echo "RESUME: Previous session $SESSION_ID"
-[[ -f "$HANDOFF" ]] && echo "  Handoff: $HANDOFF"
-
-KB_CHECKPOINT=""
-[[ -f "$HANDOFF" ]] && KB_CHECKPOINT=$(grep -oE 'kb-[0-9]{8}-[0-9]{6}-[a-f0-9]{6}' "$HANDOFF" | head -1)
-[[ -n "$KB_CHECKPOINT" ]] && echo "  KB Checkpoint: $KB_CHECKPOINT (SOURCE OF TRUTH)"
 [[ -n "$KB_RECENT" ]] && echo "  Recent KB ($PROJECT): $KB_RECENT"
 [[ -n "$OPEN_EPICS" ]] && echo "  Open plan epics:" && echo "$OPEN_EPICS"
 [[ -n "$IN_PROGRESS" ]] && echo "  In progress:" && echo "$IN_PROGRESS"
 
 echo ""
-echo "RESUME INSTRUCTIONS:"
-[[ -f "$HANDOFF" ]] && echo "- Read $HANDOFF for full context"
+echo "RESUME INSTRUCTIONS (handoff.md deprecated — resume = drain bridge mail, then your claimed beads):"
 if [[ "$MY_BRIDGE_ID" != "unknown" ]]; then
     echo "- Run: bd list --assignee=$MY_BRIDGE_ID --status=in_progress  (YOUR active work)"
     echo "- Run: bd list --ready --no-assignee  (unassigned work — claim before working)"
