@@ -248,11 +248,6 @@
       {
         "hooks": [
           {
-            "command": "$HOME/.claude/hooks/prior-art-gate.sh",
-            "timeout": 2000,
-            "type": "command"
-          },
-          {
             "command": "$HOME/.claude/hooks/weak-claim-gate.sh",
             "timeout": 3000,
             "type": "command"
