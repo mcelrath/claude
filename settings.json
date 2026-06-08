@@ -90,7 +90,7 @@
             "type": "command"
           },
           {
-            "command": "python3 $HOME/Projects/ai/kb/kb/hooks/symbol_surface.py",
+            "command": "python3 $HOME/.claude/hooks/symbol_surface.py",
             "timeout": 5000,
             "type": "command"
           }
@@ -138,12 +138,12 @@
             "type": "command"
           },
           {
-            "command": "python3 $HOME/Projects/ai/kb/kb/hooks/compose_time_check.py",
+            "command": "python3 $HOME/.claude/hooks/compose_time_check.py",
             "timeout": 5000,
             "type": "command"
           },
           {
-            "command": "python3 $HOME/Projects/ai/kb/kb/hooks/open_issues_surface.py",
+            "command": "python3 $HOME/.claude/hooks/open_issues_surface.py",
             "timeout": 8000,
             "type": "command"
           }
@@ -223,12 +223,12 @@
             "type": "command"
           },
           {
-            "command": "python3 $HOME/Projects/ai/kb/kb/hooks/compose_time_check.py",
+            "command": "python3 $HOME/.claude/hooks/compose_time_check.py",
             "timeout": 5000,
             "type": "command"
           },
           {
-            "command": "python3 $HOME/Projects/ai/kb/kb/hooks/open_issues_surface.py",
+            "command": "python3 $HOME/.claude/hooks/open_issues_surface.py",
             "timeout": 8000,
             "type": "command"
           }
