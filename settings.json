@@ -418,7 +418,9 @@
     "additionalDirectories": [
       "/tmp",
       "~/.claude/",
-      "/home/mcelrath/Physics"
+      "/home/mcelrath/Physics/claude",
+      "/home/mcelrath/Physics/secular-constraints",
+      "/home/mcelrath/Physics/mathlib4"
     ],
     "allow": [
       "Skill",
@@ -698,7 +700,9 @@
         "/home/mcelrath/.local/state",
         "/home/mcelrath/.cache",
         "/home/mcelrath/.beads",
-        "/home/mcelrath/Physics"
+        "/home/mcelrath/Physics/claude",
+        "/home/mcelrath/Physics/secular-constraints",
+        "/home/mcelrath/Physics/mathlib4"
       ]
     },
     "network": {

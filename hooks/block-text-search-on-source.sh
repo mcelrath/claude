@@ -75,34 +75,22 @@ fi
 if [ "$DETECTED_CAT" = "LEAN" ]; then
     cat >&2 <<'EOF'
 BLOCKED: text-search tools (grep/rg/etc) are not allowed on .lean files.
-Lean lemmas are searched by TYPE SIGNATURE, not by text — this catches
-attribute prefixes (`protected lemma`, `@[simp] lemma`) and cross-directory
-splits that anchor-regex / file-locality grep cannot.
+Lean declarations are searched by TYPE SIGNATURE or qualified name, not text —
+which catches attribute prefixes (`protected lemma`, `@[simp] lemma`) and
+cross-file splits that line-local grep misses.
 
-Use loogle instead (~/.local/bin/loogle, backed by systemd user unit
-loogle-server.service on port 8088):
-
-  loogle 'Matrix.PosDef.add'                       # by exact name
+Use a Lean-aware search instead (if the project provides these tools):
+  loogle 'Matrix.PosDef.add'                      # by exact name (type/name index of BUILT oleans)
   loogle 'Matrix.PosDef ?A → 0 < Matrix.det ?A'   # by type signature
-  loogle 'Real.summable_one_div_nat_*'             # by name pattern
+  lean-search NAME        # where NAME is DEFINED (source locator; prints file:line, then Read it)
+  lean-search -u NAME     # usages of NAME
+  lean-search -i MODULE   # who imports MODULE
 
-The wrapper is sub-100ms per query once the server is warm (1.5 min warmup
-at boot, cached across all Claude sessions on this host).
+For unbuilt/sorry files or when you don't know the qualified name, lean-search
+(source-level) covers what loogle (built-index) cannot.
 
-loogle indexes BUILT oleans by qualified-name/type. For things loogle can't do
-— locate a decl in an UNBUILT/sorry file, find USAGES, find IMPORTERS, or locate
-when you don't know the qualified name — use `lean-search` (source-level locator,
-prints file:line then you Read the file):
-  lean-search NAME            # where NAME is DEFINED
-  lean-search -u NAME         # usages of NAME
-  lean-search -i MODULE       # who imports MODULE
-
-If neither loogle nor lean-search expresses your search, surface to the user —
-DO NOT fall back to grep/rg/find/awk on .lean.
-
-Server status:  systemctl --user status loogle-server
-Server start:   systemctl --user start loogle-server
-Server logs:    journalctl --user -u loogle-server -n 50
+If neither tool is available or expressive enough, use `ast-grep --lang ...`
+or Read the file in full — do NOT fall back to grep/rg/find/awk on .lean.
 EOF
     exit 2
 fi
