@@ -1,11 +1,4 @@
-# Global Development Rules (all projects)
-
-This file is GLOBAL and must carry ZERO project-specific or ~/Physics content.
-Project rules live in each repo's own `CLAUDE.md` — e.g. `~/Physics/secular-constraints/CLAUDE.md`
-holds the Algebraic Genesis / Cl(4,4) / Lean / Mathlib specifics (canonical repos, object
-catalog, Lean-proof workflow, Mathlib fork survey).
-
----
+# Global Development Rules
 
 # STANDING USER ORDERS
 
@@ -48,9 +41,7 @@ Reviews are non-persistent. Do NOT use ExitPlanMode, `.approved` markers, or `Mo
 
 ## Follow-up Discipline (no orphan deferrals)
 
-Plans frequently defer work as "Out of scope" / "Follow-up" / "Deferred to a future epic." That category is **write-only by default**: it goes into plan text, the plan ships, and nothing in the workflow ever reads it again. Sessions end, /dispatch closes the epic, the deferred work vanishes from awareness. This is a systematic failure mode — pieces deferred this way are repeatedly the load-bearing fix that gets rediscovered only after multiple symptom-patching attempts.
-
-**Rule**: every deferred / follow-up / out-of-scope item in a plan MUST be a real `bd` issue, created BEFORE the plan is submitted for review, with `--deps=discovered-from:<this-epic-id>`. The plan refers to follow-ups by bd-ID, never by free text.
+Every deferred / follow-up / out-of-scope item in a plan MUST be a real `bd` issue, created BEFORE the plan is submitted for review, with `--deps=discovered-from:<this-epic-id>`. Refer to follow-ups by bd-ID, never free text.
 
 Plan section format:
 ```
@@ -118,12 +109,13 @@ Juggling 3+ peer/user requests, agents drop replies and thrash between tasks. Th
 
 ## Why .md creation is blocked
 
-`INVESTIGATION_*.md` / `*_AUDIT.md` files are unfindable after a few sessions. Hooks enforce. **Hook blocks are FINAL.** Route content:
+Hooks block new `.md` files (they go unfindable). Route content:
 
 - Finding / checkpoint / agent report → `~/.local/bin/kb add` or INLINE to dispatcher
 - Plan (multi-phase) → `~/.claude/plans/PLAN-<slug>.md` (allowlisted)
 - bd task note → `bd update <id> --notes "..."`
 - Architecture reference → Edit EXISTING `docs/reference/` doc (do not create new)
+- Short summary → just write it in your reply
 
 **kb-down fallback**: `~/.claude/pending-kb-adds/<UTC>-<session>.txt` with `# type:`, `# project:`, `# tags:` header; `kb flush-pending` drains. NEVER fall back to .md. **Existing .md files**: Edit and `git mv` always OK.
 
@@ -139,7 +131,7 @@ Juggling 3+ peer/user requests, agents drop replies and thrash between tasks. Th
 - Model defaults: Haiku lookups only; Sonnet implementation; Opus lead only (max 1/batch)
 - **VERIFY AGENT WORK**: Read what agents claim. Summaries describe intent, not what landed.
 - **AGENTS MUST READ, NOT GREP**: `grep sorry` matches comments; only Read disambiguates.
-- **HOOKS FIRE FOR SUBAGENTS** (Claude Code v2.1.145+; verified empirically on 2.1.154, 2026-05-30 — a sub-agent's `grep file.py` and partial `Read` were both blocked by the parent's PreToolUse hooks). PreToolUse/PostToolUse hooks DO fire for sub-agent tool calls; the hook input carries an `agent_id` field (present only for sub-agents) so a hook can scope behavior per origin. block-text-search, block-approximations, read-coverage-gate, etc. ENFORCE on agents — agents do NOT bypass them. settings.json hot-reloads (new hooks fire without restart). (The old "hooks don't fire for subagents" belief was true on ≤ v2.1.76 — GitHub #34692 — and is now false.) Still correct practice: agents use `lean-audit` for sorry/axiom counts and `ast-grep` for source-shape search (the right tools; grep-on-source is blocked for agents too), and the read-coverage-gate forces agents to read WHOLE files (partial/slice reads blocked via the agent_id branch).
+- **HOOKS FIRE FOR SUBAGENTS** (v2.1.145+). All PreToolUse/PostToolUse hooks enforce on sub-agents too — they do NOT bypass them (the hook input carries `agent_id` for per-origin scoping). So agent prompts must use `lean-audit`/`ast-grep` (not grep) and read WHOLE files, same as the main session. settings.json hot-reloads.
 
 **Agent preamble**: `"CRITICAL: the naive implementation would be X — do NOT do that. Required: Y."`
 
@@ -151,22 +143,9 @@ Juggling 3+ peer/user requests, agents drop replies and thrash between tasks. Th
 
 3+ parallel Opus agents: FORBIDDEN. Agent >10 min: likely stuck, kill. Agent reads >10 files without KB entry: scope too broad, kill. Mixed compute+theory prompt: SPLIT.
 
-### Rate-limit recovery — auto-`continue` resumed agents
+### Rate-limit recovery — resume, don't re-dispatch
 
-Subagents sometimes fail with `API Error: Server is temporarily limiting requests (not your usage limit) · Rate limited` — this is API-side throttling, not our quota. The agent returns with `status: completed` and a short result string containing "Rate limited", typically after only a handful of tool uses and well before doing real work.
-
-**Always resume rather than re-dispatch.** A new `Agent()` call starts fresh with zero memory of the prior run. `SendMessage(to=<agentId>, message="continue …")` resumes the agent from its prior transcript with full context — claimed bd tasks, files already read, partial work — all preserved.
-
-Pattern:
-1. Detect: agent task-notification result string contains "Rate limited" / "rate limit" / "temporarily limiting requests"
-2. Capture the agent's `agentId` from its original spawn result (`a...-...` format)
-3. `SendMessage(to=<agentId>, message="continue — you were rate-limited; pick up where you left off. <one-sentence reminder of the task scope + plan/bd-id reference>. If you've lost context: <terse re-statement of mission>. Prefer fewer tool calls if rate-limits persist (batch shell ops with && chaining; read each file once).")`
-4. Relaunch `bridge watch <handle>` per the Agent Bridge section
-5. End your turn; the resumed agent runs in background and notifies when done
-
-Do **not** re-dispatch via fresh `Agent()` for rate-limit failures — that loses any progress (bd task state, kb entries, partial code) the original agent made before the rate limit hit. Do re-dispatch if the failure is something OTHER than rate-limit (genuine error, agent gave up, etc.) — those are different failure modes.
-
-If an agent hits rate-limit repeatedly (3+ resumes without forward progress), pause and decide: either (a) wait a longer cooldown (5-10 min) before the next resume, or (b) do the work yourself in the main session if it's discrete enough to fit. The main session has its own quota; subagent quota appears to be separately throttled.
+A subagent that returns `status: completed` with "Rate limited" in its result hit API-side throttling (not our quota), usually before real work. **Resume it**: `SendMessage(to=<agentId>, "continue — you were rate-limited; pick up where you left off. <one-line task/bd-id reminder>")` preserves its transcript (claimed beads, files read, partial work). Do NOT fire a fresh `Agent()` for a rate-limit (loses all progress) — fresh dispatch is only for NON-rate-limit failures. If it re-limits 3+ times without progress: wait a 5–10 min cooldown, or do the work in the main session (separate quota).
 
 ## Concurrent Edit Detection
 
@@ -200,12 +179,6 @@ Canonical workflow for any such claim:
 3. **For breadth-after-Read on code, use `ast-grep`, not `rg`.** ast-grep matches AST patterns: `ast-grep --lang rust 'self.kernels.$_.forward($$$)'` finds code-shape queries text-grep misses. Use `rg` ONLY for literal strings — error messages, env-var names, file paths.
 4. **Only AFTER full Read** can you `rg` — and only to confirm, not to construct.
 
-Canonical code failure: `rg "X.execute"` audit finds 6 call sites to migrate; full Read reveals a sibling helper at the same entry point using `obj.kernels.*.forward` + `memcpy_d2h` — invisible to text-grep, deadlocks on first user run after migration ships.
-
-Canonical doc failure: `grep "atomic_store_n SYSTEM"` returns no hits; full Read of "Persistent worker ack protocol" reveals the same hazard documented under different vocabulary. Edit recommended would have duplicated an existing rule, or contradicted it.
-
-The cost of a 200-line Read is real; the cost of a shipped regression or a redundant/contradictory edit is higher.
-
 No mocks, stubs, or fake data.
 
 No backwards compatibility. No wrappers. No forwarding functions. No aliases. No dead code. DELETE wrong/superseded code — git history preserves it.
@@ -214,7 +187,7 @@ No `git add -A`, `git add .`, `git reset --hard`, `git push --force`.
 
 ## Destructive git operations — confirm with the human first
 
-`git stash drop`/`stash clear`, `reset --hard`/`--merge`, `clean -f`, `checkout -f`/`--force`, `switch --force`/`--discard-changes`, `worktree remove --force`, and whole-tree `checkout .`/`restore .` can ERASE uncommitted, stashed, or untracked work — content that is invisible to `git status` and unrecoverable past the gc window. A forensic audit of all sessions on this host found exactly one near-fatal data-loss incident, and it was this exact mechanism: a conflicted `git stash pop` "cleaned up" with `git checkout HEAD -- <files> && git stash drop` — destroying the ONLY copy of uncommitted work (recovered solely via `git fsck --dangling`).
+`git stash drop`/`stash clear`, `reset --hard`/`--merge`, `clean -f`, `checkout -f`/`--force`, `switch --force`/`--discard-changes`, `worktree remove --force`, and whole-tree `checkout .`/`restore .` can ERASE uncommitted/stashed/untracked work (invisible to `git status`, unrecoverable past the gc window).
 
 - **NEVER `git stash drop`/`stash clear` until the matching `git stash pop` exited 0 with NO conflict markers.** On a conflicted pop: resolve it, or `git stash branch <name>` to materialize the stash safely — never drop.
 - To set work aside, PREFER a throwaway commit (`git switch -c wip/<name> && git commit -am wip`) over `stash` — a commit is reachable and trivially recoverable; a dropped stash is not.
@@ -226,7 +199,7 @@ No `git add -A`, `git add .`, `git reset --hard`, `git push --force`.
 
 **You decide, then do it**: writing code, running tests, searching, recording KB, **committing completed work + closing its beads**. No "Should I proceed?"
 
-**Commit + close completed work — ALWAYS, never ask.** The moment a unit of work is validated/complete (a green build of a finished feature, a passed soak), `git commit --no-gpg-sign` the specific files AND `bd close` its completed beads in the same motion, automatically. Do NOT ask "should I commit / bank this?" or present commit-and-close as an option — "bank" (commit + close completed beads, leaving genuine unfinished/design follow-ups as open bd issues) is the DEFAULT, not a decision to surface. Agents systematically leave completed beads open and skip committing — losing the audit trail and the on-disk checkpoint. Do not be one of them.
+**Commit + close completed work — ALWAYS, never ask.** When a unit of work is validated/complete, `git commit --no-gpg-sign` the specific files AND `bd close` its beads in the same motion. Never ask "should I commit/bank this?" — it's the default, not a decision to surface. Leave genuine unfinished/design follow-ups as open bd issues.
 
 **User decides**: claiming tasks, research direction, architectural choices with multiple valid options. Use `AskUserQuestion`. NEVER: "What would you like...", "Would you like me to...", "Should I..."
 
@@ -260,14 +233,7 @@ No `git add -A`, `git add .`, `git reset --hard`, `git push --force`.
 
 ## Don't propose pauses
 
-Do not propose stopping. Do not say "next session," "for tonight," "since context is low," "good stopping point," "we can pick this up later," or similar. These are unprompted deferrals and they subvert the user's workflow.
-
-- **Compaction is a checkpoint, not a stop.** When context compacts, continue the work that was in flight. Do not greet the user as if it's a new session.
-- **Low context is a kb-add trigger.** If you genuinely have <10% context remaining, `kb add` a checkpoint and continue. The harness handles compaction.
-- **Errors / wedged hardware / blockers are stop signals from the system.** Reporting "GPU wedged, need reboot" is correct — that's the work blocking, not you choosing to stop. Reporting "this might be a good place to stop" is wrong — that's you choosing.
-- **The user decides when work stops.** Until they say so, keep going. If you finish the task they asked for, say "done" and report results — that's not a deferral, that's task completion. If you're mid-task, finish the task.
-
-A Stop hook (`~/.claude/hooks/block-unprompted-deferral.sh`) catches the most common defer phrases in your last turn and rejects the stop, forcing you to continue.
+Never propose stopping ("next session", "since context is low", "good stopping point", etc.) — `block-unprompted-deferral.sh` rejects these. Compaction is a checkpoint, not a stop. Low context is a kb-add trigger, then continue. Only the system stops you — "GPU wedged, need reboot" is a valid blocked-report; "good place to stop" is not. The user decides when work stops; otherwise finish the task or report "done".
 
 ## "Not Found" Is Not "Open"
 
@@ -377,16 +343,15 @@ Besides the BLOCKING hooks above, several hooks INJECT advisory context (they ne
 
 ## ast-grep gotcha — empty result is NOT "absent"
 
-`ast-grep` matches the AST **structurally**, so a pattern silently MISSES any node carrying a child the pattern omits → **false negatives**. An empty `ast-grep` result does NOT prove a symbol is absent, and trusting it risks a duplicate reimplementation (the "research before implementing" failure mode).
+`ast-grep` matches the AST structurally: a pattern misses any node with a child it omits. An empty result does NOT prove absence — never conclude "not found / no prior art" from one.
 
-- **Return annotations break the def pattern**: `def $F($$$): $$$` does NOT match a function with a return type — `def f(...) -> T:` has a `return_type` child the pattern has no slot for. Verified: `def fermion_masses($$$): $$$` → empty, though the function exists as `def fermion_masses(...) -> dict:`; `def $F($$$) -> $R: $$$` matches it. This codebase annotates returns heavily, so the plain pattern misses many defs.
-- **Robust def-search**: run BOTH `def $F($$$): $$$` and `def $F($$$) -> $R: $$$`, or locate a known name with `python3 -c "import inspect; from <mod> import <f>; print(inspect.getsourcelines(<f>)[1])"`. Never conclude "not found / no prior art" from a single empty plain-def `ast-grep`.
+- Return annotations break `def $F($$$): $$$` (won't match `def f(...) -> T:`). Run BOTH `def $F($$$): $$$` and `def $F($$$) -> $R: $$$`, or locate by name: `python3 -c "import inspect; from <mod> import <f>; print(inspect.getsourcelines(<f>)[1])"`.
 
 ## Symbol usage-finding: use the LSP, never grep, and don't trust an empty ast-grep
 
 "Where is symbol X **defined / used / who-calls-it**" is a SEMANTIC question — answer it with the **LSP tool**, not ast-grep and not grep:
-- **ast-grep is structural** — a bare-identifier pattern matches only standalone identifier *expression* nodes, so it silently misses field accesses (`p2p.X[i]`), declarations (`X: T`), and type positions. This produced a wrong "the field is never set → the handoff is dormant" conclusion that nearly shipped a bigger-than-needed plan; `findReferences` then found 6 real uses across 3 files. ast-grep stays for code-SHAPE queries only.
-- **grep stays banned** (`block-text-search-on-source`) — it encourages shallow reading. Route through the LSP.
+- **ast-grep is structural** — a bare-identifier pattern matches only standalone identifier expression nodes; it misses field accesses (`p2p.X[i]`), declarations (`X: T`), and type positions. Use it for code-SHAPE queries only.
+- **grep stays banned** (`block-text-search-on-source`). Route usage-finding through the LSP.
 
 LSP operations: `findReferences`, `goToDefinition`, `incomingCalls`/`outgoingCalls` (call graph), `workspaceSymbol` (find by name).
 
