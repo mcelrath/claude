@@ -9,7 +9,11 @@ Locates the claude-kb-state session file using:
 import json
 import os
 
-STATE_DIR = '/tmp/claude-kb-state'
+# Persistent (reboot-surviving) session-state root (kb-h3b). Was
+# /tmp/claude-kb-state (tmpfs, wiped on reboot — lost sub-TTL state like the
+# bridge owed-deferred log). CLAUDE_STATE_DIR override is for test isolation;
+# must agree with the shell side (hooks/lib/state.sh).
+STATE_DIR = os.environ.get('CLAUDE_STATE_DIR') or os.path.expanduser('~/.claude/state')
 _MAX_WALK = 8
 
 

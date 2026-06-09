@@ -2,6 +2,7 @@
 usage-data/
 teams/
 sessions/
+state/
 cache/
 chrome/
 debug/
