@@ -688,6 +688,8 @@
     "excludedCommands": [
       "kb *",
       "bd *",
+      "/home/mcelrath/.local/bin/bd *",
+      "~/.local/bin/bd *",
       "python3 *",
       "loogle *",
       "bridge *",
@@ -696,7 +698,8 @@
       "~/.local/bin/kb *",
       "/home/mcelrath/.local/bin/kb *",
       "build-manager *",
-      "lake *"
+      "lake *",
+      "dolt *"
     ],
     "filesystem": {
       "allowWrite": [
