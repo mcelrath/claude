@@ -313,7 +313,7 @@ Hooks intercept tool calls. **Hook blocks are FINAL.** Each prints an actionable
 
 | Hook | Trigger | Escape route |
 |------|---------|--------------|
-| **block-text-search-on-source** | `grep`/`rg`/`find`/`awk`/`sed` on source files (.py, .lean, .md, etc.) | Python → `ast-grep --lang python --pattern '$X'`; markdown/other → `ast-grep -c ~/.config/ast-grep/sgconfig.yml --lang <lang>` or the `Read` tool; symbol usage → LSP (see *Read Before You Write & Searching*). Lean search tooling (loogle / lean-search / lean-audit) → see the project `CLAUDE.md`. |
+| **block-text-search-on-source** | `grep`/`rg`/`find`/`awk`/`sed` on source files (.py, .lean, .md, etc.) | Python → `ast-grep --lang python --pattern '$X'`; markdown → `ast-grep --lang markdown --pattern '$X'` (grammar wired via ~/sgconfig.yml); other → the `Read` tool; symbol usage → LSP (see *Read Before You Write & Searching*). Lean search tooling (loogle / lean-search / lean-audit) → see the project `CLAUDE.md`. |
 | **block-markdown-via-bash** / **block-markdown-files** | Bash/Write creating new `.md` file | Route per ".md Creation Is Blocked" section below. |
 | **block-print-spam** | ≥3 banner/narration echo/print lines in one Bash call | Strip all banners. Do NOT split into multiple calls. |
 | **block-large-heredoc** | Heredoc body >30 lines to interpreter | Write to script file, then execute. |
