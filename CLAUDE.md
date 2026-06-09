@@ -215,9 +215,6 @@ The cost of a 200-line Read is real; the cost of a shipped regression or a redun
 No mocks, stubs, or fake data.
 
 No backwards compatibility. No wrappers. No forwarding functions. No aliases. No dead code. DELETE wrong/superseded code — git history preserves it.
-No mocks, stubs, or fake data.
-
-No backwards compatibility. No wrappers. No forwarding functions. No aliases. No dead code. DELETE wrong/superseded code — git history preserves it.
 
 No `git add -A`, `git add .`, `git reset --hard`, `git push --force`.
 
