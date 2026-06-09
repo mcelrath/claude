@@ -77,6 +77,14 @@ CASES = [
     # ---- auto-approve-readonly-bash.py ----
     ('ro: cat|head approves',        py('auto-approve-readonly-bash.py'), bash_cmd('cat x.txt | head -5'), 'approve', None),
     ('ro: rm defers (not read-only)', py('auto-approve-readonly-bash.py'), bash_cmd('rm x.txt'), 'defer', None),
+
+    # ---- block-followup-without-bd-id.sh (kb-94j: restored 'deferred' trigger) ----
+    ('followup: deferred-to without bd-ID blocks', bash('block-followup-without-bd-id.sh'),
+        {'tool_name': 'Write', 'tool_input': {'file_path': '/x/.claude/plans/PLAN-z.md',
+         'content': '- Strategy B: deferred to a follow-up epic.\n'}}, 'block', None),
+    ('followup: deferred-to WITH bd-ID passes', bash('block-followup-without-bd-id.sh'),
+        {'tool_name': 'Write', 'tool_input': {'file_path': '/x/.claude/plans/PLAN-z.md',
+         'content': '- kb-1234: sync upstream, deferred to a follow-up epic.\n'}}, 'pass', None),
 ]
 
 
