@@ -389,6 +389,15 @@
             "type": "command"
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "command": "python3 $HOME/.claude/hooks/bridge-owed-reply-stop.py",
+            "timeout": 8000,
+            "type": "command"
+          }
+        ]
       }
     ],
     "UserPromptSubmit": [
