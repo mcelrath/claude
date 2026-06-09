@@ -157,9 +157,9 @@ A subagent that returns `status: completed` with "Rate limited" in its result hi
 
 **Hook blocks are FINAL.** If a hook blocks your tool call (exit 2), STOP. Do not rephrase or use a different tool. Tell the user.
 
-## Read Before You Write
+## Read Before You Write & Searching
 
-If you cite, reference, or depend on a file/theorem/function, you MUST have READ it first. No exceptions. If reading X would help, READ X — do not ask the user for permission.
+If you cite/reference/depend on a file/theorem/function, you MUST have READ it first. If reading X helps, READ X — don't ask permission. Before any new function: search for similar names and REUSE existing code.
 
 **Checklist before any plan / review / dispatch prompt**:
 - [ ] Every cited theorem / function / module → Read its definition (not just name)
@@ -167,17 +167,13 @@ If you cite, reference, or depend on a file/theorem/function, you MUST have READ
 - [ ] Every file path cited as "existing" → `ls` + Read confirms
 - [ ] Every "this covers Y" claim → Read the file; verify
 
-**Enforcement**: any plan/review/dispatch lacking a "Files read in full:" preamble is incomplete. expert-review rejects on sight.
+**Enforcement**: any plan/review/dispatch lacking a "Files read in full:" preamble is incomplete; expert-review rejects on sight.
 
-Before implementing any new function: search codebase for similar names. USE existing code instead of reimplementing.
+**Coverage/structure/behavior claims come from Read, not grep.** `grep`/`rg` finds string matches, not structural dependencies or semantically-equivalent prose. To settle "does X cover/reach/handle Y": (1) identify the source-of-truth file(s)/section(s)/test(s); (2) Read each IN FULL — for code, recursively Read callers (to the public API) + callees (to std/syscalls), incl. indirect calls (trait methods, callbacks); (3) only then `rg`, to confirm not construct, and only for literal strings (error messages, env-var names, paths).
 
-**Any claim about what a file/codebase/doc/test "covers", "reaches", "handles", or "does" must come from Read, not grep.** `grep`/`rg` finds string matches; it does NOT find structural dependencies, semantic coverage, or prose that discusses a topic in different vocabulary than your search terms. Using text-grep to answer coverage/structure/behavior questions is a systematic Claude failure mode that spans code (call-graph reachability, migration scope), docs (whether topic X is covered), and tests (whether behavior Y is asserted).
-
-Canonical workflow for any such claim:
-1. **Identify the source of truth** — the file(s), section(s), or test(s) that would settle the claim.
-2. **Read each in full** — not just matching lines. For code, recursively Read upstream callers (to public API boundary) and downstream callees (to std/syscalls/external), paying attention to indirect calls (trait methods, helper modules, callback registries). For docs, Read the TOC and every plausibly-related section. For tests, Read each test body, not just names.
-3. **For breadth-after-Read on code, use `ast-grep`, not `rg`.** ast-grep matches AST patterns: `ast-grep --lang rust 'self.kernels.$_.forward($$$)'` finds code-shape queries text-grep misses. Use `rg` ONLY for literal strings — error messages, env-var names, file paths.
-4. **Only AFTER full Read** can you `rg` — and only to confirm, not to construct.
+**Finding symbols / usages is a SEMANTIC question — never grep:**
+- Definitions / references / who-calls-it → the **LSP** (`findReferences`, `goToDefinition`, `incomingCalls`/`outgoingCalls`, `workspaceSymbol`). rust-analyzer indexes lazily: probe `workspaceSymbol` for a known struct and retry until it returns ("not indexed" ≠ absent); use the CURRENT line/col (re-Read after any edit); an empty result is trustworthy ONLY after warm-up at the right position.
+- Code-SHAPE patterns → `ast-grep` (structural; for `rg`-able literals use `rg`). It MISSES any node with a child the pattern omits — `def $F($$$): $$$` won't match `def f(...) -> T:`, so run BOTH that and `def $F($$$) -> $R: $$$`, or locate by name: `python3 -c "import inspect; from <mod> import <f>; print(inspect.getsourcelines(<f>)[1])"`. An empty ast-grep does NOT prove absence — never conclude "not found / no prior art" from one.
 
 No mocks, stubs, or fake data.
 
@@ -340,33 +336,3 @@ Besides the BLOCKING hooks above, several hooks INJECT advisory context (they ne
 | `BRIDGE_UNREAD` / `BRIDGE_PENDING_REPLIES` / `BRIDGE_OWED_REPLIES` | Stop hooks | Unread peer msgs / replies you're owed / replies you OWE. `recv`; for owed, `bridge send … --reply <id>` (or defer — see Work Queueing). |
 | `[STRUCTURAL-FACT … DO NOT RECOMPUTE]` / `[SORRY-CONTRACT WAITING: …]` | compose_time_check | Value/contract already established. Cite certified_data / route to the owner; do not re-derive. |
 | `🛑 KB-INFRA DOWN (…)` | ash_health gate | Embedding/LLM server down → kb-search + surfacing are BLIND (empty ≠ "nothing found"). STOP retrieval-dependent derivation; tell the user; mechanical-only until recovered. |
-
-## ast-grep gotcha — empty result is NOT "absent"
-
-`ast-grep` matches the AST structurally: a pattern misses any node with a child it omits. An empty result does NOT prove absence — never conclude "not found / no prior art" from one.
-
-- Return annotations break `def $F($$$): $$$` (won't match `def f(...) -> T:`). Run BOTH `def $F($$$): $$$` and `def $F($$$) -> $R: $$$`, or locate by name: `python3 -c "import inspect; from <mod> import <f>; print(inspect.getsourcelines(<f>)[1])"`.
-
-## Symbol usage-finding: use the LSP, never grep, and don't trust an empty ast-grep
-
-"Where is symbol X **defined / used / who-calls-it**" is a SEMANTIC question — answer it with the **LSP tool**, not ast-grep and not grep:
-- **ast-grep is structural** — a bare-identifier pattern matches only standalone identifier expression nodes; it misses field accesses (`p2p.X[i]`), declarations (`X: T`), and type positions. Use it for code-SHAPE queries only.
-- **grep stays banned** (`block-text-search-on-source`). Route usage-finding through the LSP.
-
-LSP operations: `findReferences`, `goToDefinition`, `incomingCalls`/`outgoingCalls` (call graph), `workspaceSymbol` (find by name).
-
-### Reliable-use procedure (rust-analyzer indexes lazily — a cold query LIES)
-1. **Warm + gate.** rust-analyzer (the LSP plugin) indexes the whole workspace on first use — minutes on a big tree (it runs `cargo check`, incl. build.rs, internally). The SessionStart `rust-analyzer-prewarm.sh` hook backgrounds a `cargo check` to shrink that, but the in-memory index still builds on the first LSP-tool call. So before relying on the LSP, issue one cheap probe — `workspaceSymbol` for a known struct — and **retry until it returns**. "No symbols found / not indexed" means *wait and retry*, NEVER "absent".
-2. **Exact, current position.** LSP is line/col-based (1-based). After ANY edit the line numbers shift — re-Read (or use `documentSymbol`) to get the symbol's CURRENT line/col right before `findReferences`/`goToDefinition`. A stale position silently returns nothing.
-3. **Empty ≠ absent.** Only an empty `findReferences` taken AFTER warm-up AND at the correct position is a trustworthy "no usages." Confirm dead/unused code via the LSP at the right position — never via an empty ast-grep.
-
-# .md Creation Is Blocked
-
-Hooks block new `.md` files. Route content:
-- Finding / checkpoint / agent report → `~/.local/bin/kb add` or INLINE to dispatcher
-- Plan (multi-phase) → `~/.claude/plans/PLAN-<slug>.md` (allowlisted)
-- Task note → `bd update <id> --notes "..."`
-- Architecture reference → Edit EXISTING `docs/reference/` doc
-- Short summary → just write it in your reply
-
-Existing `.md` Edit / `git mv` always OK.
