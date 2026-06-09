@@ -1,11 +1,9 @@
-# Project: Algebraic Genesis (tag: algebraic-genesis)
+# Global Development Rules (all projects)
 
-## Canonical repositories for this project:
-- ~/Physics/secular-constraints/ math-framed branch of Algebraic Genesis (code in cliffird_common/, cl11/, cl22/, cl44/)
-- ~/Physics/mathlib4/ (ag git branch) mathlib contributions intended for upstream
-- ~/Physics/claude/ physics-framed repository for Algebraic Genesis (proofs in proofs/, tex in *.tex and sections/)
-
-# Global Development Rules
+This file is GLOBAL and must carry ZERO project-specific or ~/Physics content.
+Project rules live in each repo's own `CLAUDE.md` — e.g. `~/Physics/secular-constraints/CLAUDE.md`
+holds the Algebraic Genesis / Cl(4,4) / Lean / Mathlib specifics (canonical repos, object
+catalog, Lean-proof workflow, Mathlib fork survey).
 
 ---
 
@@ -77,10 +75,6 @@ A bd-ID makes the work first-class: `bd ready` will surface it in future session
 **Session-start obligation**: every new session surfaces open follow-ups from epics closed in the last 30 days, so they cannot fall off the radar between sessions.
 
 A hook enforces the bd-ID requirement on `Write` to `~/.claude/plans/PLAN-*.md` (see `~/.claude/hooks/block-followup-without-bd-id.sh`).
-
-## Mathlib Fork Survey Discipline
-
-Plans citing Mathlib lemmas must include: `## Mathlib fork survey / - loogle 'LemmaName': found at X.lean:NNN`. Use loogle at `~/Physics/loogle/` (port 8088). Bare grep is fallback. Search WHOLE `~/Physics/mathlib4/Mathlib/` tree; try variant forms before declaring gap.
 
 ## Session Management
 
@@ -255,11 +249,8 @@ No `git add -A`, `git add .`, `git reset --hard`, `git push --force`.
 | Starting epic without expert-review | ALL epics get expert-review first. No exceptions. |
 | `Task(..., max_turns=N, ...)` | Use STOPPING CONDITIONS instead. |
 | Dispatching agents to implement from long conversation | State key constraint first: "naive impl = X, DO NOT do that." |
-| Reviewing a plan by reading plan doc + code without first searching `proofs.md` | LEAN-BLIND REVIEW. The plan's premise may be superseded by a Lean theorem (operator origin, coupling constant, interaction order). A review that doesn't check Lean can approve a plan whose foundation is already proven wrong — or already proven right. |
-| Analyzing operator structure by reading Python source first | LEAN-BLIND ANALYSIS. The operator's origin, coupling value, and algebraic identity are axiomatized in Lean. Python implements; Lean proves. Check Lean first. |
 | Enumerating migration surface or refactor scope via `rg "X.method"` alone | GREP-BLIND AUDIT. Read affected files + upstream callers + downstream callees IN FULL first. For code-shape queries use `ast-grep --lang <lang> '<AST pattern>'`, not `rg`. Text-grep is for literal strings only. Sibling helpers using different APIs are invisible to text-grep but reachable from the same entry point — they ship as deadlocks. |
 | `may already say` / `probably already covered` / `I think the doc has` / `the test likely covers` / `that function probably handles` | UNVERIFIED-COVERAGE HEDGE. The hedge proves you didn't Read. STOP and Read the relevant sections / files in full before making the claim. Hedges generalize beyond docs — they also appear when speculating about test coverage, function behavior, or call-graph reachability without verification. Hedge = STOP signal, not a softener you ship. |
-| Citing a Mathlib lemma by file:line without `grep`-ing `~/Physics/mathlib4/` first | HALLUCINATED CITATION. Survey the fork first (see Mathlib Fork Survey Discipline above). |
 | Symbol k (or any symbol) used for two different quantities in same plan/message | NOTATION CONFLICT. Declare a Notation section first when >2 algebraic quantities are in play. |
 | Plan contradicts CLAUDE.md convention | CLAUDE.MD WINS. Surface the contradiction to dispatcher; do NOT silently propagate the plan's version. |
 | `next session` / `for tonight` / `pick this up later` / `tomorrow` / `call it a day` / `wrap up for now` | UNPROMPTED DEFERRAL. Do not propose stopping. Compaction is a checkpoint, not a stop. The user decides when to stop; you do not propose it. If you have unfinished work, continue it. |
@@ -403,26 +394,6 @@ LSP operations: `findReferences`, `goToDefinition`, `incomingCalls`/`outgoingCal
 1. **Warm + gate.** rust-analyzer (the LSP plugin) indexes the whole workspace on first use — minutes on a big tree (it runs `cargo check`, incl. build.rs, internally). The SessionStart `rust-analyzer-prewarm.sh` hook backgrounds a `cargo check` to shrink that, but the in-memory index still builds on the first LSP-tool call. So before relying on the LSP, issue one cheap probe — `workspaceSymbol` for a known struct — and **retry until it returns**. "No symbols found / not indexed" means *wait and retry*, NEVER "absent".
 2. **Exact, current position.** LSP is line/col-based (1-based). After ANY edit the line numbers shift — re-Read (or use `documentSymbol`) to get the symbol's CURRENT line/col right before `findReferences`/`goToDefinition`. A stale position silently returns nothing.
 3. **Empty ≠ absent.** Only an empty `findReferences` taken AFTER warm-up AND at the correct position is a trustworthy "no usages." Confirm dead/unused code via the LSP at the right position — never via an empty ast-grep.
-
-## Lean Audit — `lean-audit`
-
-`lean-audit <file-or-dir>` is the ONLY correct way to count sorry/axiom in Lean files. It parses comments (nested `/- -/`, `--`) and only flags code-level occurrences. `grep sorry` matches comment text and WILL give wrong counts — this has caused multiple wrong review verdicts.
-
-```
-lean-audit <file.lean>          # source scan + deep (#print axioms) if oleans exist
-lean-audit <directory/>         # recursive, per-file
-lean-audit <path> --json        # programmatic output
-lean-audit <path> --no-deep     # skip #print axioms
-lean-audit <path> --no-warnings # only sorry/axiom/:=True (no native_decide etc.)
-```
-
-Deep mode auto-enables when `.olean` exists for a file: runs `#print axioms` via `lake env lean --stdin` to catch `sorryAx` transitively (even through `opaque`). Output shows `[deep]` tag per file.
-
-**Deep mode fixes (2026-06-03)**: deep mode now issues `#print axioms` against the FULLY-QUALIFIED name (it tracks the `namespace` stack). Before this fix it queried the BARE name, which failed to resolve ('Unknown constant') for every namespaced decl, so deep mode silently verified NOTHING and printed a false `CLEAN [deep]` (this also no-op'd the transitive sorryAx check). Consequences now: (a) `CLEAN [deep]` genuinely means no axioms beyond `propext`/`Classical.choice`/`Quot.sound`; (b) transitive `native_decide`/`Lean.ofReduceBool` is surfaced as a `nonstd-axiom` line — flagged, but NON-fatal (allowed by policy) and it does NOT flip the exit code; (c) `private` decls are skipped (cannot be `#print`ed from outside their module — checked at build time instead, NOT reported as `unresolved`); (d) a name that still fails to resolve is reported `unresolved` rather than passing as CLEAN. CAVEAT: `CLEAN [deep]` only flags axioms/sorryAx — it does NOT validate the STATEMENT (a tautological/false statement passes). For a #print-axioms-critical claim, also run a direct `lake env lean` `#print axioms` on the qualified name.
-
-**Detects**: sorry, admit, axiom, := True, unsafeCoerce/Cast, implemented_by, native_decide (source-level AND transitive via deep `nonstd-axiom`), trustMe, trivial bodies, rfl-witness tautologies, type : True, ∃ _ True.
-
-**Hooks fire for subagents (v2.1.145+), and grep-on-`.lean` is blocked for them too — but `lean-audit` is the right tool regardless** (grep matches comment text → wrong counts; enforcement is not the only reason). Agent prompts needing sorry counts should still say: `"Use lean-audit <path> to count sorries — do NOT use grep/rg on .lean files."`
 
 # .md Creation Is Blocked
 

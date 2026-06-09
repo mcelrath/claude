@@ -20,7 +20,18 @@ TOOL_NAME=$(echo "$INPUT" | python3 -c "import sys,json; print(json.load(sys.std
 SESSION_ID=$(echo "$INPUT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('session_id',''))" 2>/dev/null)
 [ "$TOOL_NAME" != "Bash" ] && exit 0
 
-CMD=$(echo "$INPUT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('tool_input',{}).get('command',''))" 2>/dev/null)
+CMD=$(CLAUDE_MD_HOOK_INPUT="$INPUT" python3 <<'PYEOF' 2>/dev/null
+import os, json, re
+cmd = (json.loads(os.environ.get('CLAUDE_MD_HOOK_INPUT') or '{}').get('tool_input') or {}).get('command', '') or ''
+# Blank git-commit message bodies (-m / --message "..."/'...', incl. multi-line)
+# BEFORE .md-creation detection: a commit MESSAGE that cites a .md path or
+# describes a redirect/tee/arrow is prose, not a file operation, and must not
+# false-trigger the block (this bug blocked legit `git commit -m "...->X.md..."`).
+cmd = re.sub(r'(-m|--message)\s+"(?:[^"\\]|\\.)*"', r'\1 MSG', cmd, flags=re.S)
+cmd = re.sub(r"(-m|--message)\s+'(?:[^'\\]|\\.)*'", r'\1 MSG', cmd, flags=re.S)
+print(cmd, end='')
+PYEOF
+)
 
 # Quick pre-check: does the command mention .md at all?
 if [[ "$CMD" != *.md* ]]; then
@@ -45,10 +56,13 @@ md_asked_flag_fresh "$SESSION_ID" && exit 0
 SUSPECT=0
 SUSPECT_PATH=""
 
-# (a) Redirect creation: `> x.md`, `>> x.md`.
-if [[ "$CMD" =~ \>\>?[[:space:]]*([^|\&\;\<\> ]+\.md)([[:space:]]|$|\;|\&|\|) ]]; then
+# (a) Redirect creation: `> x.md`, `>> x.md`. The `>` must be a REAL redirect —
+# require the char before it is start/space/digit(fd)/&, NOT `-` or `=` (so an
+# arrow `->`/`=>` in a commit message or prose, e.g. `foo -> bar/X.md`, does NOT
+# false-match as a redirect; that bug blocked legit `git commit -m "...->...md"`).
+if [[ "$CMD" =~ (^|[[:space:]]|[0-9]|\&)\>\>?[[:space:]]*([^|\&\;\<\> ]+\.md)([[:space:]]|$|\;|\&|\|) ]]; then
     SUSPECT=1
-    SUSPECT_PATH="${BASH_REMATCH[1]}"
+    SUSPECT_PATH="${BASH_REMATCH[2]}"
 fi
 # (b) tee creation.
 if [ "$SUSPECT" = "0" ] && [[ "$CMD" =~ (^|[[:space:]\;\&\|])tee([[:space:]]+-[a-zA-Z]+)*[[:space:]]+([^[:space:]]+\.md)([[:space:]]|$|\;|\&|\|) ]]; then
