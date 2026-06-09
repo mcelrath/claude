@@ -131,7 +131,7 @@ Hooks block new `.md` files (they go unfindable). Route content:
 - Model defaults: Haiku lookups only; Sonnet implementation; Opus lead only (max 1/batch)
 - **VERIFY AGENT WORK**: Read what agents claim. Summaries describe intent, not what landed.
 - **AGENTS MUST READ, NOT GREP**: `grep sorry` matches comments; only Read disambiguates.
-- **HOOKS FIRE FOR SUBAGENTS** (v2.1.145+). All PreToolUse/PostToolUse hooks enforce on sub-agents too — they do NOT bypass them (the hook input carries `agent_id` for per-origin scoping). So agent prompts must use `lean-audit`/`ast-grep` (not grep) and read WHOLE files, same as the main session. settings.json hot-reloads.
+- **HOOKS FIRE FOR SUBAGENTS** (v2.1.145+). All PreToolUse/PostToolUse hooks enforce on sub-agents too — they do NOT bypass them (the hook input carries `agent_id` for per-origin scoping). So agent prompts must use `ast-grep` (not grep) and read WHOLE files, same as the main session. settings.json hot-reloads.
 
 **Agent preamble**: `"CRITICAL: the naive implementation would be X — do NOT do that. Required: Y."`
 
@@ -163,7 +163,6 @@ If you cite/reference/depend on a file/theorem/function, you MUST have READ it f
 
 **Checklist before any plan / review / dispatch prompt**:
 - [ ] Every cited theorem / function / module → Read its definition (not just name)
-- [ ] Every Mathlib lemma → survey the fork first (loogle)
 - [ ] Every file path cited as "existing" → `ls` + Read confirms
 - [ ] Every "this covers Y" claim → Read the file; verify
 
@@ -314,7 +313,7 @@ Hooks intercept tool calls. **Hook blocks are FINAL.** Each prints an actionable
 
 | Hook | Trigger | Escape route |
 |------|---------|--------------|
-| **block-text-search-on-source** | `grep`/`rg`/`find`/`awk`/`sed` on source files (.py, .lean, .md, etc.) | Python: `ast-grep --lang python --pattern '$X'`. Lean: `lean-audit <path>` (sorry/axiom counts), `loogle '"substr"'` (name-substring) / `loogle 'Qualified.Name'` / type-search — these index DECLARATION names, NOT file/module names (and a file's name can differ from its namespace, e.g. `Two_PI_AllOrders.lean` ↔ `TwoPI_AllOrders`), so a file/module-name query returns EMPTY ("0 declarations" / `unknown identifier`) = a query-FORM signal, **NOT absence**. For FILE existence use `lean-search -f <Name>` (as of 2026-06-03 lean-search DOES index file/module names — matches stem, dotted `A.B.Foo`, or path `B/Foo`) or `fd`/`Read`; for MODULE importers use `lean-search -i <Module.Path>`; NEVER conclude "X doesn't exist/unbuilt/unverifiable" from an empty decl-search — and note `lean-search NAME` decl-mode now ALSO appends a "FILES matching" section, so an empty DECLARATIONS list with a non-empty FILES list means NAME is a module/file (present), NOT absent. (`lean-search NAME`/`-f NAME`/`-u NAME`/`-i MODULE` = ALLOWED source-level locate(decls+files)/files/usages/importers — for unbuilt/sorry files or unknown qualified name. And: lean-audit/build COUNT sorries/axioms but do NOT validate the STATEMENT — a sorry on a false/vacuous statement is a soundness hole they pass; READ the statement.) Markdown: `ast-grep -c ~/.config/ast-grep/sgconfig.yml --lang markdown ...`. Or use the `Read` tool. |
+| **block-text-search-on-source** | `grep`/`rg`/`find`/`awk`/`sed` on source files (.py, .lean, .md, etc.) | Python → `ast-grep --lang python --pattern '$X'`; markdown/other → `ast-grep -c ~/.config/ast-grep/sgconfig.yml --lang <lang>` or the `Read` tool; symbol usage → LSP (see *Read Before You Write & Searching*). Lean search tooling (loogle / lean-search / lean-audit) → see the project `CLAUDE.md`. |
 | **block-markdown-via-bash** / **block-markdown-files** | Bash/Write creating new `.md` file | Route per ".md Creation Is Blocked" section below. |
 | **block-print-spam** | ≥3 banner/narration echo/print lines in one Bash call | Strip all banners. Do NOT split into multiple calls. |
 | **block-large-heredoc** | Heredoc body >30 lines to interpreter | Write to script file, then execute. |
