@@ -24,6 +24,7 @@ except Exception:
 KB_SCRIPT = os.environ.get('KB_SCRIPT', os.path.expanduser('~/Projects/ai/kb/kb.py'))
 KB_VENV = os.environ.get('KB_VENV', os.path.expanduser('~/Projects/ai/kb/.venv/bin/python'))
 SIM_FLOOR = 0.42      # cosine similarity floor; below this is cross-domain noise
+                      # (tuned: 0.55 on-topic hit passed, ~0.40 weak matches dropped)
 MAX_SURFACE = 3
 MIN_PROMPT_LEN = 25
 
