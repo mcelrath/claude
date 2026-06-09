@@ -16,7 +16,7 @@ HOOK_SESSION_ID=$(echo "$HOOK_INPUT" | jq -r '.session_id // ""' 2>/dev/null)
 
 PROJECT_NAME=$(basename "$(git rev-parse --show-toplevel 2>/dev/null || pwd)")
 
-STATE_DIR="/tmp/claude-kb-state"
+source "$(dirname "$0")/lib/state.sh"
 if [[ -n "$HOOK_SESSION_ID" ]]; then
     CURRENT_SESSION_ID="$HOOK_SESSION_ID"
 elif [[ -f "$STATE_DIR/session-$PPID" ]]; then

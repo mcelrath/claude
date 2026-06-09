@@ -10,8 +10,7 @@
 #       - kb search/list output: result IDs  (prevents re-showing seen results)
 #       - kb get output: the fetched ID      (dedupe-kb-get.sh also writes this)
 
-STATE_DIR="/tmp/claude-kb-state"
-mkdir -p "$STATE_DIR"
+source "$(dirname "$0")/lib/state.sh"
 
 INPUT=$(cat)
 TOOL_NAME=$(echo "$INPUT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('tool_name',''))" 2>/dev/null)

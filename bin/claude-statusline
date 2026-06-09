@@ -5,6 +5,7 @@
 # Source provider context helper (for fallback when Claude Code doesn't report context size)
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 source "$SCRIPT_DIR/hooks/lib/claude-env.sh" 2>/dev/null
+source "$SCRIPT_DIR/hooks/lib/state.sh" 2>/dev/null
 source "$SCRIPT_DIR/hooks/lib/provider-context.sh" 2>/dev/null
 
 # ANSI colors
@@ -70,10 +71,10 @@ fi
 
 # Write context info for hooks to read (session-isolated)
 session_id_early=$(echo "$input" | jq -r '.session_id // ""')
-if [[ -n "$session_id_early" && -d /tmp/claude-kb-state ]]; then
+if [[ -n "$session_id_early" && -n "${STATE_DIR:-}" && -d "$STATE_DIR" ]]; then
     printf '{"context_window_size":%d,"input_tokens":%d,"percent":%d}' \
         "$context_size" "$input_tokens" "$percent" \
-        > "/tmp/claude-kb-state/${session_id_early}-context"
+        > "$STATE_DIR/${session_id_early}-context"
 fi
 
 # Build context bar (20 chars wide) with cached/fresh distinction

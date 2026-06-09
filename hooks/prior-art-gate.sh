@@ -11,7 +11,7 @@ fi
 # (The physics Edit/Write prior-art gate was split out to
 # secular-constraints/.claude/hooks/physics-edit-prior-art.sh — kb-bp4 P5.)
 
-STATE_DIR="/tmp/claude-kb-state"
+source "$(dirname "$0")/lib/state.sh"
 
 INPUT=$(cat)
 TOOL_NAME=$(echo "$INPUT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('tool_name',''))" 2>/dev/null)

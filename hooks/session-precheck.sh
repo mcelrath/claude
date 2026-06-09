@@ -2,7 +2,7 @@
 # session-precheck.sh - SessionStart pre-init checks (kb-6jp consolidation).
 # Merges cleanup-stale-sessions.sh (multi-session warn) + team-cleanup.sh (team
 # reconnect/orphan-cleanup). MUST run BEFORE session-init.sh: the team logic reads
-# the OLD session id from /tmp/claude-kb-state/session-$PPID before session-init
+# the OLD session id from $STATE_DIR/session-$PPID before session-init
 # overwrites it with the new one.
 source "$(dirname "$0")/lib/claude-env.sh"
 set -euo pipefail
@@ -32,7 +32,7 @@ NEW_SESSION=$(echo "$input" | jq -r '.session_id // ""' 2>/dev/null)
 
 TEAMS_DIR="$CLAUDE_DIR/teams"
 TASKS_DIR="$CLAUDE_DIR/tasks"
-STATE_DIR="/tmp/claude-kb-state"
+source "$(dirname "$0")/lib/state.sh"
 
 [[ -d "$TEAMS_DIR" ]] || exit 0
 [[ -n "$NEW_SESSION" ]] || exit 0

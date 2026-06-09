@@ -3,8 +3,7 @@
 # Non-blocking (exit 0): stubs are legitimate during implementation
 source "$(dirname "$0")/lib/claude-env.sh"
 
-STATE_DIR="/tmp/claude-kb-state"
-mkdir -p "$STATE_DIR"
+source "$(dirname "$0")/lib/state.sh"
 
 INPUT=$(cat)
 TOOL_NAME=$(echo "$INPUT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('tool_name',''))" 2>/dev/null)
@@ -35,7 +34,7 @@ FILE_PATH=$(echo "$INPUT" | python3 -c "import sys,json; print(json.load(sys.std
 [[ "$FILE_PATH" == *.yaml ]] && exit 0
 
 # Session ID for state tracking
-SESSION_ID="${CLAUDE_SESSION_ID:-$(cat /tmp/claude-kb-state/session-$PPID 2>/dev/null || echo unknown)}"
+SESSION_ID="${CLAUDE_SESSION_ID:-$(cat "$STATE_DIR/session-$PPID" 2>/dev/null || echo unknown)}"
 MARKER_FILE="$STATE_DIR/${SESSION_ID}-incomplete-markers"
 
 # Scan for incompleteness markers

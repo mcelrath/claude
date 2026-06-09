@@ -6,7 +6,8 @@
 #           4) CLAUDE_CONTEXT_OVERRIDE env var
 #           5) Hardcoded 200000
 
-PROVIDER_CACHE="/tmp/claude-kb-state/provider-context-window"
+source "$(dirname "${BASH_SOURCE[0]}")/state.sh"
+PROVIDER_CACHE="$STATE_DIR/provider-context-window"
 PROVIDER_CACHE_TTL=3600  # 1 hour
 
 # Get context window from provider API (llama.cpp, vLLM, etc.)
@@ -72,7 +73,7 @@ except:
     fi
 
     if [[ "${ctx:-0}" != "0" && "$ctx" -gt 0 ]] 2>/dev/null; then
-        mkdir -p /tmp/claude-kb-state
+        mkdir -p "$STATE_DIR"
         echo "$ctx" > "$PROVIDER_CACHE"
         echo "$ctx"
         return 0
@@ -90,7 +91,7 @@ get_provider_context_window() {
     # Key the cache per model so a local-LLM query result can never be served
     # to a different provider's session (the sonnet[1m]-got-262144 bug).
     local model_slug=$(echo "$model_key" | tr -c 'A-Za-z0-9' '-' | cut -c1-48)
-    PROVIDER_CACHE="/tmp/claude-kb-state/provider-context-window-${model_slug}"
+    PROVIDER_CACHE="$STATE_DIR/provider-context-window-${model_slug}"
 
     # 1) If Claude Code reported a real value, trust it
     if [[ "$claude_reported" -gt 0 ]] 2>/dev/null; then

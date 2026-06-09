@@ -7,8 +7,7 @@ input=$(cat)
 session_id=$(echo "$input" | jq -r '.session_id // ""' 2>/dev/null)
 source_type=$(echo "$input" | jq -r '.source // ""' 2>/dev/null)
 
-STATE_DIR="/tmp/claude-kb-state"
-mkdir -p "$STATE_DIR"
+source "$(dirname "$0")/lib/state.sh"
 
 # --- History isolation (was history-isolation.sh) ---
 if [[ -n "$session_id" ]]; then
