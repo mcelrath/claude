@@ -23,8 +23,10 @@ Exit 0 = allow (optional NOTE on stderr). Exit 2 = block (sub-agent only).
 """
 import sys, json, os, hashlib
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _state import STATE_DIR  # noqa: E402 — persistent root (kb-h3b)
+
 WINDOW = 2000  # Read returns up to this many lines with no `limit`
-STATE_DIR = "/tmp/claude-kb-state"
 SRC = {
     ".py", ".pyi", ".lean", ".md", ".markdown", ".tex", ".rst", ".rs", ".c",
     ".cc", ".cpp", ".cxx", ".h", ".hpp", ".hh", ".hxx", ".cu", ".cuh", ".go",

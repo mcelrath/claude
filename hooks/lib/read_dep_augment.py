@@ -21,8 +21,10 @@ Emits a compact note to stderr. Exit 0 always (PostToolUse, never blocks).
 """
 import sys, json, os, re, hashlib, subprocess
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _state import STATE_DIR  # noqa: E402 — persistent root (kb-h3b)
+
 WINDOW = 2000
-STATE_DIR = "/tmp/claude-kb-state"
 AST_TIMEOUT = 4  # seconds, total budget for ast-grep work
 MAX_NAMES = 4    # cap cross-file lookups
 MAX_HITS = 4     # cap hits reported per name
