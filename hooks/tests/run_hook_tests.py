@@ -97,6 +97,79 @@ def classify(rc, out):
     return 'pass'         # rc 0, no output == defer/pass
 
 
+def _run(argv, env=None, stdin=''):
+    e = dict(os.environ)
+    if env:
+        e.update(env)
+    return subprocess.run(argv, input=stdin, capture_output=True, text=True,
+                          timeout=20, env=e)
+
+
+def state_tests():
+    """Persistent session-state root (kb-h3b): resolution, GC, owed-deferred.
+
+    Returns a list of (label, ok, detail). These are shaped differently from the
+    CASES table (they need temp dirs / multi-step setup), so they run as their own
+    block and fold their pass/fail into the main tally."""
+    import tempfile, shutil, time
+    LIB = os.path.join(HOOKS, 'lib')
+    r = []
+
+    # 1. _state.py default resolves under ~/.claude/state (CLAUDE_STATE_DIR empty)
+    p = _run(['python3', '-c', 'import _state; print(_state.STATE_DIR)'],
+             env={'PYTHONPATH': LIB, 'CLAUDE_STATE_DIR': ''})
+    got = p.stdout.strip()
+    r.append(('state: _state.py default -> ~/.claude/state', got.endswith('/.claude/state'), got))
+
+    # 2. CLAUDE_STATE_DIR override honored (python)
+    p = _run(['python3', '-c', 'import _state; print(_state.STATE_DIR)'],
+             env={'PYTHONPATH': LIB, 'CLAUDE_STATE_DIR': '/tmp/kbtest-ovr'})
+    r.append(('state: CLAUDE_STATE_DIR override (python)', p.stdout.strip() == '/tmp/kbtest-ovr', p.stdout.strip()))
+
+    # 3. state.sh agrees with the python side on the override
+    p = _run(['bash', '-c', f'source "{LIB}/state.sh"; echo "$STATE_DIR"'],
+             env={'CLAUDE_STATE_DIR': '/tmp/kbtest-ovr'})
+    r.append(('state: state.sh honors CLAUDE_STATE_DIR', p.stdout.strip() == '/tmp/kbtest-ovr', p.stdout.strip()))
+
+    # 4. session-init GC: old files swept, fresh kept, owed-deferred trimmed by epoch
+    T = tempfile.mkdtemp()
+    try:
+        now = int(time.time())
+        old = os.path.join(T, 'sidA-context'); open(old, 'w').close(); os.utime(old, (now - 20000, now - 20000))
+        oldd = os.path.join(T, 'sidA-readcov'); os.mkdir(oldd); os.utime(oldd, (now - 20000, now - 20000))
+        fresh = os.path.join(T, 'sidB-context'); open(fresh, 'w').close()
+        od = os.path.join(T, 'owed-deferred'); open(od, 'w').write(f'{now - 25000} 1 old\n{now - 50} 2 fresh\n')
+        _run(['bash', os.path.join(HOOKS, 'session-init.sh')], env={'CLAUDE_STATE_DIR': T}, stdin='{}')
+        body = open(od).read() if os.path.exists(od) else ''
+        ok = (not os.path.exists(old)) and (not os.path.exists(oldd)) and os.path.exists(fresh) \
+            and ('2 fresh' in body) and ('1 old' not in body)
+        r.append(('state: GC sweeps old (+readcov), keeps fresh, trims owed-deferred', ok,
+                  f"old_gone={not os.path.exists(old)} dir_gone={not os.path.exists(oldd)} "
+                  f"fresh={os.path.exists(fresh)} owed={body.strip()!r}"))
+    finally:
+        shutil.rmtree(T, ignore_errors=True)
+
+    # 5. owed-deferred persistence: the Stop hook reads DEFER_FILE from the persistent root
+    H = tempfile.mkdtemp()
+    try:
+        os.makedirs(os.path.join(H, '.agent-bridge')); os.makedirs(os.path.join(H, 'state'))
+        open(os.path.join(H, '.agent-bridge', 'messages.jsonl'), 'w').write(
+            json.dumps({"id": 1, "ts": "t", "sender": "peer", "to": ["me"],
+                        "needs_reply": True, "subject": "q", "body": "b"}) + '\n')
+        hook = py('bridge-owed-reply-stop.py')
+        env = {'HOME': H, 'AGENT_ID': 'me', 'CLAUDE_STATE_DIR': os.path.join(H, 'state'),
+               'BRIDGE_OWED_HARD_BLOCK': '1'}
+        p = _run(hook, env=env, stdin='{}')               # no defer -> hard block
+        r.append(('bridge owed-deferred: blocks without defer (exit 2)', p.returncode == 2, f"rc={p.returncode}"))
+        open(os.path.join(H, 'state', 'owed-deferred'), 'w').write(f'{int(time.time())} 1 testing\n')
+        p2 = _run(hook, env=env, stdin='{}')              # fresh defer at persistent root -> cleared
+        r.append(('bridge owed-deferred: defer at persistent root clears block (exit 0)', p2.returncode == 0, f"rc={p2.returncode}"))
+    finally:
+        shutil.rmtree(H, ignore_errors=True)
+
+    return r
+
+
 def main():
     verbose = '-v' in sys.argv
     npass = nfail = 0
@@ -116,7 +189,14 @@ def main():
         else:
             nfail += 1
             fails.append(f"FAIL  {label}: expected {expect}, got {got} (rc={rc})")
-    print(f"\n{npass} passed, {nfail} failed, {len(CASES)} total")
+    for label, ok, detail in state_tests():
+        if ok:
+            npass += 1
+            if verbose: print(f"  PASS  {label}")
+        else:
+            nfail += 1
+            fails.append(f"FAIL  {label}: {detail}")
+    print(f"\n{npass} passed, {nfail} failed, {npass + nfail} total")
     for f in fails:
         print("  " + f)
     sys.exit(1 if nfail else 0)
