@@ -415,6 +415,15 @@
             "type": "command"
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "command": "python3 $HOME/.claude/hooks/kb-prompt-surface.py",
+            "timeout": 10000,
+            "type": "command"
+          }
+        ]
       }
     ]
   },

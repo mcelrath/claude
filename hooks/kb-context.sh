@@ -68,13 +68,29 @@ if [[ -f "$CONTEXT_FILE" ]]; then
     fi
 fi
 
-# Show recent finding IDs only (compact - use ~/.local/bin/kb get <id> to fetch content)
-FINDINGS=$("$KB_VENV" "$KB_SCRIPT" list --project="$PROJECT" --limit=3 2>/dev/null) || true
+# Surface findings: SEMANTIC (relevance) when the saved session context gives a
+# query signal; else fall back to recency. (kb-mrl: recency -> vector-query.)
+# Per-prompt semantic surfacing lives in kb-prompt-surface.py (UserPromptSubmit);
+# this SessionStart path only has the resume context to query with.
+KB_IDS=""
+CTX_QUERY=$(grep "^Context:" "$CONTEXT_FILE" 2>/dev/null | cut -d: -f2- | tr '\n' ' ' | head -c 300)
+if [[ -n "$CTX_QUERY" ]]; then
+    HITS=$("$KB_VENV" "$KB_SCRIPT" search "$CTX_QUERY" --project="$PROJECT" --limit=5 --json 2>/dev/null) || true
+    if [[ -n "$HITS" ]]; then
+        KB_IDS=$(printf '%s' "$HITS" | "$KB_VENV" -c "import sys,json
+try: d=json.load(sys.stdin)
+except Exception: d=[]
+print(' '.join(r['id'] for r in d if float(r.get('similarity') or 0) >= 0.42)[:120])" 2>/dev/null)
+    fi
+    [[ -n "$KB_IDS" ]] && echo "Relevant KB ($PROJECT, semantic): $KB_IDS"
+fi
 
-if [[ -n "$FINDINGS" && "$FINDINGS" != "No findings found." ]]; then
-    KB_IDS=$(echo "$FINDINGS" | grep -oE 'kb-[0-9]{8}-[0-9]{6}-[a-f0-9]{6}' | head -5 | tr '\n' ' ')
-    if [[ -n "$KB_IDS" ]]; then
-        echo "Recent KB ($PROJECT): $KB_IDS"
+# Recency fallback when no semantic query/hits available.
+if [[ -z "$KB_IDS" ]]; then
+    FINDINGS=$("$KB_VENV" "$KB_SCRIPT" list --project="$PROJECT" --limit=3 2>/dev/null) || true
+    if [[ -n "$FINDINGS" && "$FINDINGS" != "No findings found." ]]; then
+        KB_IDS=$(echo "$FINDINGS" | grep -oE 'kb-[0-9]{8}-[0-9]{6}-[a-f0-9]{6}' | head -5 | tr '\n' ' ')
+        [[ -n "$KB_IDS" ]] && echo "Recent KB ($PROJECT): $KB_IDS"
     fi
 fi
 
