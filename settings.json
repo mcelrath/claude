@@ -651,7 +651,25 @@
       "Bash(for:*)",
       "Bash(lake-check:*)",
       "Bash(~/.local/bin/lake-check:*)",
-      "Bash(/home/mcelrath/.local/bin/lake-check:*)"
+      "Bash(/home/mcelrath/.local/bin/lake-check:*)",
+      "Bash(ash-pcie:*)",
+      "Bash(~/.local/bin/ash-pcie:*)",
+      "Bash(/home/mcelrath/.local/bin/ash-pcie:*)",
+      "Bash(nc:*)",
+      "Bash(ncat:*)",
+      "Bash(socat:*)",
+      "Bash(mysql:*)",
+      "Bash(mariadb:*)",
+      "Bash(ping:*)",
+      "Bash(dig:*)",
+      "Bash(host:*)",
+      "Bash(nslookup:*)",
+      "Bash(telnet:*)",
+      "Bash(mosh:*)",
+      "Bash(redis-cli:*)",
+      "Bash(psql:*)",
+      "Bash(scp:*)",
+      "Bash(rsync:*)"
     ],
     "defaultMode": "acceptEdits",
     "deny": [
@@ -678,7 +696,9 @@
       "Bash(kill:*)",
       "Bash(kill -9:*)",
       "Bash(pkill:*)",
-      "Bash(killall:*)"
+      "Bash(killall:*)",
+      "Bash(sudo:*)",
+      "Bash(sudo *)"
     ]
   },
   "preferredNotifChannel": "terminal_bell",
@@ -699,7 +719,27 @@
       "/home/mcelrath/.local/bin/kb *",
       "build-manager *",
       "lake *",
-      "dolt *"
+      "dolt *",
+      "ash-pcie *",
+      "~/.local/bin/ash-pcie *",
+      "/home/mcelrath/.local/bin/ash-pcie *",
+      "/home/mcelrath/Projects/ai/ash-gpu-tools/ash-pcie *",
+      "ssh *",
+      "scp *",
+      "rsync *",
+      "nc *",
+      "ncat *",
+      "socat *",
+      "mysql *",
+      "mariadb *",
+      "ping *",
+      "dig *",
+      "host *",
+      "nslookup *",
+      "telnet *",
+      "mosh *",
+      "redis-cli *",
+      "psql *"
     ],
     "filesystem": {
       "allowWrite": [
