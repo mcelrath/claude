@@ -142,8 +142,8 @@ Examples:
   ast-grep --lang rust   --pattern 'fn \$F(\$\$\$) -> \$RET { \$\$\$ }'
   ast-grep --lang html   --pattern '<a href=\$URL>\$\$\$</a>'
 
-Custom-language formats (markdown wired; toml via -c sgconfig):
-  ast-grep --lang markdown --pattern '$X'   (grammar wired via ~/sgconfig.yml)
+Custom-language formats (markdown/toml) need `run -c <sgconfig>`:
+  ast-grep run -c ~/.config/ast-grep/sgconfig.yml --lang markdown --pattern '$X'
 
 Pattern syntax: \$NAME = one identifier/expression; \$\$\$ = list (zero or more);
 \$_ = match-and-discard. See \`ast-grep --help\` or https://ast-grep.github.io/.
