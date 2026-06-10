@@ -128,8 +128,45 @@ def strip_heredocs(cmd: str) -> str:
     return result
 
 
+def split_commands(cmd):
+    """Split a command line into independent sub-commands on ; && || and
+    newlines (respecting quotes). Single | (pipe) and & (bg / 2>&1) are left
+    intact for split_pipe_stages. Without this, a reader on one command and a
+    grep on the NEXT (e.g. `head a.txt\\nast-grep ... x.py | grep`) get stitched
+    into one pipeline and the grep is wrongly attributed to the reader's file."""
+    cmds, cur, q, i = [], "", None, 0
+    while i < len(cmd):
+        ch = cmd[i]
+        if q:
+            cur += ch
+            if ch == q:
+                q = None
+        elif ch in "\"'":
+            q = ch
+            cur += ch
+        elif ch == '&' and i + 1 < len(cmd) and cmd[i + 1] == '&':
+            cmds.append(cur); cur = ""; i += 1
+        elif ch == '|' and i + 1 < len(cmd) and cmd[i + 1] == '|':
+            cmds.append(cur); cur = ""; i += 1
+        elif ch in ';\n':
+            cmds.append(cur); cur = ""
+        else:
+            cur += ch
+        i += 1
+    cmds.append(cur)
+    return cmds
+
+
 def analyze(cmd):
     cmd = strip_heredocs(cmd)
+    for sub in split_commands(cmd):
+        e = _analyze_pipeline(sub)
+        if e:
+            return e
+    return None
+
+
+def _analyze_pipeline(cmd):
     stages = split_pipe_stages(cmd)
     parsed = [lead(s) for s in stages]
     for idx, (base, toks) in enumerate(parsed):

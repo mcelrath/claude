@@ -58,6 +58,10 @@ CASES = [
     ('bts: grep of command output passes', bash('block-text-search-on-source.sh'), bash_cmd('bd show kb-1 | grep status'), 'pass', None),
     ('bts: ls|grep passes (output, not source)', bash('block-text-search-on-source.sh'), bash_cmd('ls /tmp | grep foo'), 'pass', None),
     ('bts: ast-grep passes',         bash('block-text-search-on-source.sh'), bash_cmd("ast-grep --lang python --pattern 'def $F($$$): $$$'"), 'pass', None),
+    ('bts: cross-command compound passes (not stitched)', bash('block-text-search-on-source.sh'),
+        bash_cmd('head x.txt ; ast-grep -p X kb.py | grep def'), 'pass', None),
+    ('bts: head src.py|grep same pipeline blocks', bash('block-text-search-on-source.sh'),
+        bash_cmd('head a.py | grep def'), 'block', None),
 
     # ---- block-markdown-via-bash.sh (regressions: arrow + commit-message) ----
     ('md: > x.md blocks',            bash('block-markdown-via-bash.sh'), bash_cmd('echo hi > notes.md'), 'block', None),
