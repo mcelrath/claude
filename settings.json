@@ -35,7 +35,7 @@
       {
         "hooks": [
           {
-            "command": "$HOME/.claude/hooks/kb-search-track.sh",
+            "command": "$HOME/.claude/hooks/kb/kb-search-track.sh",
             "timeout": 2000,
             "type": "command"
           }
@@ -45,7 +45,7 @@
       {
         "hooks": [
           {
-            "command": "$HOME/.claude/hooks/kb-search-track.sh",
+            "command": "$HOME/.claude/hooks/kb/kb-search-track.sh",
             "timeout": 2000,
             "type": "command"
           }
@@ -65,7 +65,7 @@
       {
         "hooks": [
           {
-            "command": "$HOME/.claude/hooks/kb-error-extract.sh",
+            "command": "$HOME/.claude/hooks/kb/kb-error-extract.sh",
             "timeout": 10000,
             "type": "command"
           },
@@ -80,7 +80,7 @@
             "type": "command"
           },
           {
-            "command": "$HOME/.claude/hooks/kb-search-track.sh",
+            "command": "$HOME/.claude/hooks/kb/kb-search-track.sh",
             "timeout": 2000,
             "type": "command"
           }
@@ -95,7 +95,7 @@
             "type": "command"
           },
           {
-            "command": "python3 $HOME/.claude/hooks/symbol_surface.py",
+            "command": "python3 $HOME/.claude/hooks/kb/symbol_surface.py",
             "timeout": 5000,
             "type": "command"
           }
@@ -122,7 +122,7 @@
       {
         "hooks": [
           {
-            "command": "$HOME/.claude/hooks/kb-precompact.sh",
+            "command": "$HOME/.claude/hooks/kb/kb-precompact.sh",
             "timeout": 60000,
             "type": "command"
           },
@@ -143,12 +143,12 @@
             "type": "command"
           },
           {
-            "command": "python3 $HOME/.claude/hooks/compose_time_check.py",
+            "command": "python3 $HOME/.claude/hooks/kb/compose_time_check.py",
             "timeout": 5000,
             "type": "command"
           },
           {
-            "command": "python3 $HOME/.claude/hooks/open_issues_surface.py",
+            "command": "python3 $HOME/.claude/hooks/kb/open_issues_surface.py",
             "timeout": 8000,
             "type": "command"
           }
@@ -218,7 +218,7 @@
             "type": "command"
           },
           {
-            "command": "$HOME/.claude/hooks/kb-search-track.sh",
+            "command": "$HOME/.claude/hooks/kb/kb-search-track.sh",
             "timeout": 2000,
             "type": "command"
           },
@@ -228,17 +228,17 @@
             "type": "command"
           },
           {
-            "command": "$HOME/.claude/hooks/dedupe-kb-get.sh",
+            "command": "$HOME/.claude/hooks/kb/dedupe-kb-get.sh",
             "timeout": 2000,
             "type": "command"
           },
           {
-            "command": "python3 $HOME/.claude/hooks/compose_time_check.py",
+            "command": "python3 $HOME/.claude/hooks/kb/compose_time_check.py",
             "timeout": 5000,
             "type": "command"
           },
           {
-            "command": "python3 $HOME/.claude/hooks/open_issues_surface.py",
+            "command": "python3 $HOME/.claude/hooks/kb/open_issues_surface.py",
             "timeout": 8000,
             "type": "command"
           }
@@ -331,12 +331,12 @@
             "type": "command"
           },
           {
-            "command": "$HOME/.claude/hooks/kb-flush-pending.sh",
+            "command": "$HOME/.claude/hooks/kb/kb-flush-pending.sh",
             "timeout": 2000,
             "type": "command"
           },
           {
-            "command": "$HOME/.claude/hooks/kb-context.sh",
+            "command": "$HOME/.claude/hooks/kb/kb-context.sh",
             "type": "command"
           },
           {
@@ -420,7 +420,7 @@
             "type": "command"
           },
           {
-            "command": "$HOME/.claude/hooks/kb-flush-pending.sh",
+            "command": "$HOME/.claude/hooks/kb/kb-flush-pending.sh",
             "timeout": 2000,
             "type": "command"
           }
@@ -429,7 +429,7 @@
       {
         "hooks": [
           {
-            "command": "python3 $HOME/.claude/hooks/kb-prompt-surface.py",
+            "command": "python3 $HOME/.claude/hooks/kb/kb-prompt-surface.py",
             "timeout": 10000,
             "type": "command"
           }
