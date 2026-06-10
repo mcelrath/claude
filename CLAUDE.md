@@ -65,7 +65,7 @@ A bd-ID makes the work first-class: `bd ready` will surface it in future session
 
 **Session-start obligation**: every new session surfaces open follow-ups from epics closed in the last 30 days, so they cannot fall off the radar between sessions.
 
-A hook enforces the bd-ID requirement on `Write` to `~/.claude/plans/PLAN-*.md` (see `~/.claude/hooks/block-followup-without-bd-id.sh`).
+A hook enforces the bd-ID requirement on `Write` to `~/.claude/plans/PLAN-*.md` (see `~/.claude/hooks/guards/block-followup-without-bd-id.sh`).
 
 ## Session Management
 
