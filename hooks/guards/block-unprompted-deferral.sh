@@ -179,10 +179,17 @@ defer_brag_rx = re.compile(
     r")"
 )
 
+# Box-drawing characters in OUTPUT (tables/diagrams). CLAUDE.md Output Discipline:
+# dashes + spaces only, NEVER box-drawing. (File content is caught separately by
+# block-box-drawing.py on Edit/Write — kb-6hn step6.) Scans only the assistant's
+# own text, so box-drawing inside quoted tool output is not the trigger.
+box_rx = re.compile(r'[─-╿]')
+
 m_pause = defer_rx.search(last_assistant_text)
 m_read = defer_read_rx.search(last_assistant_text)
 m_brag = defer_brag_rx.search(last_assistant_text)
-if not m_pause and not m_read and not m_brag:
+m_box = box_rx.search(last_assistant_text)
+if not m_pause and not m_read and not m_brag and not m_box:
     sys.exit(0)
 
 # Stop-signals from user (allow the stop if any recent user message contains these)
@@ -203,8 +210,11 @@ for utxt in recent_user_texts:
     if user_stop_rx.search(utxt):
         sys.exit(0)
 
-# Priority: read-proposal (always read) > brag (strip it) > pause.
-if m_read:
+# Priority: box-drawing (format) > read-proposal > brag > pause.
+if m_box:
+    m = m_box
+    category = 'BOX'
+elif m_read:
     m = m_read
     category = 'READ'
 elif m_brag:
@@ -232,6 +242,20 @@ if [ "$RC" -eq 2 ]; then
     CATEGORY=$(echo "$RESULT" | sed -n '1p')
     MATCHED_PHRASE=$(echo "$RESULT" | sed -n '2p')
     MATCHED_EXCERPT=$(echo "$RESULT" | sed -n '4p')
+    if [ "$CATEGORY" = "BOX" ]; then
+        cat >&2 <<EOF
+BLOCKED: your last response uses box-drawing characters in a table/diagram.
+
+Context: $MATCHED_EXCERPT
+
+Per CLAUDE.md Output Discipline: tables/diagrams use DASHES + SPACES only, NEVER
+box-drawing characters (┌┬┐├┼┤└┴┘│─ …) — they render inconsistently and aren't
+searchable. Re-render the table with '-' separators and plain spaces.
+
+This hook fired once. It will not fire again for this stop attempt.
+EOF
+        exit 2
+    fi
     if [ "$CATEGORY" = "READ" ]; then
         cat >&2 <<EOF
 BLOCKED: your last response PROPOSES reading/checking something instead of doing it.

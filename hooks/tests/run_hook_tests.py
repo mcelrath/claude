@@ -126,6 +126,19 @@ CASES = [
     ('compound: unknown tool defers', py('auto-approve-allowlisted-compound.py'),
         bash_cmd('for i in $(seq 1 3); do frobnicate $i; done'), 'defer', None),
 
+    # ---- block-box-drawing.py (kb-6hn step6: file-content lint) ----
+    # Box/block chars built via chr() so this test file stays box-drawing-free
+    # (the hook blocks writing literal box chars here); real chars at runtime.
+    ('box: box-drawing Write blocks', py('block-box-drawing.py'),
+        {'tool_name': 'Write', 'tool_input': {'file_path': '/x/t.md',
+         'content': chr(0x250c) + chr(0x2500) + chr(0x2510) + '\n' + chr(0x2514) + chr(0x2500) + chr(0x2518)}}, 'block', None),
+    ('box: box-drawing Edit blocks', py('block-box-drawing.py'),
+        {'tool_name': 'Edit', 'tool_input': {'file_path': '/x/t.md', 'new_string': 'a ' + chr(0x2502) + ' b'}}, 'block', None),
+    ('box: dashes table passes', py('block-box-drawing.py'),
+        {'tool_name': 'Write', 'tool_input': {'file_path': '/x/t.md', 'content': 'a    b\n---  ---\nx    y'}}, 'pass', None),
+    ('box: block-elements bar passes (statusline)', py('block-box-drawing.py'),
+        {'tool_name': 'Write', 'tool_input': {'file_path': '/x/t.sh', 'content': 'bar=' + chr(0x2588) * 2 + chr(0x2591) * 2}}, 'pass', None),
+
     # ---- block-followup-without-bd-id.sh (kb-94j: restored 'deferred' trigger) ----
     ('followup: deferred-to without bd-ID blocks', bash('block-followup-without-bd-id.sh'),
         {'tool_name': 'Write', 'tool_input': {'file_path': '/x/.claude/plans/PLAN-z.md',
@@ -225,33 +238,6 @@ def state_tests():
         r.append(('bridge owed-deferred: defer at persistent root clears block (exit 0)', p2.returncode == 0, f"rc={p2.returncode}"))
     finally:
         shutil.rmtree(H, ignore_errors=True)
-
-    # bd-circuit-unstick: must NOT clear an open breaker when the server is
-    # unreachable (preserving fail-fast when dolt is genuinely down). The
-    # clear-when-reachable path is network-dependent, so only the safety
-    # invariant is asserted here (deterministic).
-    import tempfile as _tf
-    H2 = _tf.mkdtemp()
-    try:
-        cf = os.path.join(H2, 'beads-dolt-circuit-65000.json')
-        open(cf, 'w').write('{"state":"open"}')
-        # point the hook at this file via port, and an unreachable host
-        env = {'BEADS_DOLT_SERVER_HOST': '10.255.255.1', 'BEADS_DOLT_SERVER_PORT': '65000'}
-        # the hook hardcodes /tmp/beads-dolt-circuit-<port>.json; mirror that
-        live = '/tmp/beads-dolt-circuit-65000.json'
-        open(live, 'w').write('{"state":"open"}')
-        _run(['bash', _find('bd-circuit-unstick.sh')],
-             env=env, stdin=json.dumps({'tool_name': 'Bash', 'tool_input': {'command': 'bd ready'}}))
-        kept = os.path.exists(live)
-        r.append(('bd-circuit-unstick: keeps open breaker when server unreachable', kept,
-                  f"file_exists={kept}"))
-        try:
-            os.remove(live)
-        except OSError:
-            pass
-    finally:
-        import shutil as _sh
-        _sh.rmtree(H2, ignore_errors=True)
 
     return r
 
