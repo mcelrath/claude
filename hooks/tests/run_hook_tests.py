@@ -108,6 +108,20 @@ CASES = [
     ('ro: /tmp/evil_oracle defers (untrusted dir)', py('auto-approve-readonly-bash.py'),
         bash_cmd('for i in $(seq 1 3); do /tmp/evil_oracle; done'), 'defer', None),
 
+    # ---- auto-approve-allowlisted-compound.py (mutating-but-allowlisted compounds) ----
+    ('compound: systemctl+curl loop approves', py('auto-approve-allowlisted-compound.py'),
+        bash_cmd('systemctl --user start llama-embed-gpu@8082.service; for w in $(seq 1 5); do sleep 2; up=0; for p in 8082 8087; do c=$(curl -s -m6 http://127.0.0.1:$p/health -o /dev/null -w %{http_code}); [ "$c" = 200 ] && up=$((up+1)); done; [ "$up" = 2 ] && break; done'),
+        'approve', None),
+    ('compound: launch-gpu/pgrep map approves', py('auto-approve-allowlisted-compound.py'),
+        bash_cmd('for port in 8082 8087; do mp=$(systemctl --user show -p MainPID --value llama-embed-gpu@$port.service); ll=$(pgrep -f "port $port" | head -1); printf "%s %s\\n" "$port" "$mp"; done'),
+        'approve', None),
+    ('compound: rm-loop defers (catastrophic)', py('auto-approve-allowlisted-compound.py'),
+        bash_cmd('for f in $(ls); do rm $f; done'), 'defer', None),
+    ('compound: eval defers (not skip/allowlisted)', py('auto-approve-allowlisted-compound.py'),
+        bash_cmd('for i in $(seq 1 3); do eval "$x"; done'), 'defer', None),
+    ('compound: unknown tool defers', py('auto-approve-allowlisted-compound.py'),
+        bash_cmd('for i in $(seq 1 3); do frobnicate $i; done'), 'defer', None),
+
     # ---- block-followup-without-bd-id.sh (kb-94j: restored 'deferred' trigger) ----
     ('followup: deferred-to without bd-ID blocks', bash('block-followup-without-bd-id.sh'),
         {'tool_name': 'Write', 'tool_input': {'file_path': '/x/.claude/plans/PLAN-z.md',

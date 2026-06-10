@@ -305,6 +305,10 @@
           {
             "command": "python3 /home/mcelrath/.claude/hooks/misc/auto-approve-readonly-bash.py",
             "type": "command"
+          },
+          {
+            "command": "python3 /home/mcelrath/.claude/hooks/misc/auto-approve-allowlisted-compound.py",
+            "type": "command"
           }
         ],
         "matcher": "Bash"
@@ -449,6 +453,9 @@
     ],
     "allow": [
       "Skill",
+      "Bash(/home/mcelrath/.local/bin/am-rs-:*)",
+      "Bash(AM_RS_PEER_NO_SYSTEM=1 /home/mcelrath/.local/bin/am-rs-:*)",
+      "Bash(bash /home/mcelrath/Projects/ai/am-rs/scripts/build-priv-example.sh:*)",
       "LSP",
       "Task",
       "Glob",
@@ -655,6 +662,8 @@
       "Bash(disown:*)",
       "Bash(setsid:*)",
       "Bash(journalctl:*)",
+      "Bash(systemctl:*)",
+      "Bash(~/ash-pcie:*)",
       "Bash(ssh ash:*)",
       "Bash(ssh tardis:*)",
       "Bash(systemctl --user:*)",
