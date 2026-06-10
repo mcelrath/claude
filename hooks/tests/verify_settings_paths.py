@@ -42,7 +42,7 @@ SETTINGS_FILES = [
 # /home/<user>/ form, under .claude/hooks/, ending in .sh or .py.
 PATH_RX = re.compile(r'(?:\$HOME|/home/[^/\s"\']+)/\.claude/hooks/[^\s"\';|&]+\.(?:sh|py)')
 
-EXPECTED_GLOBAL = 62  # sanity check; update if the hook set legitimately changes
+EXPECTED_GLOBAL = 63  # sanity check; update if the hook set legitimately changes
 
 
 def _commands(obj):

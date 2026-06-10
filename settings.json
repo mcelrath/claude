@@ -309,6 +309,10 @@
           {
             "command": "python3 /home/mcelrath/.claude/hooks/misc/auto-approve-allowlisted-compound.py",
             "type": "command"
+          },
+          {
+            "command": "$HOME/.claude/hooks/misc/bd-circuit-unstick.sh",
+            "type": "command"
           }
         ],
         "matcher": "Bash"

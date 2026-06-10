@@ -226,6 +226,33 @@ def state_tests():
     finally:
         shutil.rmtree(H, ignore_errors=True)
 
+    # bd-circuit-unstick: must NOT clear an open breaker when the server is
+    # unreachable (preserving fail-fast when dolt is genuinely down). The
+    # clear-when-reachable path is network-dependent, so only the safety
+    # invariant is asserted here (deterministic).
+    import tempfile as _tf
+    H2 = _tf.mkdtemp()
+    try:
+        cf = os.path.join(H2, 'beads-dolt-circuit-65000.json')
+        open(cf, 'w').write('{"state":"open"}')
+        # point the hook at this file via port, and an unreachable host
+        env = {'BEADS_DOLT_SERVER_HOST': '10.255.255.1', 'BEADS_DOLT_SERVER_PORT': '65000'}
+        # the hook hardcodes /tmp/beads-dolt-circuit-<port>.json; mirror that
+        live = '/tmp/beads-dolt-circuit-65000.json'
+        open(live, 'w').write('{"state":"open"}')
+        _run(['bash', _find('bd-circuit-unstick.sh')],
+             env=env, stdin=json.dumps({'tool_name': 'Bash', 'tool_input': {'command': 'bd ready'}}))
+        kept = os.path.exists(live)
+        r.append(('bd-circuit-unstick: keeps open breaker when server unreachable', kept,
+                  f"file_exists={kept}"))
+        try:
+            os.remove(live)
+        except OSError:
+            pass
+    finally:
+        import shutil as _sh
+        _sh.rmtree(H2, ignore_errors=True)
+
     return r
 
 
