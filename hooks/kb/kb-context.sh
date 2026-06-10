@@ -79,7 +79,11 @@ fi
 KB_IDS=""
 CTX_QUERY=$(grep "^Context:" "$CONTEXT_FILE" 2>/dev/null | cut -d: -f2- | tr '\n' ' ' | head -c 300)
 if [[ -n "$CTX_QUERY" ]]; then
-    HITS=$("$KB_VENV" "$KB_SCRIPT" search "$CTX_QUERY" --project="$PROJECT" --limit=5 --json 2>/dev/null) || true
+    # Bound the SessionStart semantic search: a slow embedding server must not
+    # block session start. Short single-attempt embed timeout (slow -> FTS) + a
+    # hard outer cap; degrades to the recency fallback below if it can't answer.
+    HITS=$(KB_SEARCH_EMBED_TIMEOUT=8 KB_SEARCH_EMBED_RETRIES=0 timeout 12 \
+        "$KB_VENV" "$KB_SCRIPT" search "$CTX_QUERY" --project="$PROJECT" --limit=5 --json 2>/dev/null) || true
     if [[ -n "$HITS" ]]; then
         KB_IDS=$(printf '%s' "$HITS" | "$KB_VENV" -c "import sys,json
 try: d=json.load(sys.stdin)
