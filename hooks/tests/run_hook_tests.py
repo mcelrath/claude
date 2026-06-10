@@ -21,8 +21,28 @@ import json, os, subprocess, sys
 HOOKS = os.path.expanduser('~/.claude/hooks')
 
 
-def bash(name): return ['bash', os.path.join(HOOKS, name)]
-def py(name):   return ['python3', os.path.join(HOOKS, name)]
+def _build_hook_index():
+    """Map hook basename -> full path, walking domain subdirs (post-kb-876
+    reorg) but skipping lib/ tests/ __pycache__ (helpers, not hooks). First
+    match wins. Lets the suite keep referencing hooks by bare name as they move."""
+    idx = {}
+    for root, dirs, files in os.walk(HOOKS):
+        dirs[:] = [d for d in dirs if d not in ('lib', 'tests', '__pycache__')]
+        for f in files:
+            if f.endswith(('.sh', '.py')) and f not in idx:
+                idx[f] = os.path.join(root, f)
+    return idx
+
+
+_HOOK_INDEX = _build_hook_index()
+
+
+def _find(name):
+    return _HOOK_INDEX.get(name, os.path.join(HOOKS, name))
+
+
+def bash(name): return ['bash', _find(name)]
+def py(name):   return ['python3', _find(name)]
 
 
 def bash_cmd(command, tool='Bash'):
@@ -147,7 +167,7 @@ def state_tests():
         oldd = os.path.join(T, 'sidA-readcov'); os.mkdir(oldd); os.utime(oldd, (now - 20000, now - 20000))
         fresh = os.path.join(T, 'sidB-context'); open(fresh, 'w').close()
         od = os.path.join(T, 'owed-deferred'); open(od, 'w').write(f'{now - 25000} 1 old\n{now - 50} 2 fresh\n')
-        _run(['bash', os.path.join(HOOKS, 'session-init.sh')], env={'CLAUDE_STATE_DIR': T}, stdin='{}')
+        _run(['bash', _find('session-init.sh')], env={'CLAUDE_STATE_DIR': T}, stdin='{}')
         body = open(od).read() if os.path.exists(od) else ''
         ok = (not os.path.exists(old)) and (not os.path.exists(oldd)) and os.path.exists(fresh) \
             and ('2 fresh' in body) and ('1 old' not in body)
@@ -207,6 +227,16 @@ def main():
         else:
             nfail += 1
             fails.append(f"FAIL  {label}: {detail}")
+    # settings-path verifier (kb-876 reorg safety net) folds in as one case.
+    vp = os.path.join(HOOKS, 'tests', 'verify_settings_paths.py')
+    if os.path.exists(vp):
+        r = subprocess.run(['python3', vp], capture_output=True, text=True)
+        if r.returncode == 0:
+            npass += 1
+            if verbose: print("  PASS  settings-path verifier (all hook paths resolve)")
+        else:
+            nfail += 1
+            fails.append("FAIL  settings-path verifier: " + (r.stderr.strip().splitlines() or ['a hook path does not resolve'])[-1])
     print(f"\n{npass} passed, {nfail} failed, {npass + nfail} total")
     for f in fails:
         print("  " + f)
