@@ -97,6 +97,16 @@ CASES = [
     # ---- auto-approve-readonly-bash.py ----
     ('ro: cat|head approves',        py('auto-approve-readonly-bash.py'), bash_cmd('cat x.txt | head -5'), 'approve', None),
     ('ro: rm defers (not read-only)', py('auto-approve-readonly-bash.py'), bash_cmd('rm x.txt'), 'defer', None),
+    # diagnostic-binary naming-convention trust (mes hardware test-loops)
+    ('ro: oracle test-loop approves', py('auto-approve-readonly-bash.py'),
+        bash_cmd('cd /home/mcelrath/Projects/ai/am-rs; pass=0; for i in $(seq 1 10); do if /home/mcelrath/.local/bin/am-rs-p2p_decode_oracle 0000:c6:00.0 0000:c9:00.0 2>&1 | grep -q "PASS"; then pass=$((pass+1)); fi; done; echo "UC: $pass/10"'),
+        'approve', None),
+    ('ro: ash-pcie loop defers (mutating, must prompt)', py('auto-approve-readonly-bash.py'),
+        bash_cmd('for i in $(seq 1 3); do if ash-pcie info 5; then echo ok; fi; done'), 'defer', None),
+    ('ro: oracle+write-redirect defers', py('auto-approve-readonly-bash.py'),
+        bash_cmd('am-rs-p2p_decode_oracle a b > /home/mcelrath/out.txt'), 'defer', None),
+    ('ro: /tmp/evil_oracle defers (untrusted dir)', py('auto-approve-readonly-bash.py'),
+        bash_cmd('for i in $(seq 1 3); do /tmp/evil_oracle; done'), 'defer', None),
 
     # ---- block-followup-without-bd-id.sh (kb-94j: restored 'deferred' trigger) ----
     ('followup: deferred-to without bd-ID blocks', bash('block-followup-without-bd-id.sh'),

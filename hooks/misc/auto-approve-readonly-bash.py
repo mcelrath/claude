@@ -38,6 +38,34 @@ GIT_RO = {'status', 'log', 'diff', 'show', 'branch', 'rev-parse', 'ls-files',
           'blame', 'shortlog', 'describe', 'remote', 'stash'}  # stash LIST only, see below
 BD_RO = {'list', 'show', 'ready', 'blocked', 'stats', 'search', 'dep', 'memories', 'prime'}
 
+# Read-only project diagnostic/test binaries: auto-trusted by NAMING CONVENTION
+# (a read-only suffix) so agents' hardware test-loops (oracles/probes) stop
+# prompting without enumerating each one. A MUTATING tool must NOT use these
+# suffixes (kb/bd/ash-pcie/launch-gpu don't, and stay prompted). New diagnostics
+# named *-oracle / *_oracle / *-test / *_test / *-probe / *_probe (or iptestN)
+# are auto-trusted; anything else is a deliberate prompt.
+DIAG_RE = re.compile(r'(?:[-_](?:oracle|test|probe))$|^iptest\d*$')
+DIAG_EXPLICIT = {  # seeded current tools (belt-and-suspenders; all also match DIAG_RE)
+    'am-rs-p2p_decode_oracle', 'am-rs-p2p_copy_test', 'iptest', 'iptest2',
+    'iptest3', 'llm-test',
+}
+DIAG_TRUSTED_PREFIXES = (
+    '/home/mcelrath/.local/bin/', '~/.local/bin/',
+    './build/bin/', 'build/bin/', './bin/', 'bin/',
+)
+
+
+def is_diagnostic(word: str) -> bool:
+    """Read-only-by-convention diagnostic binary: basename ends in
+    -oracle/-test/-probe (or iptestN) AND it is a bare name (PATH-resolved) or
+    under a trusted bin dir — so /tmp/evil_oracle is NOT trusted."""
+    bn = word.rsplit('/', 1)[-1]
+    if bn not in DIAG_EXPLICIT and not DIAG_RE.search(bn):
+        return False
+    if '/' not in word:
+        return True
+    return word.startswith(DIAG_TRUSTED_PREFIXES)
+
 # Shell-level rejects — scanned on QUOTE-BLANKED text (so a '>' comparison inside
 # a quoted python -c body does not trip the redirect check):
 SHELL_REJECT_RE = re.compile(
@@ -63,7 +91,9 @@ def blank_quotes(cmd: str) -> str:
     return re.sub(r'"[^"]*"', '""', s)
 
 # Positions where a command word starts: beginning, after these separators.
-SPLIT_RE = re.compile(r'(?:^|[;&|]|&&|\|\||\$\(|`|\bdo\b|\bthen\b|\belse\b|\n)\s*')
+SPLIT_RE = re.compile(
+    r'(?:^|[;&|]|&&|\|\||\$\(|`|\bdo\b|\bthen\b|\belse\b'
+    r'|\bif\b|\belif\b|\bwhile\b|\buntil\b|\n)\s*')
 
 
 def command_words(cmd: str):
@@ -98,8 +128,9 @@ def main():
     for word, rest in command_words(cmd):
         if word.startswith('#'):
             continue
-        # variable assignment prefix (FOO=bar cmd) — skip the assignment token
-        if re.match(r'^[A-Za-z_][A-Za-z0-9_]*=', word):
+        # variable assignment prefix (FOO=bar cmd / pass=$((pass+1))): the '=' is
+        # split off `word` by command_words, so detect it on the raw `rest`.
+        if re.match(r'^[A-Za-z_][A-Za-z0-9_]*=', rest):
             continue
         # loop variables after 'for'
         if word in ('for', 'while', 'until', 'if', 'then', 'elif', 'else', 'fi',
@@ -110,6 +141,8 @@ def main():
             continue
         base = word.rstrip(';')
         if base not in READONLY:
+            if is_diagnostic(base):
+                continue  # read-only diagnostic binary (naming convention)
             sys.exit(0)  # unknown tool → stay silent, normal prompt
         if base == 'git':
             sub = re.match(r'git\s+(\S+)', rest)
