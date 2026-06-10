@@ -20,7 +20,7 @@ print(m.group(1) if m else '')
 
 [[ -z "$KB_ID" ]] && exit 0
 
-source "$(dirname "$0")/lib/state.sh"
+source "$HOME/.claude/hooks/lib/state.sh"
 SESSION_FILE="$STATE_DIR/session-$PPID"
 [[ ! -f "$SESSION_FILE" ]] && exit 0
 SESSION_ID=$(cat "$SESSION_FILE")

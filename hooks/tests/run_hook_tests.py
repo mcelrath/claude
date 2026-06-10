@@ -165,8 +165,11 @@ def state_tests():
             json.dumps({"id": 1, "ts": "t", "sender": "peer", "to": ["me"],
                         "needs_reply": True, "subject": "q", "body": "b"}) + '\n')
         hook = py('bridge-owed-reply-stop.py')
+        # HOME is a throwaway (to isolate the bridge mailbox), but the hook
+        # resolves lib via ~/.claude/hooks/lib (move-safe, HOME-relative) — so
+        # point PYTHONPATH at the REAL lib for the _state import to resolve.
         env = {'HOME': H, 'AGENT_ID': 'me', 'CLAUDE_STATE_DIR': os.path.join(H, 'state'),
-               'BRIDGE_OWED_HARD_BLOCK': '1'}
+               'BRIDGE_OWED_HARD_BLOCK': '1', 'PYTHONPATH': os.path.join(HOOKS, 'lib')}
         p = _run(hook, env=env, stdin='{}')               # no defer -> hard block
         r.append(('bridge owed-deferred: blocks without defer (exit 2)', p.returncode == 2, f"rc={p.returncode}"))
         open(os.path.join(H, 'state', 'owed-deferred'), 'w').write(f'{int(time.time())} 1 testing\n')

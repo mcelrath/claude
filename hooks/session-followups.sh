@@ -9,7 +9,7 @@
 # Strategy: find all closed epics from the last 30 days, then list any open
 # issues that have a 'discovered-from' relationship to those epics.
 
-source "$(dirname "$0")/lib/claude-env.sh" 2>/dev/null
+source "$HOME/.claude/hooks/lib/claude-env.sh" 2>/dev/null
 
 # Bail quietly if bd isn't available or no .beads in cwd or ancestors
 command -v bd >/dev/null 2>&1 || exit 0

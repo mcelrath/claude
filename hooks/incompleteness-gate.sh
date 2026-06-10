@@ -1,7 +1,7 @@
 #!/bin/bash
 # PreToolUse hook for Bash — blocks git commit if staged changes have
 # incompleteness markers without corresponding bd issues
-source "$(dirname "$0")/lib/claude-env.sh"
+source "$HOME/.claude/hooks/lib/claude-env.sh"
 
 INPUT=$(cat)
 TOOL_NAME=$(echo "$INPUT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('tool_name',''))" 2>/dev/null)

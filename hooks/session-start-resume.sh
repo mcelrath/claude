@@ -1,7 +1,7 @@
 #!/bin/bash
 # SessionStart hook: check for pending session resume
 # State lives in beads; this hook provides context recovery hints
-source "$(dirname "$0")/lib/claude-env.sh"
+source "$HOME/.claude/hooks/lib/claude-env.sh"
 
 if git rev-parse --show-toplevel &>/dev/null; then
     PROJECT=$(basename "$(git rev-parse --show-toplevel)")

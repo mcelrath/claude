@@ -1,9 +1,9 @@
 #!/bin/bash
 # PostToolUse hook for Edit/Write — warns on incompleteness markers in new content
 # Non-blocking (exit 0): stubs are legitimate during implementation
-source "$(dirname "$0")/lib/claude-env.sh"
+source "$HOME/.claude/hooks/lib/claude-env.sh"
 
-source "$(dirname "$0")/lib/state.sh"
+source "$HOME/.claude/hooks/lib/state.sh"
 
 INPUT=$(cat)
 TOOL_NAME=$(echo "$INPUT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('tool_name',''))" 2>/dev/null)

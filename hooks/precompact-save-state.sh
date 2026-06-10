@@ -9,14 +9,14 @@
 # claimed beads — already codified in session-persona.sh's RESUME PROTOCOL,
 # bridge-resume.sh, and CLAUDE.md "Resume". The kb checkpoint is handled by
 # kb-precompact.sh. This hook now only maintains the resume pointer.
-source "$(dirname "$0")/lib/claude-env.sh"
+source "$HOME/.claude/hooks/lib/claude-env.sh"
 
 HOOK_INPUT=$(cat)
 HOOK_SESSION_ID=$(echo "$HOOK_INPUT" | jq -r '.session_id // ""' 2>/dev/null)
 
 PROJECT_NAME=$(basename "$(git rev-parse --show-toplevel 2>/dev/null || pwd)")
 
-source "$(dirname "$0")/lib/state.sh"
+source "$HOME/.claude/hooks/lib/state.sh"
 if [[ -n "$HOOK_SESSION_ID" ]]; then
     CURRENT_SESSION_ID="$HOOK_SESSION_ID"
 elif [[ -f "$STATE_DIR/session-$PPID" ]]; then

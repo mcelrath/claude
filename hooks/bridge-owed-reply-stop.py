@@ -28,7 +28,7 @@ import sys, os, json, subprocess, time
 
 MSGS = os.path.expanduser('~/.agent-bridge/messages.jsonl')
 BRIDGE = os.path.expanduser('~/.agent-bridge/bridge')
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'lib'))
+sys.path.insert(0, os.path.expanduser('~/.claude/hooks/lib'))
 from _state import STATE_DIR  # noqa: E402
 # Host-global (NOT session-scoped) deferral log. Persistent root (kb-h3b) so a
 # reboot no longer wipes time-boxed deferrals within their TTL.

@@ -1,13 +1,13 @@
 #!/bin/bash
 # SessionStart hook: combined session initialization
 # Merges: history-isolation.sh, kb-search-reset.sh, build-status.sh
-source "$(dirname "$0")/lib/claude-env.sh"
+source "$HOME/.claude/hooks/lib/claude-env.sh"
 
 input=$(cat)
 session_id=$(echo "$input" | jq -r '.session_id // ""' 2>/dev/null)
 source_type=$(echo "$input" | jq -r '.source // ""' 2>/dev/null)
 
-source "$(dirname "$0")/lib/state.sh"
+source "$HOME/.claude/hooks/lib/state.sh"
 
 # --- History isolation (was history-isolation.sh) ---
 if [[ -n "$session_id" ]]; then

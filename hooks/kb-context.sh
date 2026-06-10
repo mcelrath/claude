@@ -9,7 +9,7 @@ fi
 # KB Context Injection Hook
 # Shows last work context and recent findings for current project
 # TTY-aware: prefers TTY-specific handoff over project-wide KB dump
-source "$(dirname "$0")/lib/claude-env.sh"
+source "$HOME/.claude/hooks/lib/claude-env.sh"
 
 KB_SCRIPT="${KB_SCRIPT:-$HOME/Projects/ai/kb/kb.py}"
 KB_VENV="${KB_VENV:-$HOME/Projects/ai/kb/.venv/bin/python}"
