@@ -188,7 +188,7 @@
             "type": "command"
           },
           {
-            "command": "$HOME/.claude/hooks/bridge-watcher-check.sh",
+            "command": "$HOME/.claude/hooks/bridge/bridge-watcher-check.sh",
             "timeout": 2000,
             "type": "command"
           },
@@ -208,12 +208,12 @@
             "type": "command"
           },
           {
-            "command": "$HOME/.claude/hooks/bridge-watcher-alive.sh",
+            "command": "$HOME/.claude/hooks/bridge/bridge-watcher-alive.sh",
             "timeout": 2000,
             "type": "command"
           },
           {
-            "command": "$HOME/.claude/hooks/block-bridge-watch-background.sh",
+            "command": "$HOME/.claude/hooks/bridge/block-bridge-watch-background.sh",
             "timeout": 5000,
             "type": "command"
           },
@@ -354,7 +354,7 @@
             "type": "command"
           },
           {
-            "command": "$HOME/.claude/hooks/bridge-resume.sh",
+            "command": "$HOME/.claude/hooks/bridge/bridge-resume.sh",
             "timeout": 10000,
             "type": "command"
           },
@@ -380,12 +380,12 @@
             "type": "command"
           },
           {
-            "command": "$HOME/.claude/hooks/block-stop-without-bridge-watcher.sh",
+            "command": "$HOME/.claude/hooks/bridge/block-stop-without-bridge-watcher.sh",
             "timeout": 5000,
             "type": "command"
           },
           {
-            "command": "$HOME/.claude/hooks/bridge-unread-stop.sh",
+            "command": "$HOME/.claude/hooks/bridge/bridge-unread-stop.sh",
             "timeout": 3000,
             "type": "command"
           }
@@ -394,7 +394,7 @@
       {
         "hooks": [
           {
-            "command": "python3 $HOME/.claude/hooks/bridge-owed-reply-stop.py",
+            "command": "python3 $HOME/.claude/hooks/bridge/bridge-owed-reply-stop.py",
             "timeout": 8000,
             "type": "command"
           }
@@ -405,17 +405,17 @@
       {
         "hooks": [
           {
-            "command": "$HOME/.claude/hooks/bridge-watcher-check.sh",
+            "command": "$HOME/.claude/hooks/bridge/bridge-watcher-check.sh",
             "timeout": 3000,
             "type": "command"
           },
           {
-            "command": "$HOME/.claude/hooks/bridge-watcher-alive.sh",
+            "command": "$HOME/.claude/hooks/bridge/bridge-watcher-alive.sh",
             "timeout": 2000,
             "type": "command"
           },
           {
-            "command": "$HOME/.claude/hooks/bridge-recv-prompt.sh",
+            "command": "$HOME/.claude/hooks/bridge/bridge-recv-prompt.sh",
             "timeout": 5000,
             "type": "command"
           },

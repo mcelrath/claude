@@ -18,7 +18,7 @@ INPUT=$(cat)
 TOOL_NAME=$(printf '%s' "$INPUT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('tool_name',''))" 2>/dev/null)
 [ "$TOOL_NAME" != "Bash" ] && exit 0
 
-VERDICT=$(printf '%s' "$INPUT" | python3 "$HOME/.claude/hooks/_bridge_watch_detector.py" 2>/dev/null)
+VERDICT=$(printf '%s' "$INPUT" | python3 "$HOME/.claude/hooks/bridge/_bridge_watch_detector.py" 2>/dev/null)
 
 case "$VERDICT" in
   AMP)   WHY="a trailing/background '&' -- a &-backgrounded process fires NO task-notification and is reaped when the call returns, silently breaking the watcher protocol." ;;
