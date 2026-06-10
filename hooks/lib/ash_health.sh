@@ -14,8 +14,13 @@ ash_down() {
     _llm="${KB_LLM_URL:-http://tardis:9510/completion}"
     _emb_base=$(printf '%s' "$_emb" | sed -E 's|(https?://[^/]+).*|\1|')
     _llm_base=$(printf '%s' "$_llm" | sed -E 's|(https?://[^/]+).*|\1|')
-    curl -s -m2 -o /dev/null -w '%{http_code}' "$_emb_base/" 2>/dev/null | grep -q 200 || down="${_emb_base#*://}(embeddings) "
-    curl -s -m2 -o /dev/null -w '%{http_code}' "$_llm_base/" 2>/dev/null | grep -q 200 || down="${down}${_llm_base#*://}(LLM)"
+    # Probe /health, NOT / : llama.cpp returns 404 for / (the old probe
+    # false-fired "down" every time) and 200 for /health once the model is
+    # loaded. /health stays 200 during transient slot-busy 503s on /embedding,
+    # so we announce DOWN only when the server is genuinely unreachable/loading
+    # (retrieval still works — slot-wait or FTS fallback — when /health is 200).
+    curl -s -m2 -o /dev/null -w '%{http_code}' "$_emb_base/health" 2>/dev/null | grep -q 200 || down="${_emb_base#*://}(embeddings) "
+    curl -s -m2 -o /dev/null -w '%{http_code}' "$_llm_base/health" 2>/dev/null | grep -q 200 || down="${down}${_llm_base#*://}(LLM)"
     echo "${down:-UP}" > "$_KBINFRA_CACHE"
   fi
   [ "$down" = "UP" ] && return 1

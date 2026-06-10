@@ -1,9 +1,13 @@
 #!/bin/bash
 
 # --- EMBEDDING-DOWN gate (ash:8081): surface hard STOP instead of blind retrieval ---
+# SessionStart injects this hook's STDOUT into the agent's context (stderr is only
+# logged), so the embedding-down warning MUST go to stdout to actually reach the
+# agent at session start (kb-zma part 1). It is emitted FIRST so it leads the
+# context block.
 . "$HOME/.claude/hooks/lib/ash_health.sh" 2>/dev/null || true
 if command -v ash_down >/dev/null 2>&1 && ash_down; then
-  echo "$ASH_STOP_LINE" >&2
+  echo "$ASH_STOP_LINE"
 fi
 
 # KB Context Injection Hook
