@@ -84,6 +84,10 @@ CASES = [
     ('dolt: dolt sql-server blocks', bash('block-local-dolt-server.sh'), bash_cmd('dolt sql-server -P 3308'), 'block', None),
     ('dolt: bd dolt status passes',  bash('block-local-dolt-server.sh'), bash_cmd('bd dolt status'), 'pass', None),
     ('dolt: bd list passes',         bash('block-local-dolt-server.sh'), bash_cmd('bd list'), 'pass', None),
+    ('dolt: ssh-remote dolt op passes (kb-7g9.9 maint)', bash('block-local-dolt-server.sh'),
+        bash_cmd('timeout 20 ssh tardis "systemctl --user restart dolt.service"'), 'pass', None),
+    ('dolt: ExecStart unit-write passes (not a launch)', bash('block-local-dolt-server.sh'),
+        bash_cmd('cat > ~/.config/systemd/user/dolt.service <<EOF\nExecStart=/usr/bin/dolt sql-server -P 3308\nEOF'), 'pass', None),
 
     # ---- block-print-spam.sh ----
     ('spam: 3 echo banners block',   bash('block-print-spam.sh'),

@@ -19,8 +19,17 @@ CMD=$(printf '%s' "$INPUT" | python3 -c "import sys,json; print((json.load(sys.s
 HIT=$(printf '%s' "$CMD" | python3 -c '
 import sys, re
 cmd = sys.stdin.read()
+# REMOTE op: an ssh <host> command runs ON the remote (e.g. tardis, the shared
+# server itself) — it cannot create a LOCAL shadow, so the guard does not apply
+# (legitimate maintenance of the shared dolt server lives on tardis via ssh).
+if re.search(r"\bssh\s+[A-Za-z0-9._@-]+", cmd):
+    sys.exit(0)
 for seg in re.split(r"&&|\|\||;|\n|\|", cmd):
     s = seg.strip()
+    # systemd unit DEFINITION line (ExecStart=...dolt sql-server) is config, not a
+    # launch — editing a dolt.service unit must not trip the launch guard.
+    if "ExecStart=" in s:
+        continue
     # "dolt sql-server ..." (direct local server launch)
     if re.search(r"(^|[\s/])dolt\s+sql-server\b", s):
         print("dolt sql-server"); break
