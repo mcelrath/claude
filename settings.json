@@ -127,7 +127,7 @@
             "type": "command"
           },
           {
-            "command": "$HOME/.claude/hooks/precompact-save-state.sh",
+            "command": "$HOME/.claude/hooks/session/precompact-save-state.sh",
             "timeout": 30000,
             "type": "command"
           }
@@ -314,19 +314,19 @@
       {
         "hooks": [
           {
-            "command": "$HOME/.claude/hooks/project-scaffold-check.sh",
+            "command": "$HOME/.claude/hooks/session/project-scaffold-check.sh",
             "type": "command"
           },
           {
-            "command": "$HOME/.claude/hooks/session-precheck.sh",
+            "command": "$HOME/.claude/hooks/session/session-precheck.sh",
             "type": "command"
           },
           {
-            "command": "$HOME/.claude/hooks/session-init.sh",
+            "command": "$HOME/.claude/hooks/session/session-init.sh",
             "type": "command"
           },
           {
-            "command": "$HOME/.claude/hooks/session-persona.sh",
+            "command": "$HOME/.claude/hooks/session/session-persona.sh",
             "timeout": 3000,
             "type": "command"
           },
@@ -340,11 +340,11 @@
             "type": "command"
           },
           {
-            "command": "$HOME/.claude/hooks/session-start-resume.sh",
+            "command": "$HOME/.claude/hooks/session/session-start-resume.sh",
             "type": "command"
           },
           {
-            "command": "$HOME/.claude/hooks/session-followups.sh",
+            "command": "$HOME/.claude/hooks/session/session-followups.sh",
             "timeout": 5000,
             "type": "command"
           },
