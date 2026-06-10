@@ -359,7 +359,7 @@
             "type": "command"
           },
           {
-            "command": "$HOME/.claude/hooks/rust-analyzer-prewarm.sh",
+            "command": "$HOME/.claude/hooks/lsp/rust-analyzer-prewarm.sh",
             "timeout": 5000,
             "type": "command"
           }
