@@ -70,12 +70,12 @@
             "type": "command"
           },
           {
-            "command": "$HOME/.claude/hooks/bd-lifecycle.sh",
+            "command": "$HOME/.claude/hooks/git/bd-lifecycle.sh",
             "timeout": 5000,
             "type": "command"
           },
           {
-            "command": "$HOME/.claude/hooks/git-commit-check.sh",
+            "command": "$HOME/.claude/hooks/git/git-commit-check.sh",
             "timeout": 2000,
             "type": "command"
           },
@@ -105,7 +105,7 @@
       {
         "hooks": [
           {
-            "command": "$HOME/.claude/hooks/git-asked-gate.sh",
+            "command": "$HOME/.claude/hooks/git/git-asked-gate.sh",
             "timeout": 1000,
             "type": "command"
           },
@@ -168,7 +168,7 @@
             "type": "command"
           },
           {
-            "command": "$HOME/.claude/hooks/guard-destructive-git.sh",
+            "command": "$HOME/.claude/hooks/git/guard-destructive-git.sh",
             "timeout": 3000,
             "type": "command"
           },
