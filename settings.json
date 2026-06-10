@@ -55,7 +55,7 @@
       {
         "hooks": [
           {
-            "command": "$HOME/.claude/hooks/incompleteness-scanner.sh",
+            "command": "$HOME/.claude/hooks/guards/incompleteness-scanner.sh",
             "timeout": 3000,
             "type": "command"
           }
@@ -110,7 +110,7 @@
             "type": "command"
           },
           {
-            "command": "$HOME/.claude/hooks/md-asked-gate.sh",
+            "command": "$HOME/.claude/hooks/guards/md-asked-gate.sh",
             "timeout": 1000,
             "type": "command"
           }
@@ -138,7 +138,7 @@
       {
         "hooks": [
           {
-            "command": "$HOME/.claude/hooks/prior-art-gate.sh",
+            "command": "$HOME/.claude/hooks/guards/prior-art-gate.sh",
             "timeout": 2000,
             "type": "command"
           },
@@ -163,7 +163,7 @@
             "type": "command"
           },
           {
-            "command": "$HOME/.claude/hooks/block-print-spam.sh",
+            "command": "$HOME/.claude/hooks/guards/block-print-spam.sh",
             "timeout": 5000,
             "type": "command"
           },
@@ -173,17 +173,17 @@
             "type": "command"
           },
           {
-            "command": "$HOME/.claude/hooks/block-local-dolt-server.sh",
+            "command": "$HOME/.claude/hooks/guards/block-local-dolt-server.sh",
             "timeout": 3000,
             "type": "command"
           },
           {
-            "command": "$HOME/.claude/hooks/incompleteness-gate.sh",
+            "command": "$HOME/.claude/hooks/guards/incompleteness-gate.sh",
             "timeout": 5000,
             "type": "command"
           },
           {
-            "command": "$HOME/.claude/hooks/weak-claim-gate.sh",
+            "command": "$HOME/.claude/hooks/guards/weak-claim-gate.sh",
             "timeout": 3000,
             "type": "command"
           },
@@ -193,17 +193,17 @@
             "type": "command"
           },
           {
-            "command": "$HOME/.claude/hooks/block-markdown-via-bash.sh",
+            "command": "$HOME/.claude/hooks/guards/block-markdown-via-bash.sh",
             "timeout": 2000,
             "type": "command"
           },
           {
-            "command": "$HOME/.claude/hooks/block-text-search-on-source.sh",
+            "command": "$HOME/.claude/hooks/guards/block-text-search-on-source.sh",
             "timeout": 3000,
             "type": "command"
           },
           {
-            "command": "$HOME/.claude/hooks/block-large-heredoc.sh",
+            "command": "$HOME/.claude/hooks/guards/block-large-heredoc.sh",
             "timeout": 3000,
             "type": "command"
           },
@@ -248,7 +248,7 @@
       {
         "hooks": [
           {
-            "command": "$HOME/.claude/hooks/read-coverage-gate.sh",
+            "command": "$HOME/.claude/hooks/guards/read-coverage-gate.sh",
             "timeout": 3000,
             "type": "command"
           }
@@ -258,7 +258,7 @@
       {
         "hooks": [
           {
-            "command": "$HOME/.claude/hooks/weak-claim-gate.sh",
+            "command": "$HOME/.claude/hooks/guards/weak-claim-gate.sh",
             "timeout": 3000,
             "type": "command"
           }
@@ -268,7 +268,7 @@
       {
         "hooks": [
           {
-            "command": "$HOME/.claude/hooks/block-markdown-files.sh",
+            "command": "$HOME/.claude/hooks/guards/block-markdown-files.sh",
             "timeout": 2000,
             "type": "command"
           },
@@ -283,7 +283,7 @@
       {
         "hooks": [
           {
-            "command": "$HOME/.claude/hooks/block-followup-without-bd-id.sh",
+            "command": "$HOME/.claude/hooks/guards/block-followup-without-bd-id.sh",
             "timeout": 3000,
             "type": "command"
           }
@@ -293,7 +293,7 @@
       {
         "hooks": [
           {
-            "command": "$HOME/.claude/hooks/block-presentation-cells.sh",
+            "command": "$HOME/.claude/hooks/guards/block-presentation-cells.sh",
             "timeout": 5000,
             "type": "command"
           }
@@ -370,12 +370,12 @@
       {
         "hooks": [
           {
-            "command": "$HOME/.claude/hooks/md-cleanup.sh",
+            "command": "$HOME/.claude/hooks/guards/md-cleanup.sh",
             "timeout": 1000,
             "type": "command"
           },
           {
-            "command": "$HOME/.claude/hooks/block-unprompted-deferral.sh",
+            "command": "$HOME/.claude/hooks/guards/block-unprompted-deferral.sh",
             "timeout": 5000,
             "type": "command"
           },

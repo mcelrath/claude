@@ -30,7 +30,7 @@ CMD=$(echo "$INPUT" | python3 -c "import sys,json; print(json.load(sys.stdin).ge
 [ -z "$CMD" ] && exit 0
 
 # Pipeline-aware verdict: source-file extension to block, or "ALLOW".
-DETECTED_EXT=$(python3 "$HOME/.claude/hooks/_grep_pipeline_analyzer.py" "$CMD" 2>/dev/null)
+DETECTED_EXT=$(python3 "$HOME/.claude/hooks/guards/_grep_pipeline_analyzer.py" "$CMD" 2>/dev/null)
 [ -z "$DETECTED_EXT" ] && exit 0          # analyzer error → fail-open
 [ "$DETECTED_EXT" = "ALLOW" ] && exit 0
 
