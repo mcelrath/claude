@@ -27,7 +27,7 @@ current_file = ''
 current_line = 0
 skip_file = False
 
-skip_patterns = ['.md', 'hooks/', 'CLAUDE.md']  # MEMORY.md migrated to kb 2026-05-19
+skip_patterns = ['.md', 'hooks/', 'CLAUDE.md', '.jsonl', '.json']  # data files are not code
 
 for line in diff.split('\n'):
     if line.startswith('diff --git'):

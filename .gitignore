@@ -64,3 +64,11 @@ settings.json-*
 
 # Dolt database files (added by bd init)
 .dolt/
+
+# Local state/cache (machine-specific, not for push)
+.last-cleanup
+mcp-needs-auth-cache.json
+pending-kb-adds.log
+policy-limits.json
+remote-settings.json
+tmp/

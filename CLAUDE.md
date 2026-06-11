@@ -7,6 +7,11 @@
 3. DO NOT simply append to any file. READ THE FILE IN FULL and figure out where your contribution belongs.
 4. RESEARCH first. This project is long-running and comprehensive. kb-research is waiting for your instructions. If it times out or fails, ask for help or suggest fixes.
 5. SURFACE confusion, contradictions, and architectural anti-patterns. If the code seems messy, propose to fix it. Don't wait for the user to ask. Surface your questions, confusion, and doubts in every turn.
+6. COMMIT BEFORE ANY CLOBBERING OPERATION. Work that is not committed (or, for build trees, not captured in a committed patch/source-of-truth) WILL be lost by a clobbering step — `makepkg -C` / clean re-extract, `git reset/checkout/clean`, `rmmod`+rebuild, worktree removal, branch switch. This has bitten twice. Before running ANY such step:
+   (a) `git status` the working tree AND any generated/extracted tree (e.g. kernel `src/`); commit everything that is real work.
+   (b) For build trees with patch stacks: SCAN for stub/in-tree-only edits FIRST — `for p in *.patch; do grep -cE '^@@ ' "$p"; done` — any zero-hunk patch whose code lives only in the extracted tree will be DESTROYED by a clean re-extract. Convert it to a self-contained patch and commit it BEFORE the clobber. (This is the documented `makepkg -C` hazard; heed it, don't relearn it.)
+   (c) If you cannot make a step non-destructive, snapshot first (`git switch -c wip/<name> && git commit -am wip`, or copy the tree) — never run the clobber on uncommitted/uncaptured work.
+   The default is COMMIT, not "I'll commit after." Destructive build/git steps are the single most common way work is lost — treat an uncommitted change as already-gone the moment you reach for a clobbering command.
 
 # Planning and Review (Beads-Based)
 
@@ -283,7 +288,7 @@ All kb ops via `~/.local/bin/kb`. MCP `kb_add` tool is gone.
 
 | Op | Pattern |
 |----|---------|
-| add | `~/.local/bin/kb add "content" -t TYPE -p PROJECT -s SPRINT --tags T1,T2 -e EVIDENCE` |
+| add | `~/.local/bin/kb add "content" -t TYPE -p PROJECT -s SPRINT --tags T1,T2 -e EVIDENCE --summary "<one sentence>"` |
 | search | `~/.local/bin/kb search "query"` (first search always unfiltered, no `-p`) |
 | get | `~/.local/bin/kb get kb-YYYYMMDD-HHMMSS-hash` |
 | list | `~/.local/bin/kb list -p PROJECT` |
@@ -292,6 +297,8 @@ All kb ops via `~/.local/bin/kb`. MCP `kb_add` tool is gone.
 | reembed | `~/.local/bin/kb reembed --force` (after model change) |
 
 `add` returns `Added: kb-<id>` — capture the id. Tags taxonomy: `proven|heuristic|open-problem`, `core-result|technique|detail`.
+
+**ALWAYS pass `--summary "<one sentence>"`.** YOU wrote the finding, so YOU write its one-line summary in the same turn — it's free (no extra model/call) and far better than the kb's no-LLM extractive fallback. The summary is what shows in search results; make it dense and specific (key result + identifiers), not a restatement of the first sentence.
 
 Project field: `algebraic-genesis` (canonical), or `secular-constraints` / `claude` for repo-specific.
 
