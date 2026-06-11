@@ -250,7 +250,34 @@ Write to `{project_root}/agent-preamble.md`.
 - For MATURE projects (KB has 50+ findings): thorough, 60-100 lines
 - For NEW projects (little KB, minimal CLAUDE.md): thin 30-40 lines is correct
 
-## Phase 5: Verify and Report
+## Phase 5: KB Project Setup
+
+Run non-interactively (safe for background agents — no prompts, no secrets):
+
+```bash
+~/.local/bin/kb configure --project "<tag>" --project-dir "<project_root>"
+# Add --enable-tracker if the project uses bd/beads for task tracking.
+```
+
+Replace `<tag>` with the project's canonical kb project name (from CLAUDE.md or
+`kb stats`, e.g. `knowledge-base`, `secular-constraints`, `claude`).
+
+Check whether global kb embedding is configured on this host:
+
+```bash
+~/.local/bin/kb embed-status 2>/dev/null || true
+```
+
+If the command is missing or outputs `no-meta` / `KB_EMBEDDING_FORMAT` is unset,
+emit one line:
+
+```
+Note: global kb embedding not configured on this host. Run `kb configure` first to enable semantic search.
+```
+
+Do NOT block on this — the project setup is still complete without it.
+
+## Phase 6: Verify and Report
 
 1. Parse both files: `python3 -c "import yaml; yaml.safe_load(open('{project_root}/reviewers.yaml'))"` — must succeed
 2. Count experts and verify association strings are non-empty
@@ -266,5 +293,5 @@ Write to `{project_root}/agent-preamble.md`.
 - Max 40 tool calls total
 - Max 3 files read per domain survey category
 - If CLAUDE.md is >500 lines, read first 200 + grep for key sections
-- ~/.local/bin/kb add at end of Phase 1, Phase 2, and Phase 5
+- ~/.local/bin/kb add at end of Phase 1, Phase 2, and Phase 6
 - Do NOT spawn sub-agents — this agent IS the sub-agent
